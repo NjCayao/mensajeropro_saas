@@ -1,0 +1,12 @@
+# .htaccess en la raíz del proyecto
+RewriteEngine On
+
+# Redirigir todo el tráfico a la carpeta public
+RewriteRule ^$ public/ [L]
+RewriteRule (.*) public/$1 [L]
+
+# Denegar acceso a archivos sensibles
+<FilesMatch "\.(sql|log|md|git|env)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

@@ -1,0 +1,63 @@
+[23-Sep-2025 15:26:14 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\app\cliente\dashboard.php on line 2
+[23-Sep-2025 15:26:14 America/Lima] PHP Fatal error:  Cannot redeclare getEmpresaUploadPath() (previously declared in C:\xampp\htdocs\mensajeroprov2\config\app.php:111) in C:\xampp\htdocs\mensajeroprov2\includes\multi_tenant.php on line 124
+[23-Sep-2025 15:56:00 America/Lima] PHP Warning:  require_once(../layouts/header.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php on line 4
+[23-Sep-2025 15:56:00 America/Lima] PHP Fatal error:  Uncaught Error: Failed opening required '../layouts/header.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php:4
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\public\app.php(40): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php on line 4
+[23-Sep-2025 16:01:41 America/Lima] PHP Warning:  require_once(../layouts/header.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php on line 4
+[23-Sep-2025 16:01:41 America/Lima] PHP Fatal error:  Uncaught Error: Failed opening required '../layouts/header.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php:4
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\public\app.php(40): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php on line 4
+[23-Sep-2025 16:05:44 America/Lima] PHP Warning:  Undefined variable $contactos in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php on line 71
+[23-Sep-2025 16:05:44 America/Lima] PHP Warning:  foreach() argument must be of type array|object, null given in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php on line 71
+[23-Sep-2025 16:05:44 America/Lima] PHP Warning:  require_once(../layouts/footer.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php on line 258
+[23-Sep-2025 16:05:44 America/Lima] PHP Fatal error:  Uncaught Error: Failed opening required '../layouts/footer.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php:258
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\public\app.php(40): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php on line 258
+[23-Sep-2025 16:08:24 America/Lima] PHP Warning:  Undefined variable $contactos in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php on line 73
+[23-Sep-2025 16:08:24 America/Lima] PHP Warning:  foreach() argument must be of type array|object, null given in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\contactos.php on line 73
+[23-Sep-2025 16:11:40 America/Lima] PHP Warning:  require_once(../layouts/footer.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\categorias.php on line 160
+[23-Sep-2025 16:11:40 America/Lima] PHP Fatal error:  Uncaught Error: Failed opening required '../layouts/footer.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\categorias.php:160
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\public\app.php(40): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\categorias.php on line 160
+[23-Sep-2025 16:12:40 America/Lima] PHP Warning:  require_once(../layouts/footer.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\categorias.php on line 160
+[23-Sep-2025 16:12:40 America/Lima] PHP Fatal error:  Uncaught Error: Failed opening required '../layouts/footer.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\categorias.php:160
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\public\app.php(40): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\categorias.php on line 160
+[23-Sep-2025 16:27:59 America/Lima] PHP Fatal error:  Uncaught Error: Call to a member function fetchColumn() on bool in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\bot-config.php:26
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\public\app.php(40): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\bot-config.php on line 26
+[23-Sep-2025 16:28:01 America/Lima] PHP Fatal error:  Uncaught Error: Call to a member function fetchColumn() on bool in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\bot-config.php:26
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\public\app.php(40): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\bot-config.php on line 26
+[23-Sep-2025 16:29:11 America/Lima] PHP Fatal error:  Uncaught Error: Call to a member function fetchColumn() on bool in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\bot-config.php:26
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\public\app.php(40): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\bot-config.php on line 26
+[23-Sep-2025 16:43:42 America/Lima] PHP Warning:  require_once(../layouts/footer.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\mensajes.php on line 272
+[23-Sep-2025 16:43:42 America/Lima] PHP Fatal error:  Uncaught Error: Failed opening required '../layouts/footer.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\mensajes.php:272
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\public\app.php(40): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\mensajes.php on line 272
+[23-Sep-2025 17:14:04 America/Lima] PHP Warning:  require_once(../layouts/footer.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\whatsapp.php on line 221
+[23-Sep-2025 17:14:04 America/Lima] PHP Fatal error:  Uncaught Error: Failed opening required '../layouts/footer.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\whatsapp.php:221
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\public\app.php(40): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\app\cliente\modulos\whatsapp.php on line 221
