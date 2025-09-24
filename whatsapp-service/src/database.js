@@ -59,16 +59,16 @@ async function executeWithCommit(query, params = []) {
 // Funciones helper actualizadas
 async function updateWhatsAppStatus(estado, qrCode = null, numeroConectado = null) {
     try {
-        console.log('Actualizando estado:', { estado, qrCode: qrCode ? 'Sí' : 'No', numeroConectado });
+        const empresaId = global.EMPRESA_ID || 1;
         
         await executeWithCommit(
-            `UPDATE whatsapp_sesion 
+            `UPDATE whatsapp_sesiones_empresa 
              SET estado = ?, qr_code = ?, numero_conectado = ?, ultima_actualizacion = NOW() 
-             WHERE id = 1`,
-            [estado, qrCode, numeroConectado]
+             WHERE empresa_id = ?`,
+            [estado, qrCode, numeroConectado, empresaId]
         );
         
-        console.log('✅ Estado actualizado en BD');
+        console.log('✅ Estado actualizado en BD para empresa:', empresaId);
     } catch (error) {
         console.error('❌ Error actualizando estado WhatsApp:', error);
     }
@@ -76,14 +76,15 @@ async function updateWhatsAppStatus(estado, qrCode = null, numeroConectado = nul
 
 async function getContactosPorCategoria(categoriaId = null) {
     try {
+        const empresaId = global.EMPRESA_ID || 1;
         let query = `
             SELECT c.*, cat.nombre as categoria_nombre 
             FROM contactos c 
             LEFT JOIN categorias cat ON c.categoria_id = cat.id 
-            WHERE c.activo = 1
+            WHERE c.activo = 1 AND c.empresa_id = ?
         `;
         
-        const params = [];
+        const params = [empresaId];
         if (categoriaId) {
             query += ' AND c.categoria_id = ?';
             params.push(categoriaId);

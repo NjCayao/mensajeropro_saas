@@ -26,7 +26,7 @@ require_once __DIR__ . '/../includes/functions.php';
 // Rutas del sistema
 define('BASE_PATH', dirname(__DIR__));
 define('PUBLIC_PATH', BASE_PATH . '/public');
-define('APP_PATH', BASE_PATH . '/app');
+define('APP_PATH', BASE_PATH . '/sistema');
 define('CONFIG_PATH', BASE_PATH . '/config');
 define('INCLUDES_PATH', BASE_PATH . '/includes');
 define('UPLOAD_PATH', PUBLIC_PATH . '/uploads/');

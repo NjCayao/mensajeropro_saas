@@ -13,12 +13,13 @@ class WhatsAppClient {
 
   async initialize() {
     console.log("🔄 Inicializando WhatsApp con WPPConnect...");
+    const empresaId = global.EMPRESA_ID || 1;
 
     try {
       await db.updateWhatsAppStatus("iniciando");
 
       this.client = await wppconnect.create({
-        session: "mensajeropro-" + Date.now(),
+        session: `empresa-${empresaId}`, // SESIÓN ÚNICA POR EMPRESA
         catchQR: async (base64Qr, asciiQr) => {
           console.log("📱 QR Code generado");
           console.log(asciiQr);

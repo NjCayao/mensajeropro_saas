@@ -1,8 +1,8 @@
 # public/.htaccess
 RewriteEngine On
 
-# Prevenir acceso directo a archivos PHP en app/
-RewriteRule ^app/ - [F,L]
+# Prevenir acceso directo a archivos PHP en sistema/
+RewriteRule ^sistema/ - [F,L]
 
 # Prevenir listado de directorios
 Options -Indexes

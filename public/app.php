@@ -37,5 +37,5 @@ $page_title = ucfirst($modulo);
 $current_page = $modulo;
 
 // Cargar el módulo
-require_once __DIR__ . '/../app/cliente/' . $rutas[$modulo];
+require_once __DIR__ . '/../sistema/cliente/' . $rutas[$modulo];
 ?>

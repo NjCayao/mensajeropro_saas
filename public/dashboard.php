@@ -8,5 +8,5 @@ require_once __DIR__ . '/../includes/auth.php';
 requireLogin();
 
 // Incluir el dashboard real
-require_once __DIR__ . '/../app/cliente/dashboard.php';
+require_once __DIR__ . '/../sistema/cliente/dashboard.php';
 ?>
