@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 if (!isset($_SESSION['user_id'])) {
     jsonResponse(false, 'No autorizado');
@@ -22,10 +23,10 @@ try {
     $stmt = $pdo->prepare("
         SELECT mp.*, c.nombre as categoria_nombre
         FROM mensajes_programados mp
-        LEFT JOIN categorias c ON mp.categoria_id = c.id
-        WHERE mp.id = ? AND mp.usuario_id = ?
+        LEFT JOIN categorias c ON mp.categoria_id = c.id AND c.empresa_id = mp.empresa_id
+        WHERE mp.id = ? AND mp.usuario_id = ? AND mp.empresa_id = ?
     ");
-    $stmt->execute([$id, $_SESSION['user_id']]);
+    $stmt->execute([$id, $_SESSION['user_id'], getEmpresaActual()]);
     $mensaje = $stmt->fetch();
     
     if ($mensaje) {

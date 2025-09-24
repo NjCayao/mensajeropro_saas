@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
@@ -18,13 +19,13 @@ $numero = $_POST['numero'] ?? null;
 
 try {
     $stmt = $pdo->prepare(
-        "UPDATE whatsapp_sesion 
-         SET estado = ?, numero_conectado = ?, ultima_actualizacion = NOW() 
-         WHERE id = 1"
+        "UPDATE whatsapp_sesiones_empresa 
+        SET estado = ?, numero_conectado = ?, ultima_actualizacion = NOW() 
+        WHERE empresa_id = ?"
     );
-    
-    $stmt->execute([$estado, $numero]);
-    
+
+    $stmt->execute([$estado, $numero, getEmpresaActual()]);
+
     jsonResponse(true, 'Estado actualizado');
     
 } catch (Exception $e) {

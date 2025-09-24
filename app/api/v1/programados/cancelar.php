@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 if (!isset($_SESSION['user_id'])) {
     jsonResponse(false, 'No autorizado');
@@ -26,9 +27,9 @@ try {
     // Verificar que el mensaje es del usuario y está pendiente
     $stmt = $pdo->prepare("
         SELECT titulo FROM mensajes_programados 
-        WHERE id = ? AND usuario_id = ? AND estado = 'pendiente'
+        WHERE id = ? AND usuario_id = ? AND estado = 'pendiente' AND empresa_id = ?
     ");
-    $stmt->execute([$id, $_SESSION['user_id']]);
+    $stmt->execute([$id, $_SESSION['user_id'], getEmpresaActual()]);
     $mensaje = $stmt->fetch();
     
     if (!$mensaje) {
@@ -39,10 +40,10 @@ try {
     $stmt = $pdo->prepare("
         UPDATE mensajes_programados 
         SET estado = 'cancelado'
-        WHERE id = ? AND usuario_id = ? AND estado = 'pendiente'
+        WHERE id = ? AND usuario_id = ? AND estado = 'pendiente' AND empresa_id = ?
     ");
-    $stmt->execute([$id, $_SESSION['user_id']]);
-    
+    $stmt->execute([$id, $_SESSION['user_id'], getEmpresaActual()]);
+
     if ($stmt->rowCount() > 0) {
         logActivity($pdo, 'programados', 'cancelar', "Mensaje programado cancelado: {$mensaje['titulo']}");
         jsonResponse(true, 'Mensaje cancelado exitosamente');

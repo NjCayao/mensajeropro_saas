@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 if (!isset($_SESSION['user_id'])) {
     jsonResponse(false, 'No autorizado');
@@ -21,10 +22,10 @@ if (empty($nombre) || empty($mensaje)) {
 
 try {
     $stmt = $pdo->prepare(
-        "INSERT INTO plantillas_mensajes (nombre, mensaje, uso_general) VALUES (?, ?, 1)"
+        "INSERT INTO plantillas_mensajes (nombre, mensaje, uso_general, empresa_id) VALUES (?, ?, 1, ?)"
     );
-    $stmt->execute([$nombre, $mensaje]);
-    
+    $stmt->execute([$nombre, $mensaje, getEmpresaActual()]);
+
     jsonResponse(true, 'Plantilla creada exitosamente');
 } catch (Exception $e) {
     jsonResponse(false, 'Error al crear plantilla');

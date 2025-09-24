@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
@@ -27,25 +28,23 @@ if ($id <= 0) {
 
 try {
     // Verificar que existe
-    $stmt = $pdo->prepare("SELECT nombre, numero FROM contactos WHERE id = ?");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("SELECT nombre, numero FROM contactos WHERE id = ? AND empresa_id = ?");
+    $stmt->execute([$id, getEmpresaActual()]);
     $contacto = $stmt->fetch();
-    
+
     if (!$contacto) {
         jsonResponse(false, 'Contacto no encontrado');
     }
-    
+
     // Eliminar contacto
-    $stmt = $pdo->prepare("DELETE FROM contactos WHERE id = ?");
-    $stmt->execute([$id]);
-    
+    $stmt = $pdo->prepare("DELETE FROM contactos WHERE id = ? AND empresa_id = ?");
+    $stmt->execute([$id, getEmpresaActual()]);
+
     // Log
     logActivity($pdo, 'contactos', 'eliminar', "Contacto eliminado: {$contacto['nombre']} ({$contacto['numero']})");
-    
+
     jsonResponse(true, 'Contacto eliminado exitosamente');
-    
 } catch (Exception $e) {
     error_log("Error al eliminar contacto: " . $e->getMessage());
     jsonResponse(false, 'Error al eliminar el contacto');
 }
-?>

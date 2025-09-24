@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
@@ -49,46 +50,44 @@ $numero = formatPhone($numero);
 
 try {
     // Verificar que el contacto existe
-    $stmt = $pdo->prepare("SELECT numero FROM contactos WHERE id = ?");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("SELECT numero FROM contactos WHERE id = ? AND empresa_id = ?");
+    $stmt->execute([$id, getEmpresaActual()]);
     $oldContacto = $stmt->fetch();
-    
+
     if (!$oldContacto) {
         jsonResponse(false, 'Contacto no encontrado');
     }
-    
+
     // Verificar si el número ya existe en otro contacto
-    $stmt = $pdo->prepare("SELECT id FROM contactos WHERE numero = ? AND id != ?");
-    $stmt->execute([$numero, $id]);
+    $stmt = $pdo->prepare("SELECT id FROM contactos WHERE numero = ? AND id != ? AND empresa_id = ?");
+    $stmt->execute([$numero, $id, getEmpresaActual()]);
     if ($stmt->fetch()) {
         jsonResponse(false, 'El número ya está registrado en otro contacto');
     }
-    
+
     // Si se especificó categoría, verificar que existe
     if ($categoria_id) {
-        $stmt = $pdo->prepare("SELECT id FROM categorias WHERE id = ? AND activo = 1");
-        $stmt->execute([$categoria_id]);
+        $stmt = $pdo->prepare("SELECT id FROM categorias WHERE id = ? AND activo = 1 AND empresa_id = ?");
+        $stmt->execute([$categoria_id, getEmpresaActual()]);
         if (!$stmt->fetch()) {
             jsonResponse(false, 'La categoría seleccionada no existe o está inactiva');
         }
     }
-    
+
     // Actualizar contacto
     $stmt = $pdo->prepare("
         UPDATE contactos 
         SET nombre = ?, numero = ?, categoria_id = ?, notas = ?, activo = ?
-        WHERE id = ?
+        WHERE id = ? AND empresa_id = ?
     ");
-    
-    $stmt->execute([$nombre, $numero, $categoria_id, $notas, $activo, $id]);
-    
+
+    $stmt->execute([$nombre, $numero, $categoria_id, $notas, $activo, $id, getEmpresaActual()]);
+
     // Log
     logActivity($pdo, 'contactos', 'editar', "Contacto editado: $nombre");
-    
+
     jsonResponse(true, 'Contacto actualizado exitosamente');
-    
 } catch (Exception $e) {
     error_log("Error al editar contacto: " . $e->getMessage());
     jsonResponse(false, 'Error al actualizar el contacto');
 }
-?>

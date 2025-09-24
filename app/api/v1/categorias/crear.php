@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
@@ -41,27 +42,24 @@ if (!preg_match('/^#[a-f0-9]{6}$/i', $color)) {
 
 try {
     // Verificar si ya existe
-    $stmt = $pdo->prepare("SELECT id FROM categorias WHERE nombre = ?");
-    $stmt->execute([$nombre]);
+    $stmt = $pdo->prepare("SELECT id FROM categorias WHERE nombre = ? AND empresa_id = ?");
+    $stmt->execute([$nombre, getEmpresaActual()]);
     if ($stmt->fetch()) {
         jsonResponse(false, 'Ya existe una categoría con ese nombre');
     }
-    
+
     // Insertar
     $stmt = $pdo->prepare("
-        INSERT INTO categorias (nombre, descripcion, precio, color, activo) 
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO categorias (nombre, descripcion, precio, color, activo, empresa_id) 
+        VALUES (?, ?, ?, ?, ?, ?)
     ");
-    
-    $stmt->execute([$nombre, $descripcion, $precio, $color, $activo]);
-    
+    $stmt->execute([$nombre, $descripcion, $precio, $color, $activo, getEmpresaActual()]);
+
     // Log
     logActivity($pdo, 'categorias', 'crear', "Categoría creada: $nombre");
-    
+
     jsonResponse(true, 'Categoría creada exitosamente', ['id' => $pdo->lastInsertId()]);
-    
 } catch (Exception $e) {
     error_log("Error al crear categoría: " . $e->getMessage());
     jsonResponse(false, 'Error al crear la categoría');
 }
-?>

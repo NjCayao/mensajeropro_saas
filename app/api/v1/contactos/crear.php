@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
@@ -44,16 +45,16 @@ $numero = formatPhone($numero);
 
 try {
     // Verificar si el número ya existe
-    $stmt = $pdo->prepare("SELECT id, nombre FROM contactos WHERE numero = ?");
-    $stmt->execute([$numero]);
+    $stmt = $pdo->prepare("SELECT id, nombre FROM contactos WHERE numero = ? AND empresa_id = ?");
+    $stmt->execute([$numero, getEmpresaActual()]);
     if ($existente = $stmt->fetch()) {
         jsonResponse(false, "El número ya existe, registrado como: {$existente['nombre']}");
     }
     
     // Si se especificó categoría, verificar que existe
     if ($categoria_id) {
-        $stmt = $pdo->prepare("SELECT id FROM categorias WHERE id = ? AND activo = 1");
-        $stmt->execute([$categoria_id]);
+        $stmt = $pdo->prepare("SELECT id FROM categorias WHERE id = ? AND activo = 1 AND empresa_id = ?");
+        $stmt->execute([$categoria_id, getEmpresaActual()]);
         if (!$stmt->fetch()) {
             jsonResponse(false, 'La categoría seleccionada no existe o está inactiva');
         }
@@ -61,11 +62,11 @@ try {
     
     // Insertar contacto
     $stmt = $pdo->prepare("
-        INSERT INTO contactos (nombre, numero, categoria_id, notas, activo) 
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO contactos (nombre, numero, categoria_id, notas, activo, empresa_id) 
+        VALUES (?, ?, ?, ?, ?, ?)
     ");
     
-    $stmt->execute([$nombre, $numero, $categoria_id, $notas, $activo]);
+    $stmt->execute([$nombre, $numero, $categoria_id, $notas, $activo, getEmpresaActual()]);
     
     // Log
     logActivity($pdo, 'contactos', 'crear', "Contacto creado: $nombre ($numero)");

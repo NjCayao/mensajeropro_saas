@@ -15,7 +15,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Rutas corregidas - solo 3 niveles arriba
 require_once __DIR__ . '/../../../config/database.php';
-require_once __DIR__ . '/../../../config/app_config.php';
+require_once __DIR__ . '/../../../config/app.php';
 require_once __DIR__ . '/../../../includes/functions.php';
 
 // Log para debugging
@@ -44,31 +44,42 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 try {
     // Buscar usuario
-    $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = ? AND activo = 1");
+    $stmt = $pdo->prepare("
+        SELECT u.*, e.nombre_empresa, e.activo as empresa_activa 
+        FROM usuarios u 
+        INNER JOIN empresas e ON u.empresa_id = e.id 
+        WHERE u.email = ? AND u.activo = 1
+    ");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
-    
+
+    if (!$user['empresa_activa']) {
+        echo json_encode(['success' => false, 'message' => 'Empresa suspendida']);
+        exit;
+    }
+    $_SESSION['empresa_id'] = $user['empresa_id'];
+    $_SESSION['empresa_nombre'] = $user['nombre_empresa'];
+
     if ($user && password_verify($password, $user['password'])) {
         // Login exitoso
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_name'] = $user['nombre'];
         $_SESSION['user_email'] = $user['email'];
         $_SESSION['user_role'] = $user['rol'];
-        
+
         // Log de actividad
+        $_SESSION['empresa_id'] = $user['empresa_id']; // Temporal para el log
         logActivity($pdo, 'auth', 'login', 'Inicio de sesión exitoso');
-        
+
         echo json_encode(['success' => true, 'message' => 'Login exitoso']);
     } else {
         // Log de intento fallido
         logActivity($pdo, 'auth', 'login_failed', "Intento fallido para: $email");
-        
+
         echo json_encode(['success' => false, 'message' => 'Credenciales inválidas']);
     }
-    
 } catch (Exception $e) {
     error_log("Error en login: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Error en el servidor: ' . $e->getMessage()]);
 }
-?>

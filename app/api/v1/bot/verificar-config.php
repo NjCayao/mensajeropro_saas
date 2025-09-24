@@ -1,13 +1,16 @@
 <?php
+session_start();
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/app_config.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/session_check.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 header('Content-Type: application/json');
 
 try {
-    $stmt = $pdo->prepare("SELECT * FROM configuracion_bot WHERE id = 1");
-    $stmt->execute();
+    $stmt = $pdo->prepare("SELECT * FROM configuracion_bot WHERE empresa_id = ?");
+    $stmt->execute([getEmpresaActual()]);
     $config = $stmt->fetch();
 
     $response = [
@@ -28,11 +31,9 @@ try {
     ];
 
     echo json_encode($response);
-
 } catch (Exception $e) {
     echo json_encode([
         'success' => false,
         'message' => 'Error verificando configuración: ' . $e->getMessage()
     ]);
 }
-?>

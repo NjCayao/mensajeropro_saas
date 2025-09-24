@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
@@ -15,7 +16,8 @@ if (!isset($_SESSION['user_id'])) {
 
 try {
     // Obtener estado de la BD
-    $stmt = $pdo->query("SELECT * FROM whatsapp_sesion WHERE id = 1");
+    $stmt = $pdo->prepare("SELECT * FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
+    $stmt->execute([getEmpresaActual()]);
     $whatsapp = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // Intentar conectar con el servicio Node.js

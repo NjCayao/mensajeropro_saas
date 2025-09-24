@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
@@ -42,37 +43,35 @@ if (!preg_match('/^#[a-f0-9]{6}$/i', $color)) {
 
 try {
     // Verificar que existe
-    $stmt = $pdo->prepare("SELECT nombre FROM categorias WHERE id = ?");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("SELECT nombre FROM categorias WHERE id = ? AND empresa_id = ?");
+    $stmt->execute([$id, getEmpresaActual()]);
     $oldCategoria = $stmt->fetch();
-    
+
     if (!$oldCategoria) {
         jsonResponse(false, 'Categoría no encontrada');
     }
-    
+
     // Verificar nombre único (excepto la misma categoría)
-    $stmt = $pdo->prepare("SELECT id FROM categorias WHERE nombre = ? AND id != ?");
-    $stmt->execute([$nombre, $id]);
+    $stmt = $pdo->prepare("SELECT id FROM categorias WHERE nombre = ? AND id != ? AND empresa_id = ?");
+    $stmt->execute([$nombre, $id, getEmpresaActual()]);
     if ($stmt->fetch()) {
         jsonResponse(false, 'Ya existe otra categoría con ese nombre');
     }
-    
+
     // Actualizar
     $stmt = $pdo->prepare("
         UPDATE categorias 
         SET nombre = ?, descripcion = ?, precio = ?, color = ?, activo = ?
-        WHERE id = ?
+        WHERE id = ? AND empresa_id = ?
     ");
-    
-    $stmt->execute([$nombre, $descripcion, $precio, $color, $activo, $id]);
-    
+
+    $stmt->execute([$nombre, $descripcion, $precio, $color, $activo, $id, getEmpresaActual()]);
+
     // Log
     logActivity($pdo, 'categorias', 'editar', "Categoría editada: {$oldCategoria['nombre']} → $nombre");
-    
+
     jsonResponse(true, 'Categoría actualizada exitosamente');
-    
 } catch (Exception $e) {
     error_log("Error al editar categoría: " . $e->getMessage());
     jsonResponse(false, 'Error al actualizar la categoría');
 }
-?>

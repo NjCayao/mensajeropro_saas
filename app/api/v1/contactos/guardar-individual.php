@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 if (!isset($_SESSION['user_id'])) {
     die(json_encode(['success' => false, 'error' => 'No autorizado']));
@@ -17,13 +18,15 @@ try {
     // Guardar en historial_mensajes
     $stmt = $pdo->prepare("
         INSERT INTO historial_mensajes 
-        (contacto_id, mensaje, tipo, estado, fecha) 
-        VALUES (?, ?, 'saliente', 'enviado', NOW())
+        (contacto_id, mensaje, tipo, estado, fecha, empresa_id) 
+        VALUES (?, ?, 'saliente', 'enviado', NOW(), ?)
     ");
+    
     
     $stmt->execute([
         $data['contacto_id'],
-        $data['mensaje']
+        $data['mensaje'],
+        getEmpresaActual()
     ]);
     
     echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);

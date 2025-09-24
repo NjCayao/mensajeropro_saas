@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 if (!isset($_SESSION['user_id'])) {
     jsonResponse(false, 'No autorizado');
@@ -17,32 +18,36 @@ try {
     $stmt = $pdo->query("
         SELECT COUNT(*) as total 
         FROM historial_mensajes 
-        WHERE DATE(fecha_creacion) = CURDATE()
+        WHERE DATE(fecha_creacion) = CURDATE() AND empresa_id = ?
     ");
+    $stmt->execute([getEmpresaActual()]);
     $mensajes_hoy = $stmt->fetchColumn();
 
     // Enviados
     $stmt = $pdo->query("
         SELECT COUNT(*) as total 
         FROM historial_mensajes 
-        WHERE estado = 'enviado'
+        WHERE estado = 'enviado' AND empresa_id = ?
     ");
+    $stmt->execute([getEmpresaActual()]);
     $enviados = $stmt->fetchColumn();
 
     // Pendientes
     $stmt = $pdo->query("
         SELECT COUNT(*) as total 
         FROM cola_mensajes 
-        WHERE estado = 'pendiente'
+        WHERE estado = 'pendiente' AND empresa_id = ?
     ");
+    $stmt->execute([getEmpresaActual()]);
     $pendientes = $stmt->fetchColumn();
 
     // Errores
     $stmt = $pdo->query("
         SELECT COUNT(*) as total 
         FROM cola_mensajes 
-        WHERE estado = 'error'
+        WHERE estado = 'error' AND empresa_id = ?
     ");
+    $stmt->execute([getEmpresaActual()]);
     $errores = $stmt->fetchColumn();
 
     jsonResponse(true, 'Estadísticas obtenidas', [

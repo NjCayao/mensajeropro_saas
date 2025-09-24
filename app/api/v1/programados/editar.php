@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 if (!isset($_SESSION['user_id'])) {
     jsonResponse(false, 'No autorizado');
@@ -29,9 +30,9 @@ try {
     // Verificar que existe y es del usuario y está pendiente
     $stmt = $pdo->prepare("
         SELECT * FROM mensajes_programados 
-        WHERE id = ? AND usuario_id = ? AND estado = 'pendiente'
+        WHERE id = ? AND usuario_id = ? AND estado = 'pendiente' AND empresa_id = ?
     ");
-    $stmt->execute([$id, $_SESSION['user_id']]);
+    $stmt->execute([$id, $_SESSION['user_id'], getEmpresaActual()]);
     $mensajeProg = $stmt->fetch();
     
     if (!$mensajeProg) {
@@ -54,14 +55,15 @@ try {
     $stmt = $pdo->prepare("
         UPDATE mensajes_programados 
         SET titulo = ?, mensaje = ?, fecha_programada = ?
-        WHERE id = ?
+        WHERE id = ? AND empresa_id = ?
     ");
     
     $stmt->execute([
         $titulo,
         $mensaje,
         $fecha->format('Y-m-d H:i:s'),
-        $id
+        $id,
+        getEmpresaActual()
     ]);
     
     logActivity($pdo, 'programados', 'editar', "Mensaje programado editado: ID $id");

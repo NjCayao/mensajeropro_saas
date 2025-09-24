@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 if (!isset($_SESSION['user_id'])) {
     jsonResponse(false, 'No autorizado');
@@ -22,7 +23,8 @@ try {
         $connection = @fsockopen("localhost", 3001);
         if (is_resource($connection)) {
             fclose($connection);
-            $pdo->exec("UPDATE whatsapp_sesion SET estado = 'verificando' WHERE id = 1");
+            $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'verificando' WHERE empresa_id = ?");
+            $stmt->execute([getEmpresaActual()]);
             jsonResponse(true, 'El servicio ya está en ejecución');
         }
 
@@ -43,7 +45,8 @@ try {
         }
 
         // Actualizar estado
-        $pdo->exec("UPDATE whatsapp_sesion SET estado = 'iniciando', qr_code = NULL, numero_conectado = NULL WHERE id = 1");
+        $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'iniciando', qr_code = NULL, numero_conectado = NULL WHERE empresa_id = ?");
+        $stmt->execute([getEmpresaActual()]);
 
         // Crear carpeta logs si no existe
         $logsDir = $servicePath . DIRECTORY_SEPARATOR . 'logs';
@@ -67,7 +70,7 @@ try {
 
         if ($isWindows) {
             // CREAR ARCHIVO VBS DINÁMICAMENTE
-            $vbsPath = $servicePath . '\\start-whatsapp-service.vbs';           
+            $vbsPath = $servicePath . '\\start-whatsapp-service.vbs';
             $vbsContent = 'Set objShell = CreateObject("WScript.Shell")' . "\r\n";
             $vbsContent .= 'objShell.CurrentDirectory = "' . $servicePath . '"' . "\r\n";
             $vbsContent .= 'objShell.Run "cmd /c node src\index.js > logs\service-' . date('Y-m-d') . '.log 2>&1", 0, False' . "\r\n";
@@ -111,7 +114,8 @@ try {
         jsonResponse(true, 'Servicio iniciándose...');
     } elseif ($accion == 'detener') {
         // Actualizar estado
-        $pdo->exec("UPDATE whatsapp_sesion SET estado = 'deteniendo' WHERE id = 1");
+        $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'deteniendo' WHERE empresa_id = ?");
+        $stmt->execute([getEmpresaActual()]);
 
         if ($isWindows) {
             // Detener tarea programada
@@ -157,7 +161,8 @@ try {
             }
         }
 
-        $pdo->exec("UPDATE whatsapp_sesion SET estado = 'desconectado', qr_code = NULL, numero_conectado = NULL WHERE id = 1");
+        $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'desconectado', qr_code = NULL, numero_conectado = NULL WHERE empresa_id = ?");
+        $stmt->execute([getEmpresaActual()]);
         jsonResponse(true, 'Servicio detenido');
     } elseif ($accion == 'verificar') {
         $connection = @fsockopen("localhost", 3001);

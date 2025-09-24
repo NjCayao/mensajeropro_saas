@@ -7,6 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
@@ -35,8 +36,8 @@ if ($extension !== 'csv') {
 
 // Verificar categoría si se especificó
 if ($categoria_id) {
-    $stmt = $pdo->prepare("SELECT id FROM categorias WHERE id = ? AND activo = 1");
-    $stmt->execute([$categoria_id]);
+    $stmt = $pdo->prepare("SELECT id FROM categorias WHERE id = ? AND activo = 1 AND empresa_id = ?");
+    $stmt->execute([$categoria_id, getEmpresaActual()]);
     if (!$stmt->fetch()) {
         jsonResponse(false, 'La categoría seleccionada no existe o está inactiva');
     }
@@ -44,42 +45,42 @@ if ($categoria_id) {
 
 try {
     $pdo->beginTransaction();
-    
+
     // Leer archivo CSV
     $handle = fopen($archivo['tmp_name'], 'r');
     if (!$handle) {
         throw new Exception('No se pudo leer el archivo');
     }
-    
+
     // Saltar primera línea si es encabezado
     $primera_linea = fgetcsv($handle);
     $es_encabezado = (
         strtolower($primera_linea[0] ?? '') === 'nombre' ||
         strtolower($primera_linea[0] ?? '') === 'name'
     );
-    
+
     if (!$es_encabezado) {
         // Si no es encabezado, volver al inicio
         rewind($handle);
     }
-    
+
     $importados = 0;
     $actualizados = 0;
     $errores = 0;
     $linea_num = $es_encabezado ? 2 : 1;
-    
+
     // Preparar consultas
-    $stmtCheck = $pdo->prepare("SELECT id FROM contactos WHERE numero = ?");
+    $stmtCheck = $pdo->prepare("SELECT id FROM contactos WHERE numero = ? AND empresa_id = ?");
     $stmtInsert = $pdo->prepare("
-        INSERT INTO contactos (nombre, numero, categoria_id, notas, activo) 
-        VALUES (?, ?, ?, ?, 1)
+        INSERT INTO contactos (nombre, numero, categoria_id, notas, activo, empresa_id) 
+        VALUES (?, ?, ?, ?, 1, ?)
     ");
     $stmtUpdate = $pdo->prepare("
         UPDATE contactos 
         SET nombre = ?, categoria_id = ?, notas = ? 
-        WHERE numero = ?
+        WHERE numero = ? AND empresa_id = ?
     ");
-    
+
     // Procesar cada línea
     while (($data = fgetcsv($handle)) !== false) {
         if (count($data) < 2) {
@@ -87,32 +88,32 @@ try {
             $linea_num++;
             continue;
         }
-        
+
         $nombre = trim($data[0] ?? '');
         $numero = trim($data[1] ?? '');
         $notas = trim($data[2] ?? '');
-        
+
         // Validar datos
         if (empty($nombre) || empty($numero)) {
             $errores++;
             $linea_num++;
             continue;
         }
-        
+
         // Validar y formatear número
         if (!validatePhone($numero)) {
             $errores++;
             $linea_num++;
             continue;
         }
-        
+
         $numero = formatPhone($numero);
-        
+
         try {
             // Verificar si existe
             $stmtCheck->execute([$numero]);
             $existe = $stmtCheck->fetch();
-            
+
             if ($existe && $actualizar_existentes) {
                 // Actualizar
                 $stmtUpdate->execute([$nombre, $categoria_id, $notas, $numero]);
@@ -122,21 +123,24 @@ try {
                 $stmtInsert->execute([$nombre, $numero, $categoria_id, $notas]);
                 $importados++;
             }
-            
         } catch (Exception $e) {
             $errores++;
         }
-        
+
         $linea_num++;
     }
-    
+
     fclose($handle);
     $pdo->commit();
-    
+
     // Log
-    logActivity($pdo, 'contactos', 'importar', 
-        "CSV importado: $importados nuevos, $actualizados actualizados, $errores errores");
-    
+    logActivity(
+        $pdo,
+        'contactos',
+        'importar',
+        "CSV importado: $importados nuevos, $actualizados actualizados, $errores errores"
+    );
+
     $mensaje = "<strong>Resumen de importación:</strong><br>";
     $mensaje .= "• Contactos nuevos: $importados<br>";
     if ($actualizar_existentes) {
@@ -145,12 +149,10 @@ try {
     if ($errores > 0) {
         $mensaje .= "• Líneas con errores: $errores<br>";
     }
-    
+
     jsonResponse(true, $mensaje);
-    
 } catch (Exception $e) {
     $pdo->rollBack();
     error_log("Error al importar CSV: " . $e->getMessage());
     jsonResponse(false, 'Error al procesar el archivo: ' . $e->getMessage());
 }
-?>
