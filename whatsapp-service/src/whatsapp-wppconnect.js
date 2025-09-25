@@ -10,8 +10,10 @@ class WhatsAppClient {
     this.sessionInfo = null;
     this.botHandler = botHandler;
     this.qrGenerationCount = 0; // Contador de QR generados
-    this.maxQrAttempts = 3; // Máximo 3 intentos de QR
+    this.maxQrAttempts = 1; // Solo 1 intento de QR
     this.qrTimeout = null; // Timer para timeout
+    this.qrExpirationTime = 60000; // 60 segundos para escanear
+    this.firstQrGenerated = false; // Flag para controlar el primer QR
   }
 
   async initialize() {
@@ -24,23 +26,23 @@ class WhatsAppClient {
       this.client = await wppconnect.create({
         session: `empresa-${empresaId}`,
         catchQR: async (base64Qr, asciiQr) => {
-          this.qrGenerationCount++;
-          
-          console.log(`📱 QR Code generado (intento ${this.qrGenerationCount}/${this.maxQrAttempts})`);
-          console.log(asciiQr);
-          
-          // Guardar QR en BD
-          await db.updateWhatsAppStatus("qr_pendiente", base64Qr);
-          
-          // Si es el primer QR, iniciar timeout de 2 minutos
-          if (this.qrGenerationCount === 1) {
+          // Solo contar el primer QR, ignorar regeneraciones automáticas
+          if (!this.firstQrGenerated) {
+            this.qrGenerationCount++;
+            this.firstQrGenerated = true;
+            
+            console.log(`📱 QR Code generado`);
+            console.log(asciiQr);
+            
+            // Guardar QR en BD
+            await db.updateWhatsAppStatus("qr_pendiente", base64Qr);
+            
+            // Iniciar timeout de 60 segundos
             this.startQrTimeout();
-          }
-          
-          // Si alcanzamos el máximo de intentos, detener
-          if (this.qrGenerationCount >= this.maxQrAttempts) {
-            console.log("⚠️ Máximo de intentos de QR alcanzado. Deteniendo...");
-            this.stopQrGeneration();
+          } else {
+            // Actualizar QR en BD sin incrementar contador
+            console.log(`🔄 QR Code actualizado`);
+            await db.updateWhatsAppStatus("qr_pendiente", base64Qr);
           }
         },
         statusFind: (statusSession, session) => {
@@ -64,8 +66,8 @@ class WhatsAppClient {
           "--no-first-run",
           "--disable-gpu",
         ],
-        refreshQR: 20000, // Regenerar QR cada 20 segundos
-        autoClose: 120000, // Cerrar después de 2 minutos sin escanear
+        refreshQR: 15000, // Regenerar QR cada 15 segundos
+        autoClose: 60000, // Cerrar después de 60 segundos sin escanear
         disableSpins: true,
       });
 
@@ -193,11 +195,11 @@ class WhatsAppClient {
   }
 
   startQrTimeout() {
-    // Timeout de 2 minutos
+    // Timeout de 60 segundos
     this.qrTimeout = setTimeout(async () => {
-      console.log("⏱️ Timeout de QR alcanzado (2 minutos)");
+      console.log("⏱️ Timeout de QR alcanzado (60 segundos)");
       await this.stopQrGeneration();
-    }, 120000); // 2 minutos
+    }, this.qrExpirationTime); // 60 segundos
   }
 
   cancelQrTimeout() {

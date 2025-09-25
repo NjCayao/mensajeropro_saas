@@ -1,31 +1,43 @@
-
 <?php
 $current_page = 'whatsapp';
 require_once __DIR__ . '/../layouts/header.php';
 require_once __DIR__ . '/../layouts/sidebar.php';
 
-$empresa_id = getEmpresaActual();
+if (!isset($_SESSION['empresa_id'])) {
+    echo '<div class="content-wrapper"><div class="alert alert-danger">Error: No hay empresa en sesión</div></div>';
+    require_once __DIR__ . '/../layouts/footer.php';
+    exit;
+}
 
-// Verificar si existe registro en whatsapp_sesiones_empresa
-$stmt = $pdo->prepare("SELECT * FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
-$stmt->execute([$empresa_id]);
-$whatsapp = $stmt->fetch();
+$empresa_id = $_SESSION['empresa_id'];
 
 // Si no existe, crear registro
-if (!$whatsapp) {
-    $stmt = $pdo->prepare("
-        INSERT INTO whatsapp_sesiones_empresa (empresa_id, estado, puerto, fecha_creacion) 
-        VALUES (?, 'desconectado', ?, NOW())
-    ");
-    
-    // Asignar puerto base + empresa_id
-    $puerto = 3000 + $empresa_id;
-    $stmt->execute([$empresa_id, $puerto]);
-    
-    // Volver a obtener el registro
+try {
     $stmt = $pdo->prepare("SELECT * FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
     $stmt->execute([$empresa_id]);
     $whatsapp = $stmt->fetch();
+
+    // Si no existe, crear registro
+    if (!$whatsapp) {
+        // Asignar puerto base + empresa_id
+        $puerto = 3000 + $empresa_id;
+        
+        $stmt = $pdo->prepare("
+            INSERT INTO whatsapp_sesiones_empresa (empresa_id, estado, puerto) 
+            VALUES (?, 'desconectado', ?)
+        ");
+        
+        $stmt->execute([$empresa_id, $puerto]);
+        
+        // Volver a obtener el registro
+        $stmt = $pdo->prepare("SELECT * FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
+        $stmt->execute([$empresa_id]);
+        $whatsapp = $stmt->fetch();
+    }
+} catch (Exception $e) {
+    echo '<div class="content-wrapper"><div class="alert alert-danger">Error al crear registro WhatsApp: ' . $e->getMessage() . '</div></div>';
+    require_once __DIR__ . '/../layouts/footer.php';
+    exit;
 }
 
 $whatsappConectado = $whatsapp && $whatsapp['estado'] == 'conectado';
@@ -113,8 +125,22 @@ $puerto = $whatsapp['puerto'] ?? 3001;
                         </div>
                         <div class="card-body text-center">
                             <div id="qrcode" class="mb-3"></div>
+                            <div id="qrTimer" class="mb-3" style="display: none;">
+                                <div class="alert alert-warning">
+                                    <h4 class="alert-heading">
+                                        <i class="fas fa-clock"></i> 
+                                        Tiempo restante: <span id="timeRemaining">45</span> segundos
+                                    </h4>
+                                    <div class="progress" style="height: 25px;">
+                                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" 
+                                             role="progressbar" style="width: 100%">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="alert alert-info">
                                 <ol class="mb-0 text-left">
+                                    <li>Solo tienes 45 segundos para escanear el código QR</li>
                                     <li>Abre WhatsApp en tu teléfono</li>
                                     <li>Toca <strong>Menú</strong> o <strong>Configuración</strong></li>
                                     <li>Selecciona <strong>Dispositivos vinculados</strong></li>
@@ -283,7 +309,7 @@ $puerto = $whatsapp['puerto'] ?? 3001;
                 checkStatus();
 
                 if (!checkInterval) {
-                    checkInterval = setInterval(checkStatus, 5000);
+                    checkInterval = setInterval(checkStatus, 2000); // Verificar cada 2 segundos
                 }
             } else {
                 mostrarServicioNoIniciado();
@@ -309,26 +335,70 @@ $puerto = $whatsapp['puerto'] ?? 3001;
 
     async function checkStatus() {
         try {
-            const response = await fetch(`${WHATSAPP_API_URL}/api/status`, {
-                headers: {
-                    'X-API-Key': API_KEY
-                }
-            });
+            // Primero verificar el estado en la BD
+            const dbResponse = await fetch(API_URL + '/whatsapp/status.php');
+            const dbData = await dbResponse.json();
+            
+            if (!dbData.success) {
+                mostrarServicioNoIniciado();
+                return;
+            }
+            
+            // Si hay QR pendiente, mostrarlo inmediatamente
+            if (dbData.data.estado === 'qr_pendiente' && dbData.qr) {
+                $('#statusContainer').html(`
+                    <i class="fas fa-qrcode fa-3x text-warning"></i>
+                    <h4 class="mt-2">Esperando Conexión</h4>
+                    <p>Escanea el código QR para conectar</p>
+                `);
+                
+                $('#qrContainer').show();
+                $('#infoContainer').hide();
+                $('#statsContainer').hide();
+                
+                // Mostrar el QR directamente
+                document.getElementById('qrcode').innerHTML = '';
+                const img = document.createElement('img');
+                img.src = dbData.qr;
+                img.style.maxWidth = '280px';
+                document.getElementById('qrcode').appendChild(img);
+                
+                return;
+            }
+            
+            // Si no hay QR, verificar con el servicio Node
+            try {
+                const response = await fetch(`${WHATSAPP_API_URL}/api/status`, {
+                    headers: {
+                        'X-API-Key': API_KEY
+                    }
+                });
 
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success) {
-                    updateUI(result.data);
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        updateUI(result.data);
+                    }
+                } else {
+                    mostrarServicioNoIniciado();
                 }
-            } else {
+            } catch (error) {
+                console.error('Error conectando con servicio:', error);
                 mostrarServicioNoIniciado();
             }
         } catch (error) {
             console.error('Error:', error);
+            mostrarServicioNoIniciado();
         }
     }
 
     function updateUI(status) {
+        // Limpiar contador si existe
+        if (qrCountdown) {
+            clearInterval(qrCountdown);
+            $('#qrTimer').hide();
+        }
+
         if (status.connected) {
             $('#statusContainer').html(`
                 <i class="fas fa-check-circle text-success fa-4x"></i>
@@ -370,8 +440,8 @@ $puerto = $whatsapp['puerto'] ?? 3001;
             $('#statsContainer').hide();
 
             setTimeout(() => {
-                getQRCode();
-            }, 2000);
+                window.location.href = window.location.href;
+            }, 1000);
         }
 
         if (!status.connected && $('#infoContainer').is(':visible')) {
@@ -381,8 +451,30 @@ $puerto = $whatsapp['puerto'] ?? 3001;
         }
     }
 
+    let qrCountdown = null;
+
     async function getQRCode() {
         try {
+            // Primero intentar obtener de la BD
+            const dbResponse = await fetch(API_URL + '/whatsapp/get-qr.php');
+            const dbResult = await dbResponse.json();
+            
+            if (dbResult.success && dbResult.qr) {
+                document.getElementById('qrcode').innerHTML = '';
+                const img = document.createElement('img');
+                img.src = dbResult.qr;
+                img.style.maxWidth = '280px';
+                document.getElementById('qrcode').appendChild(img);
+                
+                // Iniciar contador
+                startQRCountdown();
+                
+                // Seguir verificando el estado
+                setTimeout(() => checkStatus(), 2000);
+                return;
+            }
+            
+            // Si no hay QR en BD, intentar con el servicio
             const response = await fetch(`${WHATSAPP_API_URL}/api/qr`, {
                 headers: {
                     'X-API-Key': API_KEY
@@ -400,22 +492,80 @@ $puerto = $whatsapp['puerto'] ?? 3001;
                     img.style.maxWidth = '280px';
                     document.getElementById('qrcode').appendChild(img);
                 } else {
-                    QRCode.toCanvas(result.qr, {
+                    // Canvas para QR
+                    const canvas = document.createElement('canvas');
+                    document.getElementById('qrcode').appendChild(canvas);
+                    QRCode.toCanvas(canvas, result.qr, {
                         width: 280,
                         margin: 2
-                    }, function(err, canvas) {
-                        if (!err) {
-                            document.getElementById('qrcode').appendChild(canvas);
-                        }
                     });
                 }
+                
+                // Iniciar contador
+                startQRCountdown();
             } else {
-                setTimeout(getQRCode, 2000);
+                // No hay QR, mostrar mensaje
+                document.getElementById('qrcode').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> No se pudo generar el código QR
+                    </div>
+                `;
             }
         } catch (error) {
             console.error('Error obteniendo QR:', error);
-            setTimeout(getQRCode, 2000);
+            document.getElementById('qrcode').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> Error al obtener el código QR
+                </div>
+            `;
         }
+    }
+
+    function startQRCountdown() {
+        let timeLeft = 60; // 60 segundos
+        $('#qrTimer').show();
+        
+        // Limpiar contador anterior si existe
+        if (qrCountdown) {
+            clearInterval(qrCountdown);
+        }
+        
+        qrCountdown = setInterval(() => {
+            timeLeft--;
+            $('#timeRemaining').text(timeLeft);
+            
+            // Actualizar barra de progreso
+            const percentage = (timeLeft / 60) * 100;
+            $('#progressBar').css('width', percentage + '%');
+            
+            // Cambiar color según el tiempo restante
+            if (timeLeft <= 20) {
+                $('#progressBar').removeClass('bg-warning').addClass('bg-danger');
+            }
+            
+            // Si se acaba el tiempo
+            if (timeLeft <= 0) {
+                clearInterval(qrCountdown);
+                $('#qrTimer').hide();
+                
+                // Mostrar mensaje de expiración
+                $('#qrcode').html(`
+                    <div class="alert alert-danger">
+                        <h4><i class="fas fa-times-circle"></i> Código QR Expirado</h4>
+                        <p>No se escaneó el código a tiempo.</p>
+                        <p>El servicio se detuvo automáticamente.</p>
+                        <button class="btn btn-primary mt-2" onclick="location.reload()">
+                            <i class="fas fa-sync"></i> Reintentar
+                        </button>
+                    </div>
+                `);
+                
+                // El servicio se detiene automáticamente en el backend
+                setTimeout(() => {
+                    mostrarServicioNoIniciado();
+                }, 3000);
+            }
+        }, 1000);
     }
 
     async function iniciarServicio() {
