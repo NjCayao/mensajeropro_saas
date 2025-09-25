@@ -13,7 +13,7 @@ if (isset($_POST['logout'])) {
 }
 // Si ya está logueado, redirigir al dashboard
 if (estaLogueado()) {
-    header('Location: app.php');
+    header('Location: ' . url('cliente/dashboard'));
     exit;
 }
 
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($resultado['success']) {
             crearSesion($resultado['usuario']);
-            header('Location: app.php');
+            header('Location: ' . url('cliente/dashboard'));
             exit;
         } else {
             $error = $resultado['message'];

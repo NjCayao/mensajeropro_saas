@@ -2,7 +2,7 @@
 <!-- Main Sidebar Container -->
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
-    <a href="<?php echo url('sistema/cliente/dashboard.php'); ?>" class="brand-link">
+    <a href="<?php echo url('cliente/dashboard'); ?>" class="brand-link">
         <span class="brand-text font-weight-light"><?php echo APP_NAME; ?></span>
     </a>
 
@@ -13,7 +13,7 @@
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
 
                 <li class="nav-item">
-                    <a href="app.php" class="nav-link <?php echo ($current_page == 'dashboard') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('cliente/dashboard'); ?>" class="nav-link <?php echo ($current_page == 'dashboard') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-tachometer-alt"></i>
                         <p>Dashboard</p>
                     </a>
@@ -22,14 +22,14 @@
                 <li class="nav-header">GESTIÓN</li>
 
                 <li class="nav-item">
-                    <a href="app.php?mod=contactos" class="nav-link <?php echo ($current_page == 'contactos') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('cliente/contactos'); ?>" class="nav-link <?php echo ($current_page == 'contactos') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-address-book"></i>
                         <p>Contactos</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="app.php?mod=categorias" class="nav-link <?php echo ($current_page == 'categorias') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('cliente/categorias'); ?>" class="nav-link <?php echo ($current_page == 'categorias') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-tags"></i>
                         <p>Categorías</p>
                     </a>
@@ -38,21 +38,21 @@
                 <li class="nav-header">MENSAJERÍA</li>
 
                 <li class="nav-item">
-                    <a href="app.php?mod=mensajes" class="nav-link <?php echo ($current_page == 'mensajes') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('cliente/mensajes'); ?>" class="nav-link <?php echo ($current_page == 'mensajes') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-paper-plane"></i>
                         <p>Enviar Mensajes</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="app.php?mod=programados" class="nav-link <?php echo ($current_page == 'programados') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('cliente/programados'); ?>" class="nav-link <?php echo ($current_page == 'programados') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-clock"></i>
                         <p>Programados</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="app.php?mod=escalados" class="nav-link <?php echo ($current_page == 'escalados') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('cliente/escalados'); ?>" class="nav-link <?php echo ($current_page == 'escalados') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-user-tie"></i>
                         <p>
                             Escalados
@@ -71,7 +71,7 @@
                 </li>
 
                 <li class="nav-item">
-                    <a href="app.php?mod=plantillas" class="nav-link <?php echo ($current_page == 'plantillas') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('cliente/plantillas'); ?>" class="nav-link <?php echo ($current_page == 'plantillas') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-file-alt"></i>
                         <p>Plantillas</p>
                     </a>
@@ -80,21 +80,21 @@
                 <li class="nav-header">SISTEMA</li>
 
                 <li class="nav-item">
-                    <a href="app.php?mod=whatsapp" class="nav-link <?php echo ($current_page == 'whatsapp') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('cliente/whatsapp'); ?>" class="nav-link <?php echo ($current_page == 'whatsapp') ? 'active' : ''; ?>">
                         <i class="nav-icon fab fa-whatsapp"></i>
                         <p>WhatsApp</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="app.php?mod=bot-config" class="nav-link <?php echo ($current_page == 'bot-config') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('cliente/bot-config'); ?>" class="nav-link <?php echo ($current_page == 'bot-config') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-robot"></i>
                         <p>Bot IA</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="app.php?mod=perfil" class="nav-link <?php echo ($current_page == 'perfil') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('cliente/perfil'); ?>" class="nav-link <?php echo ($current_page == 'perfil') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-user-cog"></i>
                         <p>Mi Perfil</p>
                     </a>

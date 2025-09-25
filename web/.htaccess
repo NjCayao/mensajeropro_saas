@@ -1,16 +1,24 @@
 # public/.htaccess
 RewriteEngine On
 
-# Prevenir acceso directo a archivos PHP en sistema/
+# Prevenir acceso directo a archivos del sistema
 RewriteRule ^sistema/ - [F,L]
+RewriteRule ^config/ - [F,L]
+RewriteRule ^includes/ - [F,L]
 
 # Prevenir listado de directorios
 Options -Indexes
 
-# Redirigir todo el tráfico no existente a index.php
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+# Si el archivo existe, servirlo directamente
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Si es un directorio existente, servirlo
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Para todas las demás rutas, enviar a app.php
+RewriteRule ^(.*)$ app.php [QSA,L]
 
 # Seguridad adicional
 <FilesMatch "\.(env|json|config|yml|ini|log|sh)$">

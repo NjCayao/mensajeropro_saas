@@ -28,7 +28,7 @@ require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
     <script>
         const APP_URL = '<?php echo APP_URL; ?>';
-        const API_URL = '<?php echo APP_URL; ?>/sistema/api/v1';        
+        const API_URL = '<?php echo APP_URL; ?>/api/v1';        
     </script>
 </head>
 

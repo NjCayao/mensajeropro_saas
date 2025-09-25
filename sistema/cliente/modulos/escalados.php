@@ -1,4 +1,5 @@
 <?php
+$current_page = 'escalados';
 require_once __DIR__ . '/../layouts/header.php';
 require_once __DIR__ . '/../layouts/sidebar.php';
 
