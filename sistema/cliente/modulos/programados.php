@@ -134,9 +134,9 @@ $plantillas = $stmt->fetchAll();
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">Listado de Mensajes Programados</h3>
-                            <button class="btn btn-primary float-right" onclick="nuevoProgramado()">
+                            <!-- <button class="btn btn-primary float-right" onclick="nuevoProgramado()">
                                 <i class="fas fa-plus"></i> Nuevo Mensaje Programado
-                            </button>
+                            </button> -->
                         </div>
                         <div class="card-body">
                             <table id="tablaProgramados" class="table table-bordered table-striped">
@@ -375,9 +375,9 @@ $plantillas = $stmt->fetchAll();
             }
         });
 
-        // Establecer fecha mínima (ahora + 5 minutos)
+        // Establecer fecha mínima (ahora + 3 minutos)
         const ahora = new Date();
-        ahora.setMinutes(ahora.getMinutes() + 5);
+        ahora.setMinutes(ahora.getMinutes() + 3);
         const minDateTime = ahora.toISOString().slice(0, 16);
         $('#fecha_programada').attr('min', minDateTime);
 
@@ -465,7 +465,7 @@ $plantillas = $stmt->fetchAll();
     function editarProgramado(id) {
         $('#modalTitle').text('Editar Mensaje Programado');
 
-        $.get(API_URL + '/programados/obtener.php', { id: id }, function(response) {
+        $.get(API_URL + '/programados/obtener.php', {
             id: id
         }, function(response) {
             if (response.success) {
@@ -475,13 +475,35 @@ $plantillas = $stmt->fetchAll();
                 $('#mensaje').val(data.mensaje);
                 $('#fecha_programada').val(data.fecha_programada.slice(0, 16));
 
-                if (data.enviar_a_todos) {
-                    $('#tipo_destinatarios').val('todos');
-                    $('#selectorCategoria').hide();
-                } else if (data.categoria_id) {
-                    $('#tipo_destinatarios').val('categoria');
-                    $('#selectorCategoria').show();
-                    $('#categoria_id').val(data.categoria_id);
+                // Determinar tipo de envío basado en los datos
+                if (data.tipo_envio) {
+                    // Si viene tipo_envio del backend
+                    $('#tipo_destinatarios').val(data.tipo_envio);
+
+                    if (data.tipo_envio === 'categoria') {
+                        $('#selectorCategoria').show();
+                        $('#categoria_id').val(data.categoria_id);
+                    } else if (data.tipo_envio === 'individual') {
+                        // Para mensajes individuales, necesitarías cargar el contacto
+                        // Esto requeriría modificación en el backend
+                    } else {
+                        $('#selectorCategoria').hide();
+                    }
+                } else {
+                    // Lógica antigua por compatibilidad
+                    if (data.enviar_a_todos == 1) {
+                        $('#tipo_destinatarios').val('todos');
+                        $('#selectorCategoria').hide();
+                    } else if (data.categoria_id && data.categoria_id > 0) {
+                        $('#tipo_destinatarios').val('categoria');
+                        $('#selectorCategoria').show();
+                        $('#categoria_id').val(data.categoria_id);
+                    } else {
+                        // Si no es "todos" ni tiene categoría, podría ser individual
+                        // pero necesitaríamos más lógica aquí
+                        $('#tipo_destinatarios').val('');
+                        $('#selectorCategoria').hide();
+                    }
                 }
 
                 updateTotalDestinatarios();
@@ -489,6 +511,10 @@ $plantillas = $stmt->fetchAll();
             } else {
                 Swal.fire('Error', response.message, 'error');
             }
+        }).fail(function(xhr, status, error) {
+            console.error('Error AJAX:', error);
+            console.error('Response:', xhr.responseText);
+            Swal.fire('Error', 'Error al obtener los datos del mensaje', 'error');
         });
     }
 
@@ -502,7 +528,8 @@ $plantillas = $stmt->fetchAll();
             cancelButtonText: 'No'
         }).then((result) => {
             if (result.isConfirmed) {
-                $.post(API_URL + '/programados/cancelar.php', { id: id }, function(response) {
+                // CORRECCIÓN: Quitar las llaves duplicadas
+                $.post(API_URL + '/programados/cancelar.php', {
                     id: id
                 }, function(response) {
                     if (response.success) {
@@ -517,7 +544,8 @@ $plantillas = $stmt->fetchAll();
     }
 
     function verDetalles(id) {
-        $.get(API_URL + '/programados/detalles.php', { id: id }, function(response) {
+        // CORRECCIÓN: Quitar las llaves duplicadas
+        $.get(API_URL + '/programados/detalles.php', {
             id: id
         }, function(response) {
             if (response.success) {
@@ -547,14 +575,12 @@ $plantillas = $stmt->fetchAll();
             `;
 
                 if (data.imagen_path) {
-                    // Usar ruta relativa al APP_URL
                     const imageUrl = APP_URL + '/uploads/mensajes/' + data.imagen_path;
                     html += `
                     <div class="form-group">
                         <label>Imagen adjunta:</label>
                         <div class="text-center">
-                            <img src="${imageUrl}" 
-                                 class="img-thumbnail" style="max-width: 300px;">
+                            <img src="${imageUrl}" class="img-thumbnail" style="max-width: 300px;">
                         </div>
                     </div>
                 `;
@@ -572,7 +598,7 @@ $plantillas = $stmt->fetchAll();
         const tipo = $('#tipo_destinatarios').val();
 
         if (tipo === 'todos') {
-           $.get(API_URL + '/contactos/count.php', function(response) {
+            $.get(API_URL + '/contactos/count.php', function(response) {
                 if (response.success) {
                     $('#totalDestinatarios').text(response.data.total);
                 }

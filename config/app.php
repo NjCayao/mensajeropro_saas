@@ -134,4 +134,39 @@ spl_autoload_register(function ($class) {
         }
     }
 });
+
+
+function getWhatsAppServiceUrl($empresa_id) {
+    // Detectar si estamos en local o producción
+    if (IS_LOCALHOST) {
+        // En local: usar puertos directos
+        $puerto = 3000 + $empresa_id;
+        return "http://localhost:{$puerto}";
+    } else {
+        // En producción: usar proxy reverso
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        return $protocol . "://" . $_SERVER['HTTP_HOST'] . "/whatsapp/empresa/{$empresa_id}";
+    }
+}
+
+// Función helper para el API
+function getWhatsAppApiUrl($empresa_id) {
+    return getWhatsAppServiceUrl($empresa_id) . '/api';
+}
+
+// Función para verificar si el servicio está accesible
+function isWhatsAppServiceAccessible($empresa_id) {
+    $url = getWhatsAppServiceUrl($empresa_id) . '/health';
+    
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+    curl_setopt($ch, CURLOPT_NOBODY, true);
+    
+    curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    return $httpCode == 200;
+}
 ?>

@@ -275,7 +275,10 @@ $puerto = $whatsapp['puerto'] ?? 3001;
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    const WHATSAPP_API_URL = 'http://localhost:<?php echo $puerto; ?>';
+    const WHATSAPP_API_URL = '<?php echo getWhatsAppServiceUrl($puerto); ?>';
+    const IS_PRODUCTION = <?php echo IS_LOCALHOST ? 'false' : 'true'; ?>;
+    console.log('WhatsApp Service URL:', WHATSAPP_API_URL);
+    console.log('Entorno:', IS_PRODUCTION ? 'PRODUCCIÓN' : 'LOCAL');
     console.log('Puerto configurado:', <?php echo $puerto; ?>);
     console.log('API URL:', WHATSAPP_API_URL);
     const API_KEY = 'mensajeroPro2025';

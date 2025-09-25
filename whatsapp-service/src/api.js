@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const config = require("./config");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs").promises;
@@ -42,9 +43,37 @@ const upload = multer({
 function createAPI(whatsappClient) {
   const app = express();
 
+  // Configuración CORS dinámica
+  const corsOptions = {
+    origin: function (origin, callback) {
+      // En desarrollo, permitir cualquier origen
+      if (config.isDevelopment) {
+        callback(null, true);
+      } else {
+        // En producción, verificar contra lista blanca
+        if (!origin || config.corsOrigin.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'X-API-Key']
+  };
+
   // Middlewares
-  app.use(cors());
+  app.use(cors(corsOptions));
   app.use(express.json());
+  
+  // Logging middleware en desarrollo
+  if (config.isDevelopment) {
+    app.use((req, res, next) => {
+      console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+      next();
+    });
+  }
 
   // Middleware de autenticación simple
   app.use((req, res, next) => {

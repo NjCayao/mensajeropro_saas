@@ -38,9 +38,9 @@ if (!$fecha) {
 }
 
 $ahora = new DateTime();
-$ahora->modify('+1 minutes');
+$ahora->modify('+3 minutes');
 if ($fecha <= $ahora) {
-    jsonResponse(false, 'La fecha debe ser al menos 1 minuto en el futuro');
+    jsonResponse(false, 'La fecha debe ser al menos 3 minutos en el futuro');
 }
 
 try {

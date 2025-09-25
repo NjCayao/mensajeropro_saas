@@ -305,12 +305,14 @@ $plantillas = $stmt->fetchAll();
 
             if (tipo === 'individual') {
                 $('#selectorContacto').show();
-                updateDestinatarios();
             } else if (tipo === 'categoria') {
                 $('#selectorCategoria').show();
             } else if (tipo === 'todos') {
-                updateDestinatarios();
+                // No mostrar ningún selector adicional
             }
+
+            // Llamar a updateDestinatarios después de mostrar/ocultar selectores
+            updateDestinatarios();
         });
 
         // Cambio de categoría
@@ -597,17 +599,19 @@ $plantillas = $stmt->fetchAll();
                 url: API_URL + '/contactos/count.php',
                 method: 'GET',
                 success: function(response) {
-                    if (response.success) {
-                        total = response.data.total;
+                    if (response.success && response.data) {
+                        total = response.data.total || 0;
                         $('#totalDestinatarios').text(total);
                         updateTiempoEstimado(total);
                     } else {
-                        $('#totalDestinatarios').text('Error');
+                        $('#totalDestinatarios').text('0');
+                        updateTiempoEstimado(0);
                     }
                 },
-                error: function() {
+                error: function(xhr, status, error) {
+                    console.error('Error obteniendo total de contactos:', error);
                     $('#totalDestinatarios').text('Error');
-                    console.error('Error obteniendo total de contactos');
+                    updateTiempoEstimado(0);
                 }
             });
         } else {
