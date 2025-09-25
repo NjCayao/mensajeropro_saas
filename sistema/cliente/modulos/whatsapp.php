@@ -1,3 +1,4 @@
+
 <?php
 $current_page = 'whatsapp';
 require_once __DIR__ . '/../layouts/header.php';
@@ -5,10 +6,28 @@ require_once __DIR__ . '/../layouts/sidebar.php';
 
 $empresa_id = getEmpresaActual();
 
-// Obtener estado de WhatsApp
+// Verificar si existe registro en whatsapp_sesiones_empresa
 $stmt = $pdo->prepare("SELECT * FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
 $stmt->execute([$empresa_id]);
 $whatsapp = $stmt->fetch();
+
+// Si no existe, crear registro
+if (!$whatsapp) {
+    $stmt = $pdo->prepare("
+        INSERT INTO whatsapp_sesiones_empresa (empresa_id, estado, puerto, fecha_creacion) 
+        VALUES (?, 'desconectado', ?, NOW())
+    ");
+    
+    // Asignar puerto base + empresa_id
+    $puerto = 3000 + $empresa_id;
+    $stmt->execute([$empresa_id, $puerto]);
+    
+    // Volver a obtener el registro
+    $stmt = $pdo->prepare("SELECT * FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
+    $stmt->execute([$empresa_id]);
+    $whatsapp = $stmt->fetch();
+}
+
 $whatsappConectado = $whatsapp && $whatsapp['estado'] == 'conectado';
 $puerto = $whatsapp['puerto'] ?? 3001;
 ?>
@@ -229,8 +248,10 @@ $puerto = $whatsapp['puerto'] ?? 3001;
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>       
+<script>
     const WHATSAPP_API_URL = 'http://localhost:<?php echo $puerto; ?>';
+    console.log('Puerto configurado:', <?php echo $puerto; ?>);
+    console.log('API URL:', WHATSAPP_API_URL);
     const API_KEY = 'mensajeroPro2025';
 
     let checkInterval = null;

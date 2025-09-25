@@ -1,12 +1,26 @@
 <?php
-session_start();
+// Verificar si la sesión ya está iniciada
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../includes/session_check.php';
-require_once __DIR__ . '/../../response.php';
 require_once __DIR__ . '/../../../../includes/multi_tenant.php';
 
+// Desactivar reporte de errores para evitar que se mezclen con el JSON
+error_reporting(0);
+ini_set('display_errors', 0);
+
+// Asegurarse de que no haya salida antes del JSON
+ob_start();
+
+header('Content-Type: application/json');
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    Response::error('Método no permitido', 405);
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Método no permitido']);
+    exit;
 }
 
 try {
@@ -32,67 +46,98 @@ try {
         $palabras_array = array_filter($palabras_array); // Eliminar vacíos
     }
 
-    // Actualizar configuración
-    $sql = "UPDATE configuracion_bot SET
-            activo = ?,
-            delay_respuesta = ?,
-            horario_inicio = ?,
-            horario_fin = ?,
-            mensaje_fuera_horario = ?,
-            responder_no_registrados = ?,
-            palabras_activacion = ?,
-            openai_api_key = ?,
-            modelo_ai = ?,
-            temperatura = ?,
-            max_tokens = ?,
-            system_prompt = ?,
-            business_info = ?,
-            actualizado = NOW()
-        WHERE empresa_id = ?";
+    $empresa_id = getEmpresaActual();
 
-    $stmt = $pdo->prepare($sql);
+    // Verificar si existe la configuración
+    $stmt = $pdo->prepare("SELECT id FROM configuracion_bot WHERE empresa_id = ?");
+    $stmt->execute([$empresa_id]);
+    $existe = $stmt->fetch();
 
-    $params = [
-        $activo,
-        $delay_respuesta,
-        $horario_inicio,
-        $horario_fin,
-        $mensaje_fuera_horario,
-        $responder_no_registrados,
-        json_encode($palabras_array),
-        $openai_api_key,
-        $modelo_ai,
-        $temperatura,
-        $max_tokens,
-        $system_prompt,
-        $business_info,
-        getEmpresaActual()
-    ];
+    if ($existe) {
+        // Actualizar configuración existente
+        $sql = "UPDATE configuracion_bot SET
+                activo = ?,
+                delay_respuesta = ?,
+                horario_inicio = ?,
+                horario_fin = ?,
+                mensaje_fuera_horario = ?,
+                responder_no_registrados = ?,
+                palabras_activacion = ?,
+                openai_api_key = ?,
+                modelo_ai = ?,
+                temperatura = ?,
+                max_tokens = ?,
+                system_prompt = ?,
+                business_info = ?,
+                actualizado = NOW()
+            WHERE empresa_id = ?";
 
-    // Debug: log los valores
-    error_log("SQL: " . $sql);
-    error_log("Params: " . json_encode($params));
-
-    $result = $stmt->execute($params);
-
-    // Verificar si realmente se actualizó
-    if ($result) {
-        $rowCount = $stmt->rowCount();
-        error_log("Filas actualizadas: " . $rowCount);
-
-        // Verificar qué se guardó realmente
-        $stmt = $pdo->prepare("SELECT system_prompt, business_info FROM configuracion_bot WHERE empresa_id = ?");
-        $stmt->execute([getEmpresaActual()]);
-        $check = $stmt->fetch();
-        error_log("Valores guardados: " . json_encode($check));
-
-        Response::success(['message' => 'Configuración guardada correctamente']);
+        $stmt = $pdo->prepare($sql);
+        $result = $stmt->execute([
+            $activo,
+            $delay_respuesta,
+            $horario_inicio,
+            $horario_fin,
+            $mensaje_fuera_horario,
+            $responder_no_registrados,
+            json_encode($palabras_array),
+            $openai_api_key,
+            $modelo_ai,
+            $temperatura,
+            $max_tokens,
+            $system_prompt,
+            $business_info,
+            $empresa_id
+        ]);
     } else {
-        $errorInfo = $stmt->errorInfo();
-        error_log("Error SQL: " . json_encode($errorInfo));
-        Response::error('Error al guardar la configuración: ' . $errorInfo[2]);
+        // Crear nueva configuración
+        $sql = "INSERT INTO configuracion_bot 
+                (empresa_id, activo, delay_respuesta, horario_inicio, horario_fin, 
+                 mensaje_fuera_horario, responder_no_registrados, palabras_activacion, 
+                 openai_api_key, modelo_ai, temperatura, max_tokens, 
+                 system_prompt, business_info, actualizado)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+
+        $stmt = $pdo->prepare($sql);
+        $result = $stmt->execute([
+            $empresa_id,
+            $activo,
+            $delay_respuesta,
+            $horario_inicio,
+            $horario_fin,
+            $mensaje_fuera_horario,
+            $responder_no_registrados,
+            json_encode($palabras_array),
+            $openai_api_key,
+            $modelo_ai,
+            $temperatura,
+            $max_tokens,
+            $system_prompt,
+            $business_info
+        ]);
     }
+
+    // Limpiar cualquier salida previa
+    ob_clean();
+
+    if ($result) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'Configuración guardada correctamente'
+        ]);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error al guardar la configuración'
+        ]);
+    }
+
 } catch (Exception $e) {
+    ob_clean();
     error_log("Error en configurar bot: " . $e->getMessage());
-    Response::error('Error en el servidor: ' . $e->getMessage());
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error en el servidor: ' . $e->getMessage()
+    ]);
 }
+exit;

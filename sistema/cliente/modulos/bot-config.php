@@ -13,7 +13,7 @@ $config = $stmt->fetch();
 if (!$config) {
     $stmt = $pdo->prepare("INSERT INTO configuracion_bot (empresa_id) VALUES (?)");
     $stmt->execute([$empresa_id]);
-    
+
     $stmt = $pdo->prepare("SELECT * FROM configuracion_bot WHERE empresa_id = ?");
     $stmt->execute([$empresa_id]);
     $config = $stmt->fetch();
@@ -305,7 +305,7 @@ R: Sí, 7 días con 100 mensajes gratis."><?= htmlspecialchars($config['business
                     </button>
                     <button class="btn btn-warning" onclick="verificarConfiguracion()">
                         <i class="fas fa-check-circle"></i> Verificar Configuración
-                    </button>                    
+                    </button>
                 </div>
             </div><br>
         </div>
@@ -402,7 +402,7 @@ R: Sí, 7 días con 100 mensajes gratis."><?= htmlspecialchars($config['business
                 }
             });
 
-            $.ajax({                
+            $.ajax({
                 url: API_URL + "/bot/entrenar.php",
                 method: 'POST',
                 data: {
@@ -472,15 +472,16 @@ R: Sí, 7 días con 100 mensajes gratis."><?= htmlspecialchars($config['business
             }
         });
 
-        $.ajax({            
+        $.ajax({
             url: API_URL + "/bot/configurar.php",
             method: 'POST',
             data: formData,
+            dataType: 'json',
             success: function(response) {
                 Swal.close();
 
                 if (response.success) {
-                    Swal.fire('Éxito', 'Configuración guardada correctamente', 'success').then(() => {
+                    Swal.fire('Éxito', response.message || 'Configuración guardada correctamente', 'success').then(() => {
                         location.reload();
                     });
                 } else {
@@ -489,7 +490,28 @@ R: Sí, 7 días con 100 mensajes gratis."><?= htmlspecialchars($config['business
             },
             error: function(xhr, status, error) {
                 Swal.close();
-                Swal.fire('Error', 'Error de conexión con el servidor', 'error');
+                console.error('Error AJAX:', {
+                    status: xhr.status,
+                    statusText: xhr.statusText,
+                    responseText: xhr.responseText,
+                    error: error
+                });
+
+                // Intentar parsear el error
+                let errorMessage = 'Error de conexión con el servidor';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.message) {
+                        errorMessage = response.message;
+                    }
+                } catch (e) {
+                    // Si no es JSON, mostrar el texto crudo
+                    if (xhr.responseText) {
+                        errorMessage = 'Error del servidor: ' + xhr.responseText;
+                    }
+                }
+
+                Swal.fire('Error', errorMessage, 'error');
             }
         });
     }

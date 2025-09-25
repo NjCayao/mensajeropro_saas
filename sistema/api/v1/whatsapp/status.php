@@ -1,4 +1,8 @@
 <?php
+// Desactivar reporte de errores para evitar corrupción del JSON
+error_reporting(0);
+ini_set('display_errors', 0);
+
 header('Content-Type: application/json');
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -20,15 +24,29 @@ try {
     $stmt->execute([getEmpresaActual()]);
     $whatsapp = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // Inicializar valores por defecto si no existe el registro
+    if (!$whatsapp) {
+        $whatsapp = [
+            'estado' => 'desconectado',
+            'puerto' => 3001,
+            'qr_code' => null,
+            'numero_conectado' => null,
+            'nombre_conectado' => null
+        ];
+    }
+
     // Intentar conectar con el servicio Node.js
     $nodeConnected = false;
     $nodeStatus = null;
 
     $puerto = $whatsapp['puerto'] ?? 3001;
+    
+    // Usar cURL para verificar el servicio
     $ch = curl_init("http://localhost:$puerto/api/status");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-API-Key: mensajeroPro2025']);
     curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -43,48 +61,36 @@ try {
     }
 
     // Si hay QR pendiente, incluirlo en la respuesta
-    if ($whatsapp['estado'] == 'qr_pendiente') {
-        $ch = curl_init("http://localhost:$puerto/api/qr");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-API-Key: mensajeroPro2025']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-
-        $qrResponse = curl_exec($ch);
-        $qrHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($qrHttpCode == 200 && $qrResponse) {
-            $qrData = json_decode($qrResponse, true);
-            if ($qrData && isset($qrData['qr'])) {
-                echo json_encode([
-                    'success' => true,
-                    'connected' => false,
-                    'data' => [
-                        'estado' => 'qr_pendiente',
-                        'qr_code' => $qrData['qr'],
-                        'numero_conectado' => null,
-                        'node_service' => $nodeConnected
-                    ],
-                    'qr' => $qrData['qr']
-                ]);
-                exit;
-            }
-        }
+    if ($whatsapp['estado'] == 'qr_pendiente' && !empty($whatsapp['qr_code'])) {
+        echo json_encode([
+            'success' => true,
+            'connected' => false,
+            'data' => [
+                'estado' => 'qr_pendiente',
+                'qr_code' => $whatsapp['qr_code'],
+                'numero_conectado' => null,
+                'node_service' => $nodeConnected
+            ],
+            'qr' => $whatsapp['qr_code']
+        ]);
+        exit;
     }
 
     // Combinar estado de BD y Node.js
-    $connected = $nodeConnected && $nodeStatus && $nodeStatus['connected'];
+    $connected = $nodeConnected && $nodeStatus && isset($nodeStatus['connected']) && $nodeStatus['connected'];
 
     echo json_encode([
         'success' => true,
         'connected' => $connected,
         'data' => [
             'estado' => $connected ? 'conectado' : ($whatsapp['estado'] ?: 'desconectado'),
-            'qr_code' => $whatsapp['qr_code'],
-            'numero_conectado' => $whatsapp['numero_conectado'],
+            'qr_code' => $whatsapp['qr_code'] ?? null,
+            'numero_conectado' => $whatsapp['numero_conectado'] ?? null,
             'node_service' => $nodeConnected
         ]
     ]);
+    
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
+exit;

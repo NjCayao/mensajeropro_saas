@@ -1,4 +1,8 @@
 <?php
+// Desactivar reporte de errores para evitar corrupción del JSON
+error_reporting(0);
+ini_set('display_errors', 0);
+
 header('Content-Type: application/json');
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -13,12 +17,13 @@ require_once __DIR__ . '/../../../../includes/whatsapp_ports.php';
 $empresa_id = getEmpresaActual();
 
 if (!isset($_SESSION['user_id'])) {
-    jsonResponse(false, 'No autorizado');
+    echo json_encode(['success' => false, 'message' => 'No autorizado']);
+    exit;
 }
 
 $accion = $_POST['accion'] ?? '';
 $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-$servicePath = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . 'whatsapp-service';
+$servicePath = dirname(dirname(dirname(dirname(__DIR__)))) . DIRECTORY_SEPARATOR . 'whatsapp-service';
 
 try {
     if ($accion == 'iniciar') {
@@ -29,7 +34,8 @@ try {
         if (verificarPuertoActivo($puerto)) {
             $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'verificando' WHERE empresa_id = ?");
             $stmt->execute([$empresa_id]);
-            jsonResponse(true, 'El servicio ya está en ejecución');
+            echo json_encode(['success' => true, 'message' => 'El servicio ya está en ejecución']);
+            exit;
         }
 
         // Limpiar sesiones anteriores
@@ -50,7 +56,7 @@ try {
 
         // Actualizar estado
         $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'iniciando', qr_code = NULL, numero_conectado = NULL WHERE empresa_id = ?");
-        $stmt->execute([getEmpresaActual()]);
+        $stmt->execute([$empresa_id]);
 
         // Crear carpeta logs si no existe
         $logsDir = $servicePath . DIRECTORY_SEPARATOR . 'logs';
@@ -60,9 +66,11 @@ try {
 
         // Limpiar logs antiguos (más de 7 días)
         $logFiles = glob($logsDir . DIRECTORY_SEPARATOR . '*.log');
-        foreach ($logFiles as $logFile) {
-            if (filemtime($logFile) < strtotime('-7 days')) {
-                @unlink($logFile);
+        if (is_array($logFiles)) {
+            foreach ($logFiles as $logFile) {
+                if (file_exists($logFile) && filemtime($logFile) < strtotime('-7 days')) {
+                    @unlink($logFile);
+                }
             }
         }
 
@@ -77,14 +85,13 @@ try {
             $vbsPath = $servicePath . '\\start-whatsapp-service.vbs';
             $vbsContent = 'Set objShell = CreateObject("WScript.Shell")' . "\r\n";            
             $vbsContent .= 'objShell.CurrentDirectory = "' . $servicePath . '"' . "\r\n";
-            $vbsContent .= 'objShell.Run "cmd /c node src\index.js ' . $puerto . ' ' . getEmpresaActual() . ' > logs\empresa-' . getEmpresaActual() . '.log 2>&1", 0, False' . "\r\n";
-
+            $vbsContent .= 'objShell.Run "cmd /c node src\index.js ' . $puerto . ' ' . $empresa_id . ' > logs\empresa-' . $empresa_id . '.log 2>&1", 0, False' . "\r\n";
 
             // Escribir el archivo VBS
             file_put_contents($vbsPath, $vbsContent);
 
             // Usar Task Scheduler
-            $taskName = "MensajeroPro_WhatsApp_Empresa_" . getEmpresaActual();
+            $taskName = "MensajeroPro_WhatsApp_Empresa_" . $empresa_id;
 
             // Eliminar tarea si existe
             @exec('schtasks /delete /tn "' . $taskName . '" /f 2>&1');
@@ -108,27 +115,36 @@ try {
             if ($pm2Check) {
                 // Usar PM2
                 chdir($servicePath);
-                @exec('pm2 start src/index.js --name mensajeropro-whatsapp 2>&1');
+                $processName = "mensajeropro-whatsapp-empresa-" . $empresa_id;
+                @exec("pm2 start src/index.js --name $processName -- $puerto $empresa_id 2>&1");
             } else {
                 // Usar nohup
-                $cmd = "cd $servicePath && nohup node src/index.js > logs/service.log 2>&1 &";
+                $cmd = "cd $servicePath && nohup node src/index.js $puerto $empresa_id > logs/empresa-$empresa_id.log 2>&1 &";
                 @exec($cmd);
             }
         }
 
-        jsonResponse(true, 'Servicio iniciándose...');
+        echo json_encode(['success' => true, 'message' => 'Servicio iniciándose...']);
+        
     } elseif ($accion == 'detener') {
+        // Obtener puerto de la empresa
+        $stmt = $pdo->prepare("SELECT puerto FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
+        $stmt->execute([$empresa_id]);
+        $result = $stmt->fetch();
+        $puerto = $result['puerto'] ?? 3001;
+
         // Actualizar estado
         $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'deteniendo' WHERE empresa_id = ?");
-        $stmt->execute([getEmpresaActual()]);
+        $stmt->execute([$empresa_id]);
 
         if ($isWindows) {
             // Detener tarea programada
-            $taskName = "MensajeroPro_WhatsApp";
+            $taskName = "MensajeroPro_WhatsApp_Empresa_" . $empresa_id;
             @exec('schtasks /end /tn "' . $taskName . '" 2>&1');
             @exec('schtasks /delete /tn "' . $taskName . '" /f 2>&1');
 
-            // Matar procesos
+            // Matar procesos node que estén usando ese puerto
+            // En Windows es más complicado, por ahora matamos todos los node
             @exec('taskkill /F /IM node.exe 2>&1');
 
             // Eliminar archivo VBS
@@ -141,43 +157,50 @@ try {
             $pm2Check = shell_exec('which pm2');
 
             if ($pm2Check) {
-                @exec('pm2 stop mensajeropro-whatsapp 2>&1');
-                @exec('pm2 delete mensajeropro-whatsapp 2>&1');
+                $processName = "mensajeropro-whatsapp-empresa-" . $empresa_id;
+                @exec("pm2 stop $processName 2>&1");
+                @exec("pm2 delete $processName 2>&1");
             } else {
-                @exec("pkill -f 'node.*mensajeropro'");
+                // Buscar proceso por puerto y matarlo
+                @exec("lsof -t -i:$puerto | xargs kill -9 2>&1");
             }
         }
 
         sleep(2);
 
-        // Limpiar sesión
-        $sessionPaths = [
-            $servicePath . DIRECTORY_SEPARATOR . '.wwebjs_auth',
-            $servicePath . DIRECTORY_SEPARATOR . 'tokens'
-        ];
-
-        foreach ($sessionPaths as $sessionPath) {
-            if (file_exists($sessionPath)) {
-                if ($isWindows) {
-                    @exec("rmdir /s /q \"$sessionPath\" 2>&1");
-                } else {
-                    @exec("rm -rf \"$sessionPath\" 2>&1");
-                }
+        // Limpiar sesión específica de la empresa
+        $sessionPath = $servicePath . DIRECTORY_SEPARATOR . '.wwebjs_auth' . DIRECTORY_SEPARATOR . 'session-empresa-' . $empresa_id;
+        if (file_exists($sessionPath)) {
+            if ($isWindows) {
+                @exec("rmdir /s /q \"$sessionPath\" 2>&1");
+            } else {
+                @exec("rm -rf \"$sessionPath\" 2>&1");
             }
         }
 
         $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'desconectado', qr_code = NULL, numero_conectado = NULL WHERE empresa_id = ?");
-        $stmt->execute([getEmpresaActual()]);
-        jsonResponse(true, 'Servicio detenido');
+        $stmt->execute([$empresa_id]);
+        
+        echo json_encode(['success' => true, 'message' => 'Servicio detenido']);
+        
     } elseif ($accion == 'verificar') {
-        $connection = @fsockopen("localhost", 3001);
+        // Obtener puerto de la empresa
+        $stmt = $pdo->prepare("SELECT puerto FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
+        $stmt->execute([$empresa_id]);
+        $result = $stmt->fetch();
+        $puerto = $result['puerto'] ?? 3001;
+
+        $connection = @fsockopen("localhost", $puerto);
         if (is_resource($connection)) {
             fclose($connection);
-            jsonResponse(true, 'Servicio activo', ['running' => true]);
+            echo json_encode(['success' => true, 'message' => 'Servicio activo', 'running' => true]);
         } else {
-            jsonResponse(true, 'Servicio inactivo', ['running' => false]);
+            echo json_encode(['success' => true, 'message' => 'Servicio inactivo', 'running' => false]);
         }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Acción no válida']);
     }
 } catch (Exception $e) {
-    jsonResponse(false, 'Error: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
+exit;

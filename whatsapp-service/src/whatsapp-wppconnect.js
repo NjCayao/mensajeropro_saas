@@ -9,6 +9,9 @@ class WhatsAppClient {
     this.messageHandler = null;
     this.sessionInfo = null;
     this.botHandler = botHandler;
+    this.qrGenerationCount = 0; // Contador de QR generados
+    this.maxQrAttempts = 3; // Máximo 3 intentos de QR
+    this.qrTimeout = null; // Timer para timeout
   }
 
   async initialize() {
@@ -19,14 +22,34 @@ class WhatsAppClient {
       await db.updateWhatsAppStatus("iniciando");
 
       this.client = await wppconnect.create({
-        session: `empresa-${empresaId}`, // SESIÓN ÚNICA POR EMPRESA
+        session: `empresa-${empresaId}`,
         catchQR: async (base64Qr, asciiQr) => {
-          console.log("📱 QR Code generado");
+          this.qrGenerationCount++;
+          
+          console.log(`📱 QR Code generado (intento ${this.qrGenerationCount}/${this.maxQrAttempts})`);
           console.log(asciiQr);
+          
+          // Guardar QR en BD
           await db.updateWhatsAppStatus("qr_pendiente", base64Qr);
+          
+          // Si es el primer QR, iniciar timeout de 2 minutos
+          if (this.qrGenerationCount === 1) {
+            this.startQrTimeout();
+          }
+          
+          // Si alcanzamos el máximo de intentos, detener
+          if (this.qrGenerationCount >= this.maxQrAttempts) {
+            console.log("⚠️ Máximo de intentos de QR alcanzado. Deteniendo...");
+            this.stopQrGeneration();
+          }
         },
         statusFind: (statusSession, session) => {
           console.log("🔄 Estado:", statusSession);
+          
+          // Si se conectó, cancelar el timeout
+          if (statusSession === "inChat" || statusSession === "successChat") {
+            this.cancelQrTimeout();
+          }
         },
         headless: true,
         devtools: false,
@@ -41,14 +64,17 @@ class WhatsAppClient {
           "--no-first-run",
           "--disable-gpu",
         ],
-        refreshQR: 20000,
-        autoClose: 0,
+        refreshQR: 20000, // Regenerar QR cada 20 segundos
+        autoClose: 120000, // Cerrar después de 2 minutos sin escanear
         disableSpins: true,
       });
 
       // El cliente ya está listo aquí
       console.log("✅ Cliente WPPConnect creado y conectado");
       this.isReady = true;
+      
+      // Cancelar timeout si llegamos aquí
+      this.cancelQrTimeout();
 
       // Esperar un poco más para que cargue completamente
       await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -149,10 +175,73 @@ class WhatsAppClient {
 
       // Iniciar procesamiento de cola
       this.startQueueProcessor();
+      
     } catch (error) {
       console.error("❌ Error inicializando:", error);
-      await db.updateWhatsAppStatus("error");
+      
+      // Si el error es por timeout o usuario no escaneó
+      if (error.message && error.message.includes("QR Code not scanned")) {
+        console.log("⏱️ Timeout: QR no fue escaneado");
+        await db.updateWhatsAppStatus("timeout_qr");
+      } else {
+        await db.updateWhatsAppStatus("error");
+      }
+      
+      // Limpiar recursos
+      this.cleanup();
     }
+  }
+
+  startQrTimeout() {
+    // Timeout de 2 minutos
+    this.qrTimeout = setTimeout(async () => {
+      console.log("⏱️ Timeout de QR alcanzado (2 minutos)");
+      await this.stopQrGeneration();
+    }, 120000); // 2 minutos
+  }
+
+  cancelQrTimeout() {
+    if (this.qrTimeout) {
+      clearTimeout(this.qrTimeout);
+      this.qrTimeout = null;
+    }
+  }
+
+  async stopQrGeneration() {
+    try {
+      console.log("🛑 Deteniendo generación de QR...");
+      
+      // Cancelar timeout
+      this.cancelQrTimeout();
+      
+      // Actualizar estado en BD
+      await db.updateWhatsAppStatus("timeout_qr", null, null);
+      
+      // Intentar cerrar el cliente si existe
+      if (this.client) {
+        try {
+          await this.client.close();
+        } catch (e) {
+          console.log("Error cerrando cliente:", e.message);
+        }
+      }
+      
+      // Terminar el proceso después de un pequeño delay
+      setTimeout(() => {
+        console.log("👋 Cerrando proceso por timeout de QR");
+        process.exit(0);
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Error en stopQrGeneration:", error);
+      process.exit(1);
+    }
+  }
+
+  cleanup() {
+    this.cancelQrTimeout();
+    this.qrGenerationCount = 0;
+    this.isReady = false;
   }
 
   setupEventHandlers() {
@@ -506,9 +595,14 @@ class WhatsAppClient {
   }
 
   async disconnect() {
+    console.log("🔄 Desconectando WhatsApp...");
+    
+    this.cleanup();
+    
     if (this.client) {
       await this.client.close();
       this.isReady = false;
+      this.messageHandler = null;
       await db.updateWhatsAppStatus("desconectado");
     }
   }
