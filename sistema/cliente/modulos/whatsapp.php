@@ -274,8 +274,8 @@ $puerto = $whatsapp['puerto'] ?? 3001;
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    const WHATSAPP_API_URL = '<?php echo getWhatsAppServiceUrl($puerto); ?>';
+<script>    
+    const WHATSAPP_API_URL = '<?php echo getWhatsAppServiceUrl($empresa_id); ?>';
     const IS_PRODUCTION = <?php echo IS_LOCALHOST ? 'false' : 'true'; ?>;
     console.log('WhatsApp Service URL:', WHATSAPP_API_URL);
     console.log('Entorno:', IS_PRODUCTION ? 'PRODUCCIÓN' : 'LOCAL');

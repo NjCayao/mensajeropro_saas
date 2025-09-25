@@ -85,8 +85,8 @@ try {
             $vbsPath = $servicePath . '\\start-whatsapp-service.vbs';
             $vbsContent = 'Set objShell = CreateObject("WScript.Shell")' . "\r\n";            
             $vbsContent .= 'objShell.CurrentDirectory = "' . $servicePath . '"' . "\r\n";
-            $vbsContent .= 'objShell.Run "cmd /c node src\index.js ' . $puerto . ' ' . $empresa_id . ' > logs\empresa-' . $empresa_id . '.log 2>&1", 0, False' . "\r\n";
-
+            $nodeEnv = IS_LOCALHOST ? 'development' : 'production';
+            $vbsContent .= 'objShell.Run "cmd /c set NODE_ENV=' . $nodeEnv . ' && node src\index.js ' . $puerto . ' ' . $empresa_id . ' > logs\empresa-' . $empresa_id . '.log 2>&1", 0, False' . "\r\n";
             // Escribir el archivo VBS
             file_put_contents($vbsPath, $vbsContent);
 
@@ -116,10 +116,12 @@ try {
                 // Usar PM2
                 chdir($servicePath);
                 $processName = "mensajeropro-whatsapp-empresa-" . $empresa_id;
-                @exec("pm2 start src/index.js --name $processName -- $puerto $empresa_id 2>&1");
+                $nodeEnv = IS_LOCALHOST ? 'development' : 'production';
+                @exec("NODE_ENV=$nodeEnv pm2 start src/index.js --name $processName -- $puerto $empresa_id 2>&1");
             } else {
                 // Usar nohup
-                $cmd = "cd $servicePath && nohup node src/index.js $puerto $empresa_id > logs/empresa-$empresa_id.log 2>&1 &";
+                $nodeEnv = IS_LOCALHOST ? 'development' : 'production';
+                $cmd = "cd $servicePath && NODE_ENV=$nodeEnv nohup node src/index.js $puerto $empresa_id > logs/empresa-$empresa_id.log 2>&1 &";
                 @exec($cmd);
             }
         }

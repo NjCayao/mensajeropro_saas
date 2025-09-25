@@ -36,8 +36,10 @@ async function main() {
     // Iniciar servidor en el puerto especificado
     const app = createAPI(whatsappClient);
 
-    app.listen(parseInt(PUERTO), "0.0.0.0", () => {
-      console.log(`🌐 API REST corriendo en http://localhost:${PUERTO}`);
+    const HOST = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
+
+    app.listen(parseInt(PUERTO), HOST, () => {
+      console.log(`🌐 API REST corriendo en http://${HOST}:${PUERTO}`);
       console.log("📱 Iniciando WhatsApp en segundo plano...");
     });
 

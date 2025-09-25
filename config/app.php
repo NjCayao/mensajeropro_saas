@@ -137,10 +137,9 @@ spl_autoload_register(function ($class) {
 
 
 function getWhatsAppServiceUrl($empresa_id) {
-    // Detectar si estamos en local o producción
+    // En local: usar puerto dinámico basado en empresa_id
     if (IS_LOCALHOST) {
-        // En local: usar puertos directos
-        $puerto = 3000 + $empresa_id;
+        $puerto = 3000 + $empresa_id;  // 3001, 3002, 3003, etc.
         return "http://localhost:{$puerto}";
     } else {
         // En producción: usar proxy reverso

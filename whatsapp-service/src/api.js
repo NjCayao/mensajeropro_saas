@@ -46,27 +46,50 @@ function createAPI(whatsappClient) {
   // Configuración CORS dinámica
   const corsOptions = {
     origin: function (origin, callback) {
-      // En desarrollo, permitir cualquier origen
-      if (config.isDevelopment) {
+      // Permitir requests sin origin (mismo servidor)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      // Lista de orígenes permitidos
+      const allowedOrigins = [
+        "http://localhost",
+        "http://localhost:80",
+        "http://localhost:3000",
+        "http://127.0.0.1",
+        "http://127.0.0.1:80",
+      ];
+
+      // En producción, agregar tu dominio
+      if (process.env.NODE_ENV === "production") {
+        allowedOrigins.push("https://tudominio.com");
+        allowedOrigins.push("https://www.tudominio.com");
+      }
+
+      // Verificar si el origen está permitido
+      const isAllowed = allowedOrigins.some((allowed) =>
+        origin.startsWith(allowed)
+      );
+
+      if (isAllowed) {
         callback(null, true);
       } else {
-        // En producción, verificar contra lista blanca
-        if (!origin || config.corsOrigin.includes(origin)) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
+        console.log("CORS bloqueado para origen:", origin);
+        callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'X-API-Key']
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "X-API-Key", "Authorization"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   };
 
   // Middlewares
   app.use(cors(corsOptions));
   app.use(express.json());
-  
+
   // Logging middleware en desarrollo
   if (config.isDevelopment) {
     app.use((req, res, next) => {

@@ -1,22 +1,29 @@
-// whatsapp-service/src/config.js (nuevo archivo)
+// whatsapp-service/src/config.js
+const environment = process.env.NODE_ENV || 'development';
+
 const config = {
     development: {
-        host: '0.0.0.0',  // Escuchar en todas las interfaces
-        corsOrigin: ['http://localhost', 'http://localhost:*'],
+        host: '0.0.0.0',
+        corsOrigin: ['http://localhost', 'http://127.0.0.1'],
         logLevel: 'debug'
     },
     production: {
-        host: '127.0.0.1', // Solo localhost (Nginx hará proxy)
-        corsOrigin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['https://tudominio.com'],
+        host: '127.0.0.1',
+        corsOrigin: ['https://tudominio.com', 'https://www.tudominio.com'],
         logLevel: 'info'
     }
 };
 
-const environment = process.env.NODE_ENV || 'development';
-
-module.exports = {
-    ...config[environment],
-    environment,
-    isDevelopment: environment === 'development',
-    isProduction: environment === 'production'
-};
+// Verificar que existe la configuración
+if (!config[environment]) {
+    console.error(`No existe configuración para el entorno: ${environment}`);
+    // Usar development por defecto
+    module.exports = config.development;
+} else {
+    module.exports = {
+        ...config[environment],
+        environment,
+        isDevelopment: environment === 'development',
+        isProduction: environment === 'production'
+    };
+}
