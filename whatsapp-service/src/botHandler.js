@@ -149,23 +149,41 @@ class BotHandler {
       console.log("📝 [processMessage] Iniciando procesamiento");
       const shouldRespond = await this.shouldRespond(mensaje, numero);
 
-      console.log(
-        "📝 [processMessage] shouldRespond resultado:",
-        shouldRespond
-      );
-
       if (!shouldRespond) {
-        console.log("📝 [processMessage] Bot no debe responder, terminando");
         return null;
       }
 
       if (shouldRespond === "fuera_horario") {
-        console.log("📝 [processMessage] Fuera de horario");
         return {
           respuesta:
             this.config.mensaje_fuera_horario ||
-            "Gracias por tu mensaje. Nuestro horario de atención ha finalizado. Te responderemos lo antes posible.",
+            "Gracias por tu mensaje. Nuestro horario de atención ha finalizado.",
           tipo: "fuera_horario",
+        };
+      }
+
+      // NUEVO: Verificar modo prueba
+      if (this.config.modo_prueba && this.config.numero_prueba) {
+        // Limpiar números para comparar
+        const numeroPrueba = this.config.numero_prueba.replace(/\D/g, "");
+        const numeroActual = numero.replace(/\D/g, "").replace(/^51/, ""); // Quitar código país
+
+        if (
+          !numeroActual.includes(numeroPrueba) &&
+          !numeroPrueba.includes(numeroActual)
+        ) {
+          console.log("🔒 Modo prueba activo - número no autorizado");
+          return null;
+        }
+      }
+
+      // NUEVO: Verificar respuestas rápidas primero
+      const respuestaRapida = await this.checkRespuestaRapida(mensaje);
+      if (respuestaRapida) {
+        console.log("⚡ Respuesta rápida encontrada");
+        return {
+          respuesta: respuestaRapida,
+          tipo: "respuesta_rapida",
         };
       }
 
@@ -173,28 +191,28 @@ class BotHandler {
       const necesitaEscalamiento = await this.checkEscalamiento(mensaje);
 
       if (necesitaEscalamiento) {
-        console.log("🚨 ESCALAMIENTO DETECTADO - Marcando conversación");
-
-        try {
-          await db.getPool().execute(
-            `INSERT INTO estados_conversacion (numero_cliente, estado, fecha_escalado, motivo_escalado) 
-             VALUES (?, 'escalado_humano', NOW(), ?)
-             ON DUPLICATE KEY UPDATE 
-                estado = 'escalado_humano', 
-                fecha_escalado = NOW(),
-                motivo_escalado = ?`,
-            [numero, mensaje, mensaje]
-          );
-
-          console.log(`✅ Conversación marcada como escalada en BD`);
-        } catch (error) {
-          console.error("❌ Error marcando escalamiento:", error);
-        }
-
-        // AQUÍ LEE EL MENSAJE DE ESCALAMIENTO DESDE LA BD
+        // Usar configuración de escalamiento
+        const escalamientoConfig = JSON.parse(
+          this.config.escalamiento_config || "{}"
+        );
         const mensajeEscalamiento =
+          escalamientoConfig.mensaje_escalamiento ||
           this.config.mensaje_escalamiento ||
           "Tu consulta requiere atención personalizada. Un asesor humano te atenderá en breve.";
+
+        // Marcar conversación como escalada
+        await db.getPool().execute(
+          `INSERT INTO estados_conversacion (numero_cliente, estado, fecha_escalado, motivo_escalado, empresa_id) 
+                 VALUES (?, 'escalado_humano', NOW(), ?, ?)
+                 ON DUPLICATE KEY UPDATE 
+                    estado = 'escalado_humano', 
+                    fecha_escalado = NOW(),
+                    motivo_escalado = ?`,
+          [numero, mensaje, getEmpresaActual(), mensaje]
+        );
+
+        // Registrar métrica de escalamiento
+        await this.registrarMetrica("escalamiento");
 
         return {
           respuesta: mensajeEscalamiento,
@@ -202,29 +220,24 @@ class BotHandler {
         };
       }
 
+      // Generar respuesta con IA
       console.log(
         "📝 [processMessage] Aplicando delay de",
         this.config.delay_respuesta,
         "segundos"
       );
-
       await new Promise((resolve) =>
         setTimeout(resolve, this.config.delay_respuesta * 1000)
       );
 
-      console.log("📝 [processMessage] Obteniendo contexto");
       const contexto = await this.getContexto(numero);
-
-      console.log("📝 [processMessage] Generando respuesta con IA");
       const respuestaIA = await this.generateResponse(mensaje, contexto);
 
-      console.log("📝 [processMessage] Guardando conversación");
       await this.saveConversation(numero, mensaje, respuestaIA);
 
-      console.log(
-        "📝 [processMessage] Respuesta lista:",
-        respuestaIA.content.substring(0, 50) + "..."
-      );
+      // Registrar métrica
+      await this.registrarMetrica("conversacion_completada");
+
       return {
         respuesta: respuestaIA.content,
         tipo: "bot",
@@ -232,74 +245,146 @@ class BotHandler {
         tiempo: respuestaIA.tiempo,
       };
     } catch (error) {
-      console.error(
-        "❌ [processMessage] Error procesando mensaje:",
-        error.message
-      );
-      console.error("Stack trace:", error.stack);
-
-      let mensajeError =
-        "Lo siento, tuve un problema al procesar tu mensaje 😅";
-
-      if (error.message.includes("API Key")) {
-        mensajeError =
-          "Ups! Parece que hay un problema con la configuración 🔧 Por favor contacta al administrador.";
-      } else if (error.message.includes("créditos")) {
-        mensajeError =
-          "Oh no! Parece que se agotaron los créditos de IA 💸 Por favor contacta al administrador.";
-      } else if (error.message.includes("rate")) {
-        mensajeError =
-          "Estoy recibiendo muchos mensajes ahora mismo 😵 Dame unos segundos y vuelve a intentar.";
-      }
-
+      console.error("❌ [processMessage] Error procesando mensaje:", error);
       return {
-        respuesta: mensajeError,
+        respuesta: "Lo siento, tuve un problema al procesar tu mensaje 😅",
         tipo: "error",
       };
     }
   }
 
-  async checkEscalamiento(mensaje) {
-    // AQUÍ DEBERÍAMOS LEER LAS FRASES DE ESCALAMIENTO DESDE LA BD
-    // Por ahora uso un campo JSON en la configuración
-    let frasesEscalamiento = [];
-
+  async checkRespuestaRapida(mensaje) {
     try {
-      if (this.config.frases_escalamiento) {
-        frasesEscalamiento = JSON.parse(this.config.frases_escalamiento);
+      const respuestasRapidas = JSON.parse(
+        this.config.respuestas_rapidas || "{}"
+      );
+      const mensajeLower = mensaje.toLowerCase();
+
+      for (const [pregunta, respuesta] of Object.entries(respuestasRapidas)) {
+        if (mensajeLower.includes(pregunta.toLowerCase())) {
+          return respuesta;
+        }
       }
     } catch (e) {
-      // Si no es JSON válido, intentar split por comas
-      if (this.config.frases_escalamiento) {
-        frasesEscalamiento = this.config.frases_escalamiento
-          .split(",")
-          .map((f) => f.trim())
-          .filter((f) => f.length > 0);
-      }
+      console.error("Error procesando respuestas rápidas:", e);
     }
+    return null;
+  }
 
-    // Si no hay frases configuradas, no escalar
-    if (frasesEscalamiento.length === 0) {
-      return false;
+  async checkEscalamiento(mensaje) {
+    const escalamientoConfig = JSON.parse(
+      this.config.escalamiento_config || "{}"
+    );
+    const palabrasClave = escalamientoConfig.palabras_clave || [];
+
+    if (palabrasClave.length === 0) {
+      // Si no hay configuración, usar las del campo anterior
+      let frasesEscalamiento = [];
+      try {
+        if (this.config.frases_escalamiento) {
+          frasesEscalamiento = JSON.parse(this.config.frases_escalamiento);
+        }
+      } catch (e) {
+        if (this.config.frases_escalamiento) {
+          frasesEscalamiento = this.config.frases_escalamiento
+            .split(",")
+            .map((f) => f.trim())
+            .filter((f) => f.length > 0);
+        }
+      }
+
+      if (frasesEscalamiento.length === 0) {
+        return false;
+      }
+
+      palabrasClave.push(...frasesEscalamiento);
     }
 
     const mensajeLower = mensaje.toLowerCase();
 
-    const necesitaEscalar = frasesEscalamiento.some((frase) => {
+    const necesitaEscalar = palabrasClave.some((frase) => {
       const contieneFrase = mensajeLower.includes(frase.toLowerCase());
       if (contieneFrase) {
-        console.log(`🔍 Frase de escalamiento detectada: "${frase}"`);
+        console.log(`🔍 Palabra de escalamiento detectada: "${frase}"`);
       }
       return contieneFrase;
     });
 
-    console.log(
-      `📋 Resultado verificación escalamiento: ${
-        necesitaEscalar ? "SÍ ESCALAR" : "NO ESCALAR"
-      }`
-    );
+    // Verificar también si excedió mensajes sin resolver
+    if (!necesitaEscalar && escalamientoConfig.max_mensajes_sin_resolver) {
+      // Contar mensajes recientes sin respuesta satisfactoria
+      const [rows] = await db.getPool().execute(
+        `
+            SELECT COUNT(*) as count 
+            FROM conversaciones_bot 
+            WHERE numero_cliente = ? 
+            AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+            AND empresa_id = ?
+        `,
+        [numero, getEmpresaActual()]
+      );
+
+      if (rows[0].count >= escalamientoConfig.max_mensajes_sin_resolver) {
+        console.log("🔍 Escalamiento por múltiples mensajes sin resolver");
+        return true;
+      }
+    }
 
     return necesitaEscalar;
+  }
+
+  // Registrar métricas
+  async registrarMetrica(tipo) {
+    try {
+      const empresaId = getEmpresaActual();
+      const fecha = new Date().toISOString().split("T")[0];
+
+      // Verificar si existe registro de hoy
+      const [existing] = await db
+        .getPool()
+        .execute(
+          `SELECT id FROM bot_metricas WHERE empresa_id = ? AND fecha = ?`,
+          [empresaId, fecha]
+        );
+
+      if (existing.length === 0) {
+        // Crear registro
+        await db
+          .getPool()
+          .execute(
+            `INSERT INTO bot_metricas (empresa_id, fecha) VALUES (?, ?)`,
+            [empresaId, fecha]
+          );
+      }
+
+      // Actualizar métrica específica
+      let updateQuery = "";
+      switch (tipo) {
+        case "conversacion_iniciada":
+          updateQuery =
+            "UPDATE bot_metricas SET conversaciones_iniciadas = conversaciones_iniciadas + 1";
+          break;
+        case "conversacion_completada":
+          updateQuery =
+            "UPDATE bot_metricas SET conversaciones_completadas = conversaciones_completadas + 1";
+          break;
+        case "escalamiento":
+          updateQuery =
+            "UPDATE bot_metricas SET escalamientos = escalamientos + 1";
+          break;
+      }
+
+      if (updateQuery) {
+        await db
+          .getPool()
+          .execute(`${updateQuery} WHERE empresa_id = ? AND fecha = ?`, [
+            empresaId,
+            fecha,
+          ]);
+      }
+    } catch (error) {
+      console.error("Error registrando métrica:", error);
+    }
   }
 
   async getContexto(numero) {
@@ -323,12 +408,31 @@ class BotHandler {
       throw new Error("Bot no configurado correctamente");
     }
 
-    // TODO viene de la BD
+    // Usar prompt específico según tipo de bot
     let systemPrompt = this.config.system_prompt;
+
+    if (this.config.tipo_bot === "ventas" && this.config.prompt_ventas) {
+      systemPrompt += "\n\n" + this.config.prompt_ventas;
+    } else if (this.config.tipo_bot === "citas" && this.config.prompt_citas) {
+      systemPrompt += "\n\n" + this.config.prompt_citas;
+    }
 
     // Agregar información del negocio si existe
     if (this.config.business_info) {
       systemPrompt += `\n\nINFORMACIÓN DEL NEGOCIO:\n${this.config.business_info}`;
+    }
+
+    // Agregar respuestas rápidas como referencia
+    if (this.config.respuestas_rapidas) {
+      const respuestasRapidas = JSON.parse(
+        this.config.respuestas_rapidas || "{}"
+      );
+      if (Object.keys(respuestasRapidas).length > 0) {
+        systemPrompt += "\n\nRESPUESTAS RÁPIDAS DISPONIBLES:\n";
+        for (const [pregunta, respuesta] of Object.entries(respuestasRapidas)) {
+          systemPrompt += `- ${pregunta}: ${respuesta}\n`;
+        }
+      }
     }
 
     // Construir mensajes con contexto
@@ -461,7 +565,6 @@ class BotHandler {
 
     return null;
   }
-  
 }
 
 module.exports = BotHandler;

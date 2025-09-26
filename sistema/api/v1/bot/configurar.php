@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    // Obtener datos
+    // Obtener datos básicos (mantener los existentes)
     $activo = isset($_POST['activo']) ? (int)$_POST['activo'] : 0;
     $delay_respuesta = (int)($_POST['delay_respuesta'] ?? 5);
     $horario_inicio = $_POST['horario_inicio'] ?? null;
@@ -38,12 +38,33 @@ try {
     $max_tokens = (int)($_POST['max_tokens'] ?? 150);
     $system_prompt = $_POST['system_prompt'] ?? '';
     $business_info = $_POST['business_info'] ?? '';
+    
+    // NUEVOS CAMPOS FASE 1.1
+    $tipo_bot = $_POST['tipo_bot'] ?? 'ventas';
+    $prompt_ventas = $_POST['prompt_ventas'] ?? '';
+    $prompt_citas = $_POST['prompt_citas'] ?? '';
+    $templates_activo = isset($_POST['templates_activo']) ? (int)$_POST['templates_activo'] : 1;
+    $modo_prueba = isset($_POST['modo_prueba']) ? (int)$_POST['modo_prueba'] : 0;
+    $numero_prueba = $_POST['numero_prueba'] ?? '';
+    
+    // Respuestas rápidas como JSON
+    $respuestas_rapidas = [];
+    if (isset($_POST['respuestas_rapidas']) && is_array($_POST['respuestas_rapidas'])) {
+        $respuestas_rapidas = $_POST['respuestas_rapidas'];
+    }
+    
+    // Configuración de escalamiento
+    $escalamiento_config = [
+        'max_mensajes_sin_resolver' => (int)($_POST['max_mensajes_sin_resolver'] ?? 5),
+        'palabras_clave' => array_filter(array_map('trim', explode(',', $_POST['palabras_escalamiento'] ?? ''))),
+        'mensaje_escalamiento' => $_POST['mensaje_escalamiento'] ?? 'Te estoy transfiriendo con un asesor humano que te ayudará mejor.'
+    ];
 
     // Convertir palabras de activación a JSON
     $palabras_array = [];
     if (!empty($palabras_activacion)) {
         $palabras_array = array_map('trim', explode(',', $palabras_activacion));
-        $palabras_array = array_filter($palabras_array); // Eliminar vacíos
+        $palabras_array = array_filter($palabras_array);
     }
 
     $empresa_id = getEmpresaActual();
@@ -69,6 +90,14 @@ try {
                 max_tokens = ?,
                 system_prompt = ?,
                 business_info = ?,
+                tipo_bot = ?,
+                prompt_ventas = ?,
+                prompt_citas = ?,
+                templates_activo = ?,
+                respuestas_rapidas = ?,
+                escalamiento_config = ?,
+                modo_prueba = ?,
+                numero_prueba = ?,
                 actualizado = NOW()
             WHERE empresa_id = ?";
 
@@ -87,6 +116,14 @@ try {
             $max_tokens,
             $system_prompt,
             $business_info,
+            $tipo_bot,
+            $prompt_ventas,
+            $prompt_citas,
+            $templates_activo,
+            json_encode($respuestas_rapidas),
+            json_encode($escalamiento_config),
+            $modo_prueba,
+            $numero_prueba,
             $empresa_id
         ]);
     } else {
@@ -95,8 +132,10 @@ try {
                 (empresa_id, activo, delay_respuesta, horario_inicio, horario_fin, 
                  mensaje_fuera_horario, responder_no_registrados, palabras_activacion, 
                  openai_api_key, modelo_ai, temperatura, max_tokens, 
-                 system_prompt, business_info, actualizado)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                 system_prompt, business_info, tipo_bot, prompt_ventas, prompt_citas,
+                 templates_activo, respuestas_rapidas, escalamiento_config, modo_prueba, numero_prueba,
+                 actualizado)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
         $stmt = $pdo->prepare($sql);
         $result = $stmt->execute([
@@ -113,7 +152,15 @@ try {
             $temperatura,
             $max_tokens,
             $system_prompt,
-            $business_info
+            $business_info,
+            $tipo_bot,
+            $prompt_ventas,
+            $prompt_citas,
+            $templates_activo,
+            json_encode($respuestas_rapidas),
+            json_encode($escalamiento_config),
+            $modo_prueba,
+            $numero_prueba
         ]);
     }
 
