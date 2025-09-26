@@ -4,7 +4,7 @@
 # Ejecutar cada 2 minutos para procesar la cola de envío
 */2 * * * * /usr/bin/php /ruta/a/mensajeroprov2/cron/procesar_cola.php >> /var/log/mensajero_cola.log 2>&1
 
-# configurar en whatsapp-service/src/config
+# configurar en whatsapp-service/src/config.js tambien en whatsapp-service/src/database.js
 poner dominio ejemplo https://devcayao.com - no incluir carpetas
 
 # instalar dependencias en local primera vez

@@ -30,7 +30,27 @@ try {
         // Obtener puerto asignado a esta empresa
         $puerto = obtenerPuertoEmpresa($pdo, $empresa_id);
 
-        // Verificar si ya está corriendo en ese puerto
+        if ($isWindows) {
+            // Buscar procesos que usen este puerto
+            $output = shell_exec("netstat -ano | findstr :$puerto");
+            if ($output) {
+                // Extraer PIDs
+                preg_match_all('/\s+(\d+)\s*$/m', $output, $matches);
+                if (!empty($matches[1])) {
+                    $pids = array_unique($matches[1]);
+                    foreach ($pids as $pid) {
+                        @exec("taskkill /PID $pid /F 2>&1");
+                    }
+                    sleep(1); // Esperar un segundo para que se libere el puerto
+                }
+            }
+        } else {
+            // Linux/Mac
+            @exec("lsof -t -i:$puerto | xargs kill -9 2>&1");
+            sleep(1);
+        }
+
+        // Verificar si ya está corriendo en ese puerto (después de limpieza)
         if (verificarPuertoActivo($puerto)) {
             $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'verificando' WHERE empresa_id = ?");
             $stmt->execute([$empresa_id]);
@@ -83,7 +103,7 @@ try {
         if ($isWindows) {
             // CREAR ARCHIVO VBS DINÁMICAMENTE
             $vbsPath = $servicePath . '\\start-whatsapp-service.vbs';
-            $vbsContent = 'Set objShell = CreateObject("WScript.Shell")' . "\r\n";            
+            $vbsContent = 'Set objShell = CreateObject("WScript.Shell")' . "\r\n";
             $vbsContent .= 'objShell.CurrentDirectory = "' . $servicePath . '"' . "\r\n";
             $nodeEnv = IS_LOCALHOST ? 'development' : 'production';
             $vbsContent .= 'objShell.Run "cmd /c set NODE_ENV=' . $nodeEnv . ' && node src\index.js ' . $puerto . ' ' . $empresa_id . ' > logs\empresa-' . $empresa_id . '.log 2>&1", 0, False' . "\r\n";
@@ -127,7 +147,6 @@ try {
         }
 
         echo json_encode(['success' => true, 'message' => 'Servicio iniciándose...']);
-        
     } elseif ($accion == 'detener') {
         // Obtener puerto de la empresa
         $stmt = $pdo->prepare("SELECT puerto FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
@@ -182,9 +201,8 @@ try {
 
         $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'desconectado', qr_code = NULL, numero_conectado = NULL WHERE empresa_id = ?");
         $stmt->execute([$empresa_id]);
-        
+
         echo json_encode(['success' => true, 'message' => 'Servicio detenido']);
-        
     } elseif ($accion == 'verificar') {
         // Obtener puerto de la empresa
         $stmt = $pdo->prepare("SELECT puerto FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");

@@ -373,9 +373,9 @@ $plantillas = $stmt->fetchAll();
                 // Obtener la hora actual del servidor PHP
                 $.get(API_URL + '/server-time.php', function(response) {
                     if (response.success) {
-                        // Usar la hora del servidor + 2 minutos
+                        // Usar la hora del servidor + 3 minutos
                         const serverTime = new Date(response.data.datetime);
-                        serverTime.setMinutes(serverTime.getMinutes() + 2);
+                        serverTime.setMinutes(serverTime.getMinutes() + 3);
 
                         // Formatear para datetime-local
                         const year = serverTime.getFullYear();
@@ -395,7 +395,7 @@ $plantillas = $stmt->fetchAll();
                     } else {
                         // Fallback a hora del navegador si falla
                         const ahora = new Date();
-                        ahora.setMinutes(ahora.getMinutes() + 2);
+                        ahora.setMinutes(ahora.getMinutes() + 3);
 
                         const year = ahora.getFullYear();
                         const month = String(ahora.getMonth() + 1).padStart(2, '0');
@@ -441,10 +441,10 @@ $plantillas = $stmt->fetchAll();
                 // Validar que la fecha sea futura (mínimo 5 minutos)
                 const fechaSeleccionada = new Date(fechaEnvio);
                 const ahora = new Date();
-                const minimo = new Date(ahora.getTime() + 2 * 60000); // 2 minutos
+                const minimo = new Date(ahora.getTime() + 3 * 60000); // 3 minutos
 
                 if (fechaSeleccionada <= minimo) {
-                    Swal.fire('Error', 'La fecha debe ser al menos 3 minutos en el futuro', 'error');
+                    Swal.fire('Error', 'La fecha debe ser al menos 4 minutos en el futuro', 'error');
                     return;
                 }
             }

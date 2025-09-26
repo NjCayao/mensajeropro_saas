@@ -30,13 +30,13 @@ class WhatsAppClient {
           if (!this.firstQrGenerated) {
             this.qrGenerationCount++;
             this.firstQrGenerated = true;
-            
+
             console.log(`📱 QR Code generado`);
             console.log(asciiQr);
-            
+
             // Guardar QR en BD
             await db.updateWhatsAppStatus("qr_pendiente", base64Qr);
-            
+
             // Iniciar timeout de 60 segundos
             this.startQrTimeout();
           } else {
@@ -47,7 +47,7 @@ class WhatsAppClient {
         },
         statusFind: (statusSession, session) => {
           console.log("🔄 Estado:", statusSession);
-          
+
           // Si se conectó, cancelar el timeout
           if (statusSession === "inChat" || statusSession === "successChat") {
             this.cancelQrTimeout();
@@ -74,7 +74,7 @@ class WhatsAppClient {
       // El cliente ya está listo aquí
       console.log("✅ Cliente WPPConnect creado y conectado");
       this.isReady = true;
-      
+
       // Cancelar timeout si llegamos aquí
       this.cancelQrTimeout();
 
@@ -177,20 +177,28 @@ class WhatsAppClient {
 
       // Iniciar procesamiento de cola
       this.startQueueProcessor();
-      
     } catch (error) {
       console.error("❌ Error inicializando:", error);
-      
+
       // Si el error es por timeout o usuario no escaneó
-      if (error.message && error.message.includes("QR Code not scanned")) {
+      if (
+        error.message &&
+        (error.message.includes("QR Code not scanned") ||
+          error.message.includes("Failed to authenticate"))
+      ) {
         console.log("⏱️ Timeout: QR no fue escaneado");
         await db.updateWhatsAppStatus("timeout_qr");
       } else {
         await db.updateWhatsAppStatus("error");
       }
-      
+
       // Limpiar recursos
       this.cleanup();
+
+      setTimeout(() => {
+        console.log("👋 Cerrando proceso por error");
+        process.exit(1);
+      }, 2000);
     }
   }
 
@@ -212,13 +220,13 @@ class WhatsAppClient {
   async stopQrGeneration() {
     try {
       console.log("🛑 Deteniendo generación de QR...");
-      
+
       // Cancelar timeout
       this.cancelQrTimeout();
-      
+
       // Actualizar estado en BD
       await db.updateWhatsAppStatus("timeout_qr", null, null);
-      
+
       // Intentar cerrar el cliente si existe
       if (this.client) {
         try {
@@ -227,13 +235,12 @@ class WhatsAppClient {
           console.log("Error cerrando cliente:", e.message);
         }
       }
-      
+
       // Terminar el proceso después de un pequeño delay
       setTimeout(() => {
         console.log("👋 Cerrando proceso por timeout de QR");
         process.exit(0);
       }, 2000);
-      
     } catch (error) {
       console.error("Error en stopQrGeneration:", error);
       process.exit(1);
@@ -323,14 +330,37 @@ class WhatsAppClient {
     // Cambio de estado (mantener como estaba)
     this.client.onStateChange((state) => {
       console.log("🔄 Estado cambió a:", state);
+
       if (state === "CONFLICT" || state === "UNLAUNCHED") {
         console.log("⚠️ Sesión cerrada, reconectando...");
         this.client.useHere();
       }
+
       if (state === "UNPAIRED" || state === "DISCONNECTED") {
         console.log("❌ WhatsApp desconectado");
         this.isReady = false;
         db.updateWhatsAppStatus("desconectado");
+
+        // Cerrar proceso después de 5 segundos
+        setTimeout(() => {
+          console.log("👋 Cerrando servicio por desconexión");
+          process.exit(0);
+        }, 5000);
+      }
+
+      // AGREGAR ESTOS CASOS:
+      if (
+        state === "qrReadError" ||
+        state === "autocloseCalled" ||
+        state === "browserClose"
+      ) {
+        console.log("❌ Error de autenticación/timeout, cerrando servicio...");
+        this.cleanup();
+
+        setTimeout(() => {
+          console.log("🛑 Cerrando proceso por error de QR");
+          process.exit(1);
+        }, 2000);
       }
     });
   }
@@ -598,9 +628,9 @@ class WhatsAppClient {
 
   async disconnect() {
     console.log("🔄 Desconectando WhatsApp...");
-    
+
     this.cleanup();
-    
+
     if (this.client) {
       await this.client.close();
       this.isReady = false;

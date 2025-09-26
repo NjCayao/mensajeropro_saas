@@ -87,3 +87,29 @@ function obtenerPuertoDisponible($pdo, $puerto_inicial = 3001) {
     
     throw new Exception("No se pudo encontrar un puerto disponible");
 }
+
+function limpiarPuertoEmpresa($puerto) {
+    $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+    
+    if ($isWindows) {
+        // Buscar proceso usando el puerto
+        $output = shell_exec("netstat -ano | findstr :$puerto");
+        if ($output) {
+            // Extraer todos los PIDs
+            preg_match_all('/\s+(\d+)\s*$/m', $output, $matches);
+            if (!empty($matches[1])) {
+                $pids = array_unique($matches[1]);
+                foreach ($pids as $pid) {
+                    @exec("taskkill /PID $pid /F 2>&1");
+                }
+                return true;
+            }
+        }
+    } else {
+        // Linux/Mac
+        @exec("lsof -t -i:$puerto | xargs kill -9 2>&1");
+        return true;
+    }
+    
+    return false;
+}

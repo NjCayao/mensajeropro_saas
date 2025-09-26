@@ -2,18 +2,30 @@
 require("dotenv").config();
 const WhatsAppClient = require("./whatsapp-wppconnect");
 const MessageHandler = require("./messageHandler");
-const BotHandler = require('./botHandler');
+const BotHandler = require("./botHandler");
 const Scheduler = require("./scheduler");
 const createAPI = require("./api");
 const db = require("./database");
 
 // OBTENER PARÁMETROS DE LÍNEA DE COMANDO
 const args = process.argv.slice(2);
-const PUERTO = args[0] || process.env.API_PORT || '3001';
-const EMPRESA_ID = args[1] || '1';
+const PUERTO = args[0] || process.env.API_PORT || "3001";
+const EMPRESA_ID = args[1] || "1";
 
 // Guardar empresa_id globalmente
 global.EMPRESA_ID = EMPRESA_ID;
+
+const checkPort = (port) => {
+  return new Promise((resolve) => {
+    const server = require("net").createServer();
+    server.once("error", () => resolve(false));
+    server.once("listening", () => {
+      server.close();
+      resolve(true);
+    });
+    server.listen(port);
+  });
+};
 
 async function main() {
   console.log(`🚀 Iniciando MensajeroPro WhatsApp Service...`);
@@ -23,6 +35,13 @@ async function main() {
   try {
     // Inicializar base de datos
     await db.initDatabase();
+
+    const portAvailable = await checkPort(PUERTO);
+    if (!portAvailable) {
+      console.error(`❌ Puerto ${PUERTO} ya está en uso`);
+      console.log("Intenta ejecutar: taskkill /F /IM node.exe");
+      process.exit(1);
+    }
 
     // Crear instancia del bot
     const botHandler = new BotHandler();
@@ -36,11 +55,21 @@ async function main() {
     // Iniciar servidor en el puerto especificado
     const app = createAPI(whatsappClient);
 
-    const HOST = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
+    const HOST = process.env.NODE_ENV === "production" ? "127.0.0.1" : "0.0.0.0";
 
+    // AQUÍ USAS LA IMPLEMENTACIÓN SIMPLE (sin startServer)
     app.listen(parseInt(PUERTO), HOST, () => {
       console.log(`🌐 API REST corriendo en http://${HOST}:${PUERTO}`);
       console.log("📱 Iniciando WhatsApp en segundo plano...");
+    }).on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(`❌ Puerto ${PUERTO} ya está en uso`);
+        console.log("💡 Ejecuta el servicio desde el panel web para limpieza automática");
+        process.exit(1);
+      } else {
+        console.error("Error iniciando servidor:", err);
+        process.exit(1);
+      }
     });
 
     // Inicializar WhatsApp

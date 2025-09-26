@@ -57,7 +57,9 @@ $stmt->execute([$empresa_id]);
 $stats['escalados_pendientes'] = $stmt->fetchColumn();
 
 // Estado de WhatsApp - esto podría ser por empresa en el futuro
-$whatsapp = $pdo->query("SELECT * FROM whatsapp_sesion ORDER BY id DESC LIMIT 1")->fetch();
+$stmt = $pdo->prepare("SELECT * FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
+$stmt->execute([$empresa_id]);
+$whatsapp = $stmt->fetch();
 $whatsapp_conectado = $whatsapp && $whatsapp['estado'] == 'conectado';
 
 // Contactos por categoría
@@ -133,7 +135,7 @@ $actividad_reciente = $stmt->fetchAll();
                 </div>
                 <div class="col-sm-6 text-right">
                     <span class="text-muted">
-                        <i class="fas fa-clock"></i> 
+                        <i class="fas fa-clock"></i>
                         <?php echo date('d/m/Y H:i'); ?>
                     </span>
                 </div>
@@ -150,13 +152,16 @@ $actividad_reciente = $stmt->fetchAll();
                 <div class="col-12">
                     <div class="alert <?php echo $whatsapp_conectado ? 'alert-success' : 'alert-warning'; ?>">
                         <h5>
-                            <i class="icon fas fa-<?php echo $whatsapp_conectado ? 'check' : 'exclamation-triangle'; ?>"></i> 
+                            <i class="icon fas fa-<?php echo $whatsapp_conectado ? 'check' : 'exclamation-triangle'; ?>"></i>
                             Estado WhatsApp
                         </h5>
                         <?php if ($whatsapp_conectado): ?>
                             <p>
-                                <strong>Conectado:</strong> <?php echo $whatsapp['numero_conectado']; ?> 
-                                (<?php echo $whatsapp['nombre_conectado']; ?>)
+                                <strong>Conectado:</strong>
+                                <?php
+                                // Usar el campo correcto de la tabla
+                                echo $whatsapp['numero_conectado'] ?? 'No identificado';
+                                ?>
                             </p>
                         <?php else: ?>
                             <p>Servicio desconectado. <a href="modulos/whatsapp.php">Conectar ahora</a></p>
@@ -361,7 +366,7 @@ $actividad_reciente = $stmt->fetchAll();
                                         </div>
                                     </li>
                                 <?php endforeach; ?>
-                                
+
                                 <?php if (empty($actividad_reciente)): ?>
                                     <li class="item text-center text-muted p-3">
                                         No hay actividad reciente
@@ -381,10 +386,12 @@ $actividad_reciente = $stmt->fetchAll();
                             </h3>
                         </div>
                         <div class="card-body">
-                            <?php 
-                            $sin_categoria = $pdo->query("SELECT COUNT(*) FROM contactos WHERE categoria_id IS NULL AND activo = 1")->fetchColumn();
+                            <?php
+                            $stmt = $pdo->prepare("SELECT COUNT(*) FROM contactos WHERE categoria_id IS NULL AND activo = 1 AND empresa_id = ?");
+                            $stmt->execute([$empresa_id]);
+                            $sin_categoria = $stmt->fetchColumn();
                             ?>
-                            
+
                             <?php foreach ($categorias_stats as $cat): ?>
                                 <div class="progress-group mb-3">
                                     <span class="progress-text">
@@ -396,14 +403,14 @@ $actividad_reciente = $stmt->fetchAll();
                                         <b><?php echo $cat['total']; ?></b>/<?php echo $stats['total_contactos']; ?>
                                     </span>
                                     <div class="progress progress-sm">
-                                        <div class="progress-bar" 
-                                             style="background-color: <?php echo $cat['color']; ?>; 
+                                        <div class="progress-bar"
+                                            style="background-color: <?php echo $cat['color']; ?>; 
                                                     width: <?php echo ($stats['total_contactos'] > 0) ? ($cat['total'] / $stats['total_contactos'] * 100) : 0; ?>%">
                                         </div>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
-                            
+
                             <?php if ($sin_categoria > 0): ?>
                                 <div class="progress-group">
                                     <span class="progress-text text-muted">Sin categoría</span>
@@ -411,8 +418,8 @@ $actividad_reciente = $stmt->fetchAll();
                                         <b><?php echo $sin_categoria; ?></b>/<?php echo $stats['total_contactos']; ?>
                                     </span>
                                     <div class="progress progress-sm">
-                                        <div class="progress-bar bg-gray" 
-                                             style="width: <?php echo ($stats['total_contactos'] > 0) ? ($sin_categoria / $stats['total_contactos'] * 100) : 0; ?>%">
+                                        <div class="progress-bar bg-gray"
+                                            style="width: <?php echo ($stats['total_contactos'] > 0) ? ($sin_categoria / $stats['total_contactos'] * 100) : 0; ?>%">
                                         </div>
                                     </div>
                                 </div>
@@ -429,108 +436,108 @@ $actividad_reciente = $stmt->fetchAll();
 <?php require_once 'layouts/footer.php'; ?>
 
 <!-- ChartJS -->
-<script src="plugins/chart.js/Chart.min.js"></script>
+<script src="<?php echo asset('plugins/chart.js/Chart.min.js'); ?>"></script>
 
 <script>
-// Gráfico de pie - Contactos por categoría
-var pieData = {
-    labels: [
-        <?php 
-        foreach ($categorias_stats as $cat) {
-            echo "'" . $cat['nombre'] . "',";
-        }
-        if ($sin_categoria > 0) echo "'Sin categoría'";
-        ?>
-    ],
-    datasets: [{
-        data: [
-            <?php 
+    // Gráfico de pie - Contactos por categoría
+    var pieData = {
+        labels: [
+            <?php
             foreach ($categorias_stats as $cat) {
-                echo $cat['total'] . ",";
+                echo "'" . $cat['nombre'] . "',";
             }
-            if ($sin_categoria > 0) echo $sin_categoria;
+            if ($sin_categoria > 0) echo "'Sin categoría'";
             ?>
         ],
-        backgroundColor: [
-            <?php 
-            foreach ($categorias_stats as $cat) {
-                echo "'" . $cat['color'] . "',";
-            }
-            if ($sin_categoria > 0) echo "'#6c757d'";
-            ?>
-        ]
-    }]
-};
-
-var pieChartCanvas = $('#pieChart').get(0).getContext('2d');
-var pieChart = new Chart(pieChartCanvas, {
-    type: 'pie',
-    data: pieData,
-    options: {
-        maintainAspectRatio: false,
-        responsive: true,
-        legend: {
-            position: 'bottom'
-        }
-    }
-});
-
-// Gráfico de línea - Mensajes últimos 7 días
-var lineData = {
-    labels: [
-        <?php 
-        // Crear array con todos los días
-        $dias = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $fecha = date('Y-m-d', strtotime("-$i days"));
-            $dias[$fecha] = 0;
-        }
-        
-        // Llenar con datos reales
-        foreach ($mensajes_semana as $dia) {
-            $dias[$dia['dia']] = $dia['total'];
-        }
-        
-        // Mostrar labels
-        foreach (array_keys($dias) as $fecha) {
-            echo "'" . date('d/m', strtotime($fecha)) . "',";
-        }
-        ?>
-    ],
-    datasets: [{
-        label: 'Mensajes enviados',
-        data: [<?php echo implode(',', array_values($dias)); ?>],
-        borderColor: 'rgb(60,141,188)',
-        backgroundColor: 'rgba(60,141,188,0.1)',
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        tension: 0.1
-    }]
-};
-
-var lineChartCanvas = $('#lineChart').get(0).getContext('2d');
-var lineChart = new Chart(lineChartCanvas, {
-    type: 'line',
-    data: lineData,
-    options: {
-        maintainAspectRatio: false,
-        responsive: true,
-        legend: {
-            display: false
-        },
-        scales: {
-            yAxes: [{
-                ticks: {
-                    beginAtZero: true,
-                    stepSize: 1
+        datasets: [{
+            data: [
+                <?php
+                foreach ($categorias_stats as $cat) {
+                    echo $cat['total'] . ",";
                 }
-            }]
-        }
-    }
-});
+                if ($sin_categoria > 0) echo $sin_categoria;
+                ?>
+            ],
+            backgroundColor: [
+                <?php
+                foreach ($categorias_stats as $cat) {
+                    echo "'" . $cat['color'] . "',";
+                }
+                if ($sin_categoria > 0) echo "'#6c757d'";
+                ?>
+            ]
+        }]
+    };
 
-// Auto-refresh cada 30 segundos
-setTimeout(function() {
-    location.reload();
-}, 30000);
+    var pieChartCanvas = $('#pieChart').get(0).getContext('2d');
+    var pieChart = new Chart(pieChartCanvas, {
+        type: 'pie',
+        data: pieData,
+        options: {
+            maintainAspectRatio: false,
+            responsive: true,
+            legend: {
+                position: 'bottom'
+            }
+        }
+    });
+
+    // Gráfico de línea - Mensajes últimos 7 días
+    var lineData = {
+        labels: [
+            <?php
+            // Crear array con todos los días
+            $dias = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $fecha = date('Y-m-d', strtotime("-$i days"));
+                $dias[$fecha] = 0;
+            }
+
+            // Llenar con datos reales
+            foreach ($mensajes_semana as $dia) {
+                $dias[$dia['dia']] = $dia['total'];
+            }
+
+            // Mostrar labels
+            foreach (array_keys($dias) as $fecha) {
+                echo "'" . date('d/m', strtotime($fecha)) . "',";
+            }
+            ?>
+        ],
+        datasets: [{
+            label: 'Mensajes enviados',
+            data: [<?php echo implode(',', array_values($dias)); ?>],
+            borderColor: 'rgb(60,141,188)',
+            backgroundColor: 'rgba(60,141,188,0.1)',
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            tension: 0.1
+        }]
+    };
+
+    var lineChartCanvas = $('#lineChart').get(0).getContext('2d');
+    var lineChart = new Chart(lineChartCanvas, {
+        type: 'line',
+        data: lineData,
+        options: {
+            maintainAspectRatio: false,
+            responsive: true,
+            legend: {
+                display: false
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        stepSize: 1
+                    }
+                }]
+            }
+        }
+    });
+
+    // Auto-refresh cada 30 segundos
+    setTimeout(function() {
+        location.reload();
+    }, 30000);
 </script>

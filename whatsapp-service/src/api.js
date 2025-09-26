@@ -327,10 +327,12 @@ function createAPI(whatsappClient) {
       }
 
       // Eliminar archivo después de enviar
-      setTimeout(() => {
-        fs.unlink(file.path, (err) => {
-          if (err) console.error("Error eliminando archivo:", err);
-        });
+      setTimeout(async () => {
+        try {
+          await fs.unlink(file.path);
+        } catch (err) {
+          console.error("Error eliminando archivo:", err);
+        }
       }, 5000);
 
       res.json({ success: true, ...result });
