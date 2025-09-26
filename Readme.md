@@ -15,6 +15,7 @@ npm install -g pm2
 npm install -g pm2-windows-startup
 npm install @wppconnect-team/wppconnect
 npm install axios
+npm install moment
 
 . src/database.js en la funcion getDBConfig() poner manualmente por si falle la lectura de base de datos php
 

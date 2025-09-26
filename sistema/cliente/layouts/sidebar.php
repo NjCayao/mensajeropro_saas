@@ -110,6 +110,15 @@
                     </li>
                 <?php endif; ?>
 
+                <?php if ($config_bot && $config_bot['tipo_bot'] === 'citas'): ?>
+                    <li class="nav-item">
+                        <a href="<?php echo url('cliente/horarios-bot'); ?>" class="nav-link <?php echo ($current_page == 'horarios-bot') ? 'active' : ''; ?>">
+                            <i class="nav-icon fas fa-calendar-check"></i>
+                            <p>Horarios y Citas</p>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
                 <li class="nav-item">
                     <a href="<?php echo url('cliente/bot-templates'); ?>" class="nav-link <?php echo ($current_page == 'bot-templates') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-file-code"></i>

@@ -1,6 +1,8 @@
 const db = require("./database");
 const axios = require("axios");
 const SalesBot = require("./salesBot");
+const appointmentBot = require("./appointmentBot");
+const AppointmentBot = require("./appointmentBot");
 
 class BotHandler {
   constructor() {
@@ -9,6 +11,7 @@ class BotHandler {
     this.conversaciones = new Map();
     this.loadConfig();
     this.salesBot = null;
+    this.appointmentBot = null;
 
     // Recargar configuración cada 5 minutos
     setInterval(() => this.loadConfig(), 5 * 60 * 1000);
@@ -50,6 +53,10 @@ class BotHandler {
 
       if (this.config && this.config.tipo_bot === "ventas") {
         this.salesBot = new SalesBot(this.config.empresa_id || 1);
+      }
+
+      if (this.config && this.config.tipo_bot === 'citas') {
+        this.appointmentBot = new AppointmentBot(this.config.empresa_id || 1);
       }
 
       this.conocimientos = [];
@@ -213,6 +220,15 @@ class BotHandler {
         return {
           respuesta: ventaResponse.respuesta,
           tipo: ventaResponse.tipo,
+        };
+      }
+
+      if (this.config.tipo_bot === 'citas' && this.appointmentBot){
+        const citaResponse = await this.appointmentBot.procesarMensajeCita(mensaje, numero);
+
+        return {
+          respuesta: citaResponse.respuesta,
+          tipo: citaResponse.tipo
         };
       }
 
