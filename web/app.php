@@ -76,6 +76,8 @@ if (strpos($path, 'cliente/') === 0) {
         'perfil' => '/modulos/perfil.php',
         'bot-config' => '/modulos/bot-config.php',
         'escalados' => '/modulos/escalados.php',
+        'catalogo-bot' => '/modulos/catalogo-bot.php',
+        'bot-templates' => '/modulos/bot-templates.php',
         
         // Rutas especiales
         'logout' => '/logout.php'

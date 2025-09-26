@@ -93,6 +93,23 @@
                     </a>
                 </li>
 
+                <?php
+                // Obtener configuración del bot para verificar el tipo
+                $empresa_id = getEmpresaActual();
+                $stmt_bot = $pdo->prepare("SELECT tipo_bot FROM configuracion_bot WHERE empresa_id = ?");
+                $stmt_bot->execute([$empresa_id]);
+                $config_bot = $stmt_bot->fetch();
+
+                if ($config_bot && $config_bot['tipo_bot'] === 'ventas'):
+                ?>
+                    <li class="nav-item">
+                        <a href="<?php echo url('cliente/catalogo-bot'); ?>" class="nav-link <?php echo ($current_page == 'catalogo-bot') ? 'active' : ''; ?>">
+                            <i class="nav-icon fas fa-shopping-cart"></i>
+                            <p>Catálogo Bot</p>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
                 <li class="nav-item">
                     <a href="<?php echo url('cliente/bot-templates'); ?>" class="nav-link <?php echo ($current_page == 'bot-templates') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-file-code"></i>

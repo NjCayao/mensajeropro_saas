@@ -1,5 +1,6 @@
 const db = require("./database");
 const axios = require("axios");
+const SalesBot = require("./salesBot");
 
 class BotHandler {
   constructor() {
@@ -7,6 +8,7 @@ class BotHandler {
     this.conocimientos = [];
     this.conversaciones = new Map();
     this.loadConfig();
+    this.salesBot = null;
 
     // Recargar configuración cada 5 minutos
     setInterval(() => this.loadConfig(), 5 * 60 * 1000);
@@ -44,6 +46,10 @@ class BotHandler {
         );
       } else {
         console.log("❌ No se encontró configuración del bot en la BD");
+      }
+
+      if (this.config && this.config.tipo_bot === "ventas") {
+        this.salesBot = new SalesBot(this.config.empresa_id || 1);
       }
 
       this.conocimientos = [];
@@ -162,7 +168,7 @@ class BotHandler {
         };
       }
 
-      // NUEVO: Verificar modo prueba
+      // Verificar modo prueba
       if (this.config.modo_prueba && this.config.numero_prueba) {
         // Limpiar números para comparar
         const numeroPrueba = this.config.numero_prueba.replace(/\D/g, "");
@@ -177,13 +183,36 @@ class BotHandler {
         }
       }
 
-      // NUEVO: Verificar respuestas rápidas primero
+      // Verificar respuestas rápidas primero
       const respuestaRapida = await this.checkRespuestaRapida(mensaje);
       if (respuestaRapida) {
         console.log("⚡ Respuesta rápida encontrada");
         return {
           respuesta: respuestaRapida,
           tipo: "respuesta_rapida",
+        };
+      }
+
+      // Si es bot de ventas, delegar al salesBot
+      if (this.config.tipo_bot === "ventas" && this.salesBot) {
+        const ventaResponse = await this.salesBot.procesarMensajeVenta(
+          mensaje,
+          numero
+        );
+
+        // Si necesita enviar archivo PDF
+        if (ventaResponse.archivo) {
+          // El WhatsApp client manejará el envío del PDF
+          return {
+            respuesta: ventaResponse.respuesta,
+            tipo: ventaResponse.tipo,
+            archivo: ventaResponse.archivo,
+          };
+        }
+
+        return {
+          respuesta: ventaResponse.respuesta,
+          tipo: ventaResponse.tipo,
         };
       }
 
