@@ -13,6 +13,10 @@ crontab -e
 # configurar en whatsapp-service/src/config.js tambien en whatsapp-service/src/database.js
 poner dominio ejemplo https://devcayao.com - no incluir carpetas
 
+# Para que el sistema verifique automáticamente los pagos, configura el cron:
+bash Verificar pagos cada hora (consola)
+0 * * * * php /ruta/a/tu/proyecto/cron/check-payments.php >> /ruta/a/logs/cron-payments.log 2>&1
+
 # instalar dependencias en local primera vez
 cd whatsapp-service
 npm install 

@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../includes/session_check.php';
 require_once __DIR__ . '/../../includes/multi_tenant.php';
 
 $page_title = 'Dashboard';
-$current_page = 'dashboard';
+$current_page = 'dashboard'; 
 
 require_once __DIR__ . '/layouts/header.php';
 require_once __DIR__ . '/layouts/sidebar.php';

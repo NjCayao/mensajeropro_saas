@@ -211,6 +211,5 @@ Conectar WhatsApp por empresa
 
 # para agregar mas datos 
 FALTA PROBAR LO ESCALAR A HUMANO EL MODULO ESCALAR - (lo escalado tiene que funcionar con cualquier contacto asi sea un numero no registrado)
-- el historial de las conversaciones que guarde asi sea numeros no registrados. 
-agregar el boton para que cuando escale pueda enviar un mensaje a otro numero avisando o informando asu whastapp del otro numero.
+
 agregar botones al bot para dar a elegir al cliente soporte pagos como lista. como bot.

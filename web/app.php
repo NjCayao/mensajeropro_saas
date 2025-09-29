@@ -38,7 +38,7 @@ if (in_array($path_extension, $static_extensions)) {
 if (strpos($path, 'api/') === 0) {
     $api_path = str_replace('api/', '', $path);
     $api_file = __DIR__ . '/../sistema/api/' . $api_path;
-    
+
     if (file_exists($api_file)) {
         require_once $api_file;
         exit;
@@ -57,15 +57,15 @@ if (strpos($path, 'api/') === 0) {
 if (strpos($path, 'cliente/') === 0) {
     // Verificar sesión
     require_once __DIR__ . '/../includes/session_check.php';
-    
+
     // Quitar 'cliente/' del path
     $module_path = substr($path, 8);
-    
+
     // MAPEO DE RUTAS CORREGIDO
     $route_mapping = [
         // Dashboard
         'dashboard' => '/dashboard.php',
-        
+
         // Módulos principales (están en /sistema/cliente/modulos/)
         'contactos' => '/modulos/contactos.php',
         'categorias' => '/modulos/categorias.php',
@@ -79,11 +79,15 @@ if (strpos($path, 'cliente/') === 0) {
         'catalogo-bot' => '/modulos/catalogo-bot.php',
         'bot-templates' => '/modulos/bot-templates.php',
         'horarios-bot' => '/modulos/horarios-bot.php',
-        
+        'mi-plan' => '/modulos/mi-plan.php',
+        'pago-exitoso' => '/pago-exitoso.php',
+        'pago-fallido' => '/pago-fallido.php',
+        'pago-pendiente' => '/pago-pendiente.php',
+
         // Rutas especiales
         'logout' => '/logout.php'
     ];
-    
+
     // Buscar en el mapeo
     if (isset($route_mapping[$module_path])) {
         $module_file = __DIR__ . '/../sistema/cliente' . $route_mapping[$module_path];
@@ -91,7 +95,7 @@ if (strpos($path, 'cliente/') === 0) {
         // Si no está en el mapeo, intentar ruta directa
         $module_file = __DIR__ . '/../sistema/cliente/' . $module_path . '.php';
     }
-    
+
     if (file_exists($module_file)) {
         require_once $module_file;
         exit;
@@ -103,12 +107,14 @@ header('HTTP/1.1 404 Not Found');
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 - Página no encontrada</title>
     <link rel="stylesheet" href="<?php echo asset('dist/css/adminlte.min.css'); ?>">
 </head>
+
 <body class="hold-transition">
     <div class="error-page">
         <h2 class="headline text-warning"> 404</h2>
@@ -119,4 +125,5 @@ header('HTTP/1.1 404 Not Found');
         </div>
     </div>
 </body>
+
 </html>

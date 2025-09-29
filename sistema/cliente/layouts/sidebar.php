@@ -133,6 +133,13 @@
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a href="<?php echo url('cliente/mi-plan'); ?>" class="nav-link <?php echo ($current_page == 'mi-plan') ? 'active' : ''; ?>">
+                        <i class="nav-icon fas fa-credit-card"></i>
+                        <p>Mi Plan</p>
+                    </a>
+                </li>
+
             </ul>
         </nav>
     </div>

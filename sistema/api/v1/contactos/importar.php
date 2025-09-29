@@ -8,6 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../includes/functions.php';
 require_once __DIR__ . '/../../../../includes/multi_tenant.php';
+require_once __DIR__ . '/../../../../includes/plan-limits.php';
 
 // Verificar autenticación
 if (!isset($_SESSION['user_id'])) {
@@ -50,6 +51,52 @@ try {
     $handle = fopen($archivo['tmp_name'], 'r');
     if (!$handle) {
         throw new Exception('No se pudo leer el archivo');
+    }
+
+    // Contar primero cuántos contactos se van a importar
+    $temp_handle = fopen($archivo['tmp_name'], 'r');
+    $total_lineas = 0;
+    $es_encabezado_temp = false;
+
+    if ($temp_handle) {
+        $primera = fgetcsv($temp_handle);
+        $es_encabezado_temp = (
+            strtolower($primera[0] ?? '') === 'nombre' ||
+            strtolower($primera[0] ?? '') === 'name'
+        );
+
+        while (($data = fgetcsv($temp_handle)) !== false) {
+            if (count($data) >= 2 && !empty(trim($data[0])) && !empty(trim($data[1]))) {
+                $total_lineas++;
+            }
+        }
+        fclose($temp_handle);
+    }
+
+    // Verificar límite antes de procesar
+    $stmt_count = $pdo->prepare("SELECT COUNT(*) FROM contactos WHERE empresa_id = ?");
+    $stmt_count->execute([getEmpresaActual()]);
+    $contactos_actuales = $stmt_count->fetchColumn();
+
+    $limite = obtenerLimite('contactos');
+
+    if ($limite != PHP_INT_MAX) {
+        $disponibles = max(0, $limite - $contactos_actuales);
+
+        if ($total_lineas > $disponibles) {
+            $pdo->rollBack();
+            fclose($handle);
+
+            jsonResponse(
+                false,
+                "Tu plan permite hasta " . number_format($limite) . " contactos. " .
+                    "Actualmente tienes " . number_format($contactos_actuales) . ". " .
+                    "El archivo contiene " . number_format($total_lineas) . " contactos válidos. " .
+                    "Solo puedes agregar " . number_format($disponibles) . " más. " .
+                    '<a href="' . url('cliente/mi-plan') . '" target="_blank">Actualizar plan</a>',
+                ['limite_alcanzado' => true]
+            );
+        }
     }
 
     // Saltar primera línea si es encabezado
@@ -110,17 +157,24 @@ try {
         $numero = formatPhone($numero);
 
         try {
-            // Verificar si existe
-            $stmtCheck->execute([$numero]);
+            // Verificar si existe PRIMERO
+            $stmtCheck->execute([$numero, getEmpresaActual()]);
             $existe = $stmtCheck->fetch();
+
+            // DESPUÉS verificar límite (solo si no existe el contacto)
+            if (!$existe && $limite != PHP_INT_MAX && ($contactos_actuales + $importados) >= $limite) {
+                $errores++;
+                $linea_num++;
+                continue; // Saltar esta línea si ya se alcanzó el límite
+            }
 
             if ($existe && $actualizar_existentes) {
                 // Actualizar
-                $stmtUpdate->execute([$nombre, $categoria_id, $notas, $numero]);
+                $stmtUpdate->execute([$nombre, $categoria_id, $notas, $numero, getEmpresaActual()]);
                 $actualizados++;
             } elseif (!$existe) {
                 // Insertar nuevo
-                $stmtInsert->execute([$nombre, $numero, $categoria_id, $notas]);
+                $stmtInsert->execute([$nombre, $numero, $categoria_id, $notas, getEmpresaActual()]);
                 $importados++;
             }
         } catch (Exception $e) {
