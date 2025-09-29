@@ -1,1 +1,2 @@
 [26-Sep-2025 03:20:59 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\descargar-catalogo.php on line 3
+[27-Sep-2025 10:51:40 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\google-callback.php on line 2

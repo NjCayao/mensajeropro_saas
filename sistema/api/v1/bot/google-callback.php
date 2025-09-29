@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/app.php';
 require_once __DIR__ . '/../../../../includes/session_check.php';
@@ -27,7 +29,7 @@ try {
         'code' => $code,
         'client_id' => $config['google_client_id'],
         'client_secret' => $config['google_client_secret'],
-        'redirect_uri' => url('api/v1/bot/google-callback.php'),
+        'redirect_uri' => url('sistema/api/v1/bot/google-callback.php'),
         'grant_type' => 'authorization_code'
     ];
     

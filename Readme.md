@@ -4,6 +4,12 @@
 # Ejecutar cada 2 minutos para procesar la cola de envío
 */2 * * * * /usr/bin/php /ruta/a/mensajeroprov2/cron/procesar_cola.php >> /var/log/mensajero_cola.log 2>&1
 
+# Editar crontab
+crontab -e
+
+# Agregar esta línea para ejecutar cada hora los recordatorios
+0 * * * * cd /ruta/a/tu/proyecto/whatsapp-service && node src/cronRecordatorios.js >> logs/cron.log 2>&1
+
 # configurar en whatsapp-service/src/config.js tambien en whatsapp-service/src/database.js
 poner dominio ejemplo https://devcayao.com - no incluir carpetas
 

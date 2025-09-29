@@ -83,145 +83,7 @@ $dias_semana = [
                         <div class="inner">
                             <h3><?= count($citas_hoy) ?></h3>
                             <p>Citas Hoy</p>
-                            <!-- Tab Google Calendar -->
-                        <div class="tab-pane fade" id="google-calendar" role="tabpanel">
-                            <h4>Integración con Google Calendar</h4>
-                            
-                            <?php 
-                            // Obtener configuración de Google Calendar
-                            $stmt = $pdo->prepare("SELECT google_calendar_activo, google_client_id, google_client_secret, 
-                                                  google_refresh_token, google_calendar_id, sincronizar_citas 
-                                                  FROM configuracion_bot WHERE empresa_id = ?");
-                            $stmt->execute([$empresa_id]);
-                            $google_config = $stmt->fetch();
-                            ?>
-                            
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <div class="card <?= ($google_config && $google_config['google_refresh_token']) ? 'border-success' : 'border-warning' ?>">
-                                        <div class="card-header">
-                                            <h5 class="card-title mb-0">
-                                                <i class="fab fa-google"></i> Configuración de Google Calendar
-                                            </h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <form id="formGoogleCalendar">
-                                                <div class="form-group">
-                                                    <div class="custom-control custom-checkbox">
-                                                        <input type="checkbox" class="custom-control-input" 
-                                                               id="google_calendar_activo" name="google_calendar_activo"
-                                                               <?= ($google_config && $google_config['google_calendar_activo']) ? 'checked' : '' ?>>
-                                                        <label class="custom-control-label" for="google_calendar_activo">
-                                                            <strong>Activar sincronización con Google Calendar</strong>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="form-group">
-                                                    <label>Client ID:</label>
-                                                    <input type="text" class="form-control" id="google_client_id" 
-                                                           name="google_client_id" 
-                                                           value="<?= htmlspecialchars($google_config['google_client_id'] ?? '') ?>"
-                                                           placeholder="xxxxx.apps.googleusercontent.com">
-                                                    <small class="text-muted">
-                                                        Obtener desde 
-                                                        <a href="https://console.cloud.google.com/apis/credentials" target="_blank">
-                                                            Google Cloud Console
-                                                        </a>
-                                                    </small>
-                                                </div>
-                                                
-                                                <div class="form-group">
-                                                    <label>Client Secret:</label>
-                                                    <input type="password" class="form-control" id="google_client_secret" 
-                                                           name="google_client_secret" 
-                                                           value="<?= htmlspecialchars($google_config['google_client_secret'] ?? '') ?>">
-                                                </div>
-                                                
-                                                <?php if ($google_config && $google_config['google_refresh_token']): ?>
-                                                    <div class="alert alert-success">
-                                                        <i class="fas fa-check-circle"></i> 
-                                                        <strong>Estado:</strong> Conectado a Google Calendar
-                                                        <button type="button" class="btn btn-sm btn-danger float-right" 
-                                                                onclick="desconectarGoogle()">
-                                                            Desconectar
-                                                        </button>
-                                                    </div>
-                                                    
-                                                    <div class="form-group">
-                                                        <label>Calendario a usar:</label>
-                                                        <select class="form-control" id="google_calendar_id" name="google_calendar_id">
-                                                            <option value="">Cargando calendarios...</option>
-                                                        </select>
-                                                    </div>
-                                                    
-                                                    <div class="form-group">
-                                                        <div class="custom-control custom-checkbox">
-                                                            <input type="checkbox" class="custom-control-input" 
-                                                                   id="sincronizar_citas" name="sincronizar_citas"
-                                                                   <?= ($google_config['sincronizar_citas']) ? 'checked' : '' ?>>
-                                                            <label class="custom-control-label" for="sincronizar_citas">
-                                                                Sincronizar citas automáticamente
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                <?php else: ?>
-                                                    <div class="alert alert-warning">
-                                                        <i class="fas fa-exclamation-circle"></i> 
-                                                        <strong>Estado:</strong> No conectado
-                                                    </div>
-                                                    
-                                                    <button type="button" class="btn btn-primary" onclick="autorizarGoogle()" 
-                                                            id="btnAutorizar" <?= empty($google_config['google_client_id']) ? 'disabled' : '' ?>>
-                                                        <i class="fab fa-google"></i> Autorizar con Google
-                                                    </button>
-                                                <?php endif; ?>
-                                                
-                                                <hr>
-                                                
-                                                <button type="submit" class="btn btn-success">
-                                                    <i class="fas fa-save"></i> Guardar Configuración
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-4">
-                                    <div class="card bg-info">
-                                        <div class="card-header">
-                                            <h5 class="card-title mb-0 text-white">
-                                                <i class="fas fa-info-circle"></i> Instrucciones
-                                            </h5>
-                                        </div>
-                                        <div class="card-body text-white">
-                                            <ol class="mb-0">
-                                                <li>Crea un proyecto en Google Cloud Console</li>
-                                                <li>Habilita la API de Google Calendar</li>
-                                                <li>Crea credenciales OAuth 2.0</li>
-                                                <li>Añade la URL de redirección:<br>
-                                                    <code><?= url('api/v1/bot/google-callback.php') ?></code>
-                                                </li>
-                                                <li>Copia el Client ID y Secret aquí</li>
-                                                <li>Autoriza la aplicación</li>
-                                            </ol>
-                                            
-                                            <hr class="bg-white">
-                                            
-                                            <h6>Ventajas:</h6>
-                                            <ul class="mb-0">
-                                                <li>Evita doble agendamiento</li>
-                                                <li>Ve las citas en tu calendario habitual</li>
-                                                <li>Recibe notificaciones automáticas</li>
-                                                <li>Sincronización bidireccional</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
-                        
-                    </div>
                         <div class="icon">
                             <i class="fas fa-calendar-day"></i>
                         </div>
@@ -556,6 +418,144 @@ $dias_semana = [
                             <div id="calendar"></div>
                         </div>
                         
+                        <!-- Tab Google Calendar -->
+                        <div class="tab-pane fade" id="google-calendar" role="tabpanel">
+                            <h4>Integración con Google Calendar</h4>
+                            
+                            <?php 
+                            // Obtener configuración de Google Calendar
+                            $stmt = $pdo->prepare("SELECT google_calendar_activo, google_client_id, google_client_secret, 
+                                                  google_refresh_token, google_calendar_id, sincronizar_citas 
+                                                  FROM configuracion_bot WHERE empresa_id = ?");
+                            $stmt->execute([$empresa_id]);
+                            $google_config = $stmt->fetch();
+                            ?>
+                            
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="card <?= ($google_config && $google_config['google_refresh_token']) ? 'border-success' : 'border-warning' ?>">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="fab fa-google"></i> Configuración de Google Calendar
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <form id="formGoogleCalendar">
+                                                <div class="form-group">
+                                                    <div class="custom-control custom-checkbox">
+                                                        <input type="checkbox" class="custom-control-input" 
+                                                               id="google_calendar_activo" name="google_calendar_activo"
+                                                               <?= ($google_config && $google_config['google_calendar_activo']) ? 'checked' : '' ?>>
+                                                        <label class="custom-control-label" for="google_calendar_activo">
+                                                            <strong>Activar sincronización con Google Calendar</strong>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group">
+                                                    <label>Client ID:</label>
+                                                    <input type="text" class="form-control" id="google_client_id" 
+                                                           name="google_client_id" 
+                                                           value="<?= htmlspecialchars($google_config['google_client_id'] ?? '') ?>"
+                                                           placeholder="xxxxx.apps.googleusercontent.com">
+                                                    <small class="text-muted">
+                                                        Obtener desde 
+                                                        <a href="https://console.cloud.google.com/apis/credentials" target="_blank">
+                                                            Google Cloud Console
+                                                        </a>
+                                                    </small>
+                                                </div>
+                                                
+                                                <div class="form-group">
+                                                    <label>Client Secret:</label>
+                                                    <input type="password" class="form-control" id="google_client_secret" 
+                                                           name="google_client_secret" 
+                                                           value="<?= htmlspecialchars($google_config['google_client_secret'] ?? '') ?>">
+                                                </div>
+                                                
+                                                <?php if ($google_config && $google_config['google_refresh_token']): ?>
+                                                    <div class="alert alert-success">
+                                                        <i class="fas fa-check-circle"></i> 
+                                                        <strong>Estado:</strong> Conectado a Google Calendar
+                                                        <button type="button" class="btn btn-sm btn-danger float-right" 
+                                                                onclick="desconectarGoogle()">
+                                                            Desconectar
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <label>Calendario a usar:</label>
+                                                        <select class="form-control" id="google_calendar_id" name="google_calendar_id">
+                                                            <option value="">Cargando calendarios...</option>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <div class="form-group">
+                                                        <div class="custom-control custom-checkbox">
+                                                            <input type="checkbox" class="custom-control-input" 
+                                                                   id="sincronizar_citas" name="sincronizar_citas"
+                                                                   <?= ($google_config['sincronizar_citas']) ? 'checked' : '' ?>>
+                                                            <label class="custom-control-label" for="sincronizar_citas">
+                                                                Sincronizar citas automáticamente
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="alert alert-warning">
+                                                        <i class="fas fa-exclamation-circle"></i> 
+                                                        <strong>Estado:</strong> No conectado
+                                                    </div>
+                                                    
+                                                    <button type="button" class="btn btn-primary" onclick="autorizarGoogle()" 
+                                                            id="btnAutorizar" <?= empty($google_config['google_client_id']) ? 'disabled' : '' ?>>
+                                                        <i class="fab fa-google"></i> Autorizar con Google
+                                                    </button>
+                                                <?php endif; ?>
+                                                
+                                                <hr>
+                                                
+                                                <button type="submit" class="btn btn-success">
+                                                    <i class="fas fa-save"></i> Guardar Configuración
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="card bg-info">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0 text-white">
+                                                <i class="fas fa-info-circle"></i> Instrucciones
+                                            </h5>
+                                        </div>
+                                        <div class="card-body text-white">
+                                            <ol class="mb-0">
+                                                <li>Crea un proyecto en Google Cloud Console</li>
+                                                <li>Habilita la API de Google Calendar</li>
+                                                <li>Crea credenciales OAuth 2.0</li>
+                                                <li>Añade la URL de redirección:<br>
+                                                    <code><?= url('sistema/api/v1/bot/google-callback.php') ?></code>
+                                                </li>
+                                                <li>Copia el Client ID y Secret aquí</li>
+                                                <li>Autoriza la aplicación</li>
+                                            </ol>
+                                            
+                                            <hr class="bg-white">
+                                            
+                                            <h6>Ventajas:</h6>
+                                            <ul class="mb-0">
+                                                <li>Evita doble agendamiento</li>
+                                                <li>Ve las citas en tu calendario habitual</li>
+                                                <li>Recibe notificaciones automáticas</li>
+                                                <li>Sincronización bidireccional</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                     </div>
                 </div>
             </div>
@@ -857,7 +857,7 @@ $('#formGoogleCalendar').on('submit', function(e) {
 
 function autorizarGoogle() {
     const clientId = $('#google_client_id').val();
-    const redirectUri = '<?= url('api/v1/bot/google-callback.php') ?>';
+    const redirectUri = '<?= url('sistema/api/v1/bot/google-callback.php') ?>';
     const scope = 'https://www.googleapis.com/auth/calendar';
     
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
