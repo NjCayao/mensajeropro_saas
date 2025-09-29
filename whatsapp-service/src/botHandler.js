@@ -5,10 +5,11 @@ const appointmentBot = require("./appointmentBot");
 const AppointmentBot = require("./appointmentBot");
 
 class BotHandler {
-  constructor() {
+  constructor(whatsappClient = null) {
     this.config = null;
     this.conocimientos = [];
     this.conversaciones = new Map();
+    this.whatsappClient = whatsappClient;
     this.loadConfig();
     this.salesBot = null;
     this.appointmentBot = null;
@@ -55,7 +56,7 @@ class BotHandler {
         this.salesBot = new SalesBot(this.config.empresa_id || 1);
       }
 
-      if (this.config && this.config.tipo_bot === 'citas') {
+      if (this.config && this.config.tipo_bot === "citas") {
         this.appointmentBot = new AppointmentBot(this.config.empresa_id || 1);
       }
 
@@ -223,12 +224,15 @@ class BotHandler {
         };
       }
 
-      if (this.config.tipo_bot === 'citas' && this.appointmentBot){
-        const citaResponse = await this.appointmentBot.procesarMensajeCita(mensaje, numero);
+      if (this.config.tipo_bot === "citas" && this.appointmentBot) {
+        const citaResponse = await this.appointmentBot.procesarMensajeCita(
+          mensaje,
+          numero
+        );
 
         return {
           respuesta: citaResponse.respuesta,
-          tipo: citaResponse.tipo
+          tipo: citaResponse.tipo,
         };
       }
 
@@ -243,7 +247,7 @@ class BotHandler {
         const mensajeEscalamiento =
           escalamientoConfig.mensaje_escalamiento ||
           this.config.mensaje_escalamiento ||
-          "Tu consulta requiere atención personalizada. Un asesor humano te atenderá en breve.";
+          "Tu consulta requiere atención personalizada. Un asesor te atenderá en breve.";
 
         // Marcar conversación como escalada
         await db.getPool().execute(
@@ -258,6 +262,52 @@ class BotHandler {
 
         // Registrar métrica de escalamiento
         await this.registrarMetrica("escalamiento");
+
+        // Notificar escalamiento si está configurado
+        if (
+          this.config.notificar_escalamiento &&
+          this.config.numeros_notificacion &&
+          this.whatsappClient
+        ) {
+          try {
+            const numeros = JSON.parse(this.config.numeros_notificacion);
+            if (numeros.length > 0) {
+              // Preparar mensaje de notificación
+              let mensajeNotificacion =
+                this.config.mensaje_notificacion ||
+                '🚨 *ESCALAMIENTO URGENTE*\n\nCliente: {numero}\nMensaje: "{ultimo_mensaje}"\nHora: {hora}';
+
+              // Reemplazar variables
+              mensajeNotificacion = mensajeNotificacion
+                .replace("{numero}", numero.replace("@c.us", ""))
+                .replace("{ultimo_mensaje}", mensaje)
+                .replace("{motivo}", "Palabra clave detectada")
+                .replace(
+                  "{hora}",
+                  new Date().toLocaleTimeString("es-PE", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                );
+
+              // Enviar notificación a cada número configurado
+              for (const numeroNotificar of numeros) {
+                console.log(
+                  `📢 Enviando notificación de escalamiento a ${numeroNotificar}`
+                );
+                await this.whatsappClient.sendMessage(
+                  numeroNotificar,
+                  mensajeNotificacion
+                );
+              }
+            }
+          } catch (error) {
+            console.error(
+              "Error enviando notificaciones de escalamiento:",
+              error
+            );
+          }
+        }
 
         return {
           respuesta: mensajeEscalamiento,
@@ -610,6 +660,11 @@ class BotHandler {
 
     return null;
   }
+}
+
+// Función helper para obtener empresa actual
+function getEmpresaActual() {
+  return global.EMPRESA_ID || 1;
 }
 
 module.exports = BotHandler;

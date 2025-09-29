@@ -9,6 +9,11 @@ $stmt = $pdo->prepare("SELECT * FROM configuracion_bot WHERE empresa_id = ?");
 $stmt->execute([$empresa_id]);
 $config = $stmt->fetch();
 
+if ($config['escalamiento_config']) {
+    echo "<!-- ESCALAMIENTO RAW: " . $config['escalamiento_config'] . " -->";
+}
+
+
 // Si no existe configuración, crear una por defecto
 if (!$config) {
     $stmt = $pdo->prepare("INSERT INTO configuracion_bot (empresa_id) VALUES (?)");
@@ -550,8 +555,42 @@ $tokens_usados_hoy = $stmt->fetchColumn();
                                         <label>Palabras clave para escalamiento (separadas por coma):</label>
                                         <textarea class="form-control" name="palabras_escalamiento" rows="5"
                                             placeholder="hablar con humano, operador, ayuda real, problema, reclamo, queja"><?= implode(', ', $escalamiento_config['palabras_clave'] ?? []) ?></textarea>
-                                        <small class="text-muted">Si el cliente usa estas palabras, escalar inmediatamente</small>
                                     </div>
+                                </div>
+                            </div>
+
+                            <h5 class="text-primary"><i class="fas fa-bell"></i> Notificaciones de Escalamiento</h5>
+
+                            <div class="form-group">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="notificar_escalamiento"
+                                        name="notificar_escalamiento" <?= $config['notificar_escalamiento'] ? 'checked' : '' ?>>
+                                    <label class="custom-control-label" for="notificar_escalamiento">
+                                        <strong>Notificar escalamiento por WhatsApp</strong> - Enviar alerta a números de soporte
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="config_notificacion" style="<?= !$config['notificar_escalamiento'] ? 'display:none;' : '' ?>">
+                                <div class="form-group">
+                                    <label>Números a notificar (separados por coma):</label>
+                                    <input type="text" class="form-control" name="numeros_notificacion"
+                                        value="<?= implode(', ', json_decode($config['numeros_notificacion'] ?? '[]', true)) ?>"
+                                        placeholder="+51999999999, +51888888888">
+                                    <small class="text-muted">Incluye el código de país. Estos números recibirán alertas cuando un cliente necesite atención humana.</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Plantilla de mensaje de notificación:</label>
+                                    <textarea class="form-control" name="mensaje_notificacion" rows="5"><?= htmlspecialchars($config['mensaje_notificacion'] ?? '🚨 *ESCALAMIENTO URGENTE*
+
+Cliente: {numero}
+Último mensaje: "{ultimo_mensaje}"
+Motivo: {motivo}
+Hora: {hora}
+
+Por favor atiende este caso lo antes posible.') ?></textarea>
+                                    <small class="text-muted">Variables disponibles: {numero}, {ultimo_mensaje}, {motivo}, {hora}</small>
                                 </div>
                             </div>
 
@@ -691,7 +730,7 @@ $tokens_usados_hoy = $stmt->fetchColumn();
                     <button class="btn btn-success" onclick="guardarConfiguracion()">
                         <i class="fas fa-save"></i> Guardar Configuración
                     </button>
-                    <button class="btn btn-info" onclick="verificarConfiguracion()">
+                    <button class="btn btn-info" id="btnVerificarConfig">
                         <i class="fas fa-check-circle"></i> Verificar Configuración
                     </button>
                 </div>
@@ -747,6 +786,10 @@ $tokens_usados_hoy = $stmt->fetchColumn();
             if (e.which === 13) {
                 enviarMensajePrueba();
             }
+        });
+
+        $('#btnVerificarConfig').on('click', function() {
+            verificarConfiguracion();
         });
     });
 
@@ -975,6 +1018,10 @@ $tokens_usados_hoy = $stmt->fetchColumn();
             max_mensajes_sin_resolver: $('input[name="max_mensajes_sin_resolver"]').val(),
             palabras_escalamiento: $('textarea[name="palabras_escalamiento"]').val(),
             mensaje_escalamiento: $('textarea[name="mensaje_escalamiento"]').val(),
+            // Notificaciones de escalamiento
+            notificar_escalamiento: $('#notificar_escalamiento').is(':checked') ? 1 : 0,
+            numeros_notificacion: $('input[name="numeros_notificacion"]').val(),
+            mensaje_notificacion: $('textarea[name="mensaje_notificacion"]').val(),
 
             // Modo prueba
             modo_prueba: $('#modo_prueba').is(':checked') ? 1 : 0,
@@ -1137,6 +1184,15 @@ $tokens_usados_hoy = $stmt->fetchColumn();
             }
         });
     }
+
+    // Mostrar/ocultar configuración de notificación para escalar 
+    $('#notificar_escalamiento').on('change', function() {
+        if ($(this).is(':checked')) {
+            $('#config_notificacion').slideDown();
+        } else {
+            $('#config_notificacion').slideUp();
+        }
+    });
 </script>
 
 <style>

@@ -292,6 +292,11 @@ class WhatsAppClient {
       }
 
       try {
+        // Crear BotHandler si no existe
+        if (!this.botHandler) {
+          const BotHandler = require("./botHandler");
+          this.botHandler = new BotHandler(this);
+        }
         // PRIMERO: Intentar responder con el bot
         if (this.botHandler) {
           const botResponse = await this.botHandler.handleIncomingMessage(

@@ -1,18 +1,32 @@
 <?php
-session_start();
+// No iniciar sesión si ya existe una
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . '/../../../../config/database.php';
-require_once __DIR__ . '/../../../../config/app_config.php';
-require_once __DIR__ . '/../../../../includes/functions.php';
 require_once __DIR__ . '/../../../../includes/session_check.php';
 require_once __DIR__ . '/../../../../includes/multi_tenant.php';
 
 header('Content-Type: application/json');
 
 try {
+    $empresa_id = getEmpresaActual();
+    
+    // Obtener configuración
     $stmt = $pdo->prepare("SELECT * FROM configuracion_bot WHERE empresa_id = ?");
-    $stmt->execute([getEmpresaActual()]);
+    $stmt->execute([$empresa_id]);
     $config = $stmt->fetch();
-
+    
+    if (!$config) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'No hay configuración guardada'
+        ]);
+        exit;
+    }
+    
+    // Analizar configuración
     $response = [
         'success' => true,
         'data' => [
@@ -26,14 +40,20 @@ try {
             'delay_respuesta' => $config['delay_respuesta'] ?? 5,
             'responder_no_registrados' => $config['responder_no_registrados'] == 1,
             'modelo_ai' => $config['modelo_ai'] ?? 'No configurado',
-            'temperatura' => $config['temperatura'] ?? 0.7
+            'temperatura' => $config['temperatura'] ?? 0.7,
+            'tipo_bot' => $config['tipo_bot'] ?? 'No configurado',
+            'modo_prueba' => $config['modo_prueba'] == 1,
+            'escalamiento_configurado' => !empty($config['escalamiento_config']),
+            'notificaciones_activas' => $config['notificar_escalamiento'] == 1
         ]
     ];
 
     echo json_encode($response);
+    
 } catch (Exception $e) {
     echo json_encode([
         'success' => false,
         'message' => 'Error verificando configuración: ' . $e->getMessage()
     ]);
 }
+?>
