@@ -2,6 +2,8 @@
 $current_page = 'escalados';
 require_once __DIR__ . '/../layouts/header.php';
 require_once __DIR__ . '/../layouts/sidebar.php';
+require_once __DIR__ . '/../../../includes/plan-limits.php';
+verificarAccesoModulo('escalados');
 
 $empresa_id = getEmpresaActual();
 

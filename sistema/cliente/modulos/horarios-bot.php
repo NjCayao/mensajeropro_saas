@@ -2,6 +2,8 @@
 $current_page = 'horarios-bot';
 require_once __DIR__ . '/../layouts/header.php';
 require_once __DIR__ . '/../layouts/sidebar.php';
+require_once __DIR__ . '/../../../includes/plan-limits.php';
+verificarAccesoModulo('horarios-bot');
 
 $empresa_id = getEmpresaActual();
 

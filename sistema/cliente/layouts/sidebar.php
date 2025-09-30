@@ -1,4 +1,13 @@
-<!-- Main Sidebar Container -->
+<?php
+// Cargar límites del plan
+require_once __DIR__ . '/../../../includes/plan-limits.php';
+
+// Obtener permisos de módulos
+$tiene_escalamiento = tieneEscalamiento();
+$tiene_catalogo = tieneCatalogoBot();
+$tiene_horarios = tieneHorariosBot();
+?>
+
 <!-- Main Sidebar Container -->
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
@@ -51,6 +60,7 @@
                     </a>
                 </li>
 
+                <?php if ($tiene_escalamiento): ?>
                 <li class="nav-item">
                     <a href="<?php echo url('cliente/escalados'); ?>" class="nav-link <?php echo ($current_page == 'escalados') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-user-tie"></i>
@@ -69,6 +79,7 @@
                         </p>
                     </a>
                 </li>
+                <?php endif; ?>
 
                 <li class="nav-item">
                     <a href="<?php echo url('cliente/plantillas'); ?>" class="nav-link <?php echo ($current_page == 'plantillas') ? 'active' : ''; ?>">
@@ -100,7 +111,8 @@
                 $stmt_bot->execute([$empresa_id]);
                 $config_bot = $stmt_bot->fetch();
 
-                if ($config_bot && $config_bot['tipo_bot'] === 'ventas'):
+                // MOSTRAR CATÁLOGO SOLO SI: tiene el módulo Y es bot de ventas
+                if ($tiene_catalogo && $config_bot && $config_bot['tipo_bot'] === 'ventas'):
                 ?>
                     <li class="nav-item">
                         <a href="<?php echo url('cliente/catalogo-bot'); ?>" class="nav-link <?php echo ($current_page == 'catalogo-bot') ? 'active' : ''; ?>">
@@ -110,7 +122,10 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if ($config_bot && $config_bot['tipo_bot'] === 'citas'): ?>
+                <?php 
+                // MOSTRAR HORARIOS SOLO SI: tiene el módulo Y es bot de citas
+                if ($tiene_horarios && $config_bot && $config_bot['tipo_bot'] === 'citas'): 
+                ?>
                     <li class="nav-item">
                         <a href="<?php echo url('cliente/horarios-bot'); ?>" class="nav-link <?php echo ($current_page == 'horarios-bot') ? 'active' : ''; ?>">
                             <i class="nav-icon fas fa-calendar-check"></i>

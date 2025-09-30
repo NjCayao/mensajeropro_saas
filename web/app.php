@@ -1,5 +1,5 @@
 <?php
-// web/app.php - Router principal corregido
+// web/app.php - Router principal con SuperAdmin
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -15,10 +15,15 @@ $path = str_replace($base_path, '', $request);
 $path = explode('?', $path)[0];
 $path = trim($path, '/');
 
-// Si no hay path o es 'app.php', ir al dashboard si está logueado
+// Si no hay path o es 'app.php', redirigir según rol
 if (empty($path) || $path === 'app.php') {
     if (isset($_SESSION['user_id'])) {
-        header('Location: ' . APP_URL . '/cliente/dashboard');
+        // Redirigir según el rol
+        if ($_SESSION['user_rol'] === 'admin') {
+            header('Location: ' . APP_URL . '/superadmin/dashboard');
+        } else {
+            header('Location: ' . APP_URL . '/cliente/dashboard');
+        }
     } else {
         header('Location: ' . APP_URL . '/index.php');
     }
@@ -53,6 +58,39 @@ if (strpos($path, 'api/') === 0) {
     }
 }
 
+// Rutas del SuperAdmin
+if (strpos($path, 'superadmin/') === 0) {
+    // Verificar sesión de SuperAdmin
+    require_once __DIR__ . '/../includes/superadmin_session_check.php';
+
+    // Quitar 'superadmin/' del path
+    $module_path = substr($path, 11);
+
+    // MAPEO DE RUTAS SUPERADMIN
+    $route_mapping = [
+        'dashboard' => '/dashboard.php',
+        'empresas' => '/modulos/empresas.php',
+        'planes' => '/modulos/planes.php',
+        'pagos' => '/modulos/pagos.php',
+        'configuracion' => '/modulos/configuracion.php',
+        'emails' => '/modulos/emails.php',
+        'logs' => '/modulos/logs.php',
+    ];
+
+    // Buscar en el mapeo
+    if (isset($route_mapping[$module_path])) {
+        $module_file = __DIR__ . '/../sistema/superadmin' . $route_mapping[$module_path];
+    } else {
+        // Si no está en el mapeo, intentar ruta directa
+        $module_file = __DIR__ . '/../sistema/superadmin/' . $module_path . '.php';
+    }
+
+    if (file_exists($module_file)) {
+        require_once $module_file;
+        exit;
+    }
+}
+
 // Rutas del cliente
 if (strpos($path, 'cliente/') === 0) {
     // Verificar sesión
@@ -61,12 +99,9 @@ if (strpos($path, 'cliente/') === 0) {
     // Quitar 'cliente/' del path
     $module_path = substr($path, 8);
 
-    // MAPEO DE RUTAS CORREGIDO
+    // MAPEO DE RUTAS CLIENTE
     $route_mapping = [
-        // Dashboard
         'dashboard' => '/dashboard.php',
-
-        // Módulos principales (están en /sistema/cliente/modulos/)
         'contactos' => '/modulos/contactos.php',
         'categorias' => '/modulos/categorias.php',
         'mensajes' => '/modulos/mensajes.php',
@@ -83,8 +118,6 @@ if (strpos($path, 'cliente/') === 0) {
         'pago-exitoso' => '/pago-exitoso.php',
         'pago-fallido' => '/pago-fallido.php',
         'pago-pendiente' => '/pago-pendiente.php',
-
-        // Rutas especiales
         'logout' => '/logout.php'
     ];
 
@@ -107,17 +140,15 @@ header('HTTP/1.1 404 Not Found');
 ?>
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 - Página no encontrada</title>
     <link rel="stylesheet" href="<?php echo asset('dist/css/adminlte.min.css'); ?>">
 </head>
-
 <body class="hold-transition">
     <div class="error-page">
-        <h2 class="headline text-warning"> 404</h2>
+        <h2 class="headline text-warning">404</h2>
         <div class="error-content">
             <h3><i class="fas fa-exclamation-triangle text-warning"></i> Página no encontrada</h3>
             <p>La página que buscas no existe.</p>
@@ -125,5 +156,4 @@ header('HTTP/1.1 404 Not Found');
         </div>
     </div>
 </body>
-
 </html>

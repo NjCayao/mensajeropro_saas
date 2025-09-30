@@ -2,7 +2,7 @@
 $current_page = 'bot-config';
 require_once __DIR__ . '/../layouts/header.php';
 require_once __DIR__ . '/../layouts/sidebar.php';
-$empresa_id = getEmpresaActual();
+require_once __DIR__ . '/../../../includes/plan-limits.php';
 
 // Obtener configuración actual
 $stmt = $pdo->prepare("SELECT * FROM configuracion_bot WHERE empresa_id = ?");
@@ -158,11 +158,13 @@ $tokens_usados_hoy = $stmt->fetchColumn();
                                 <i class="fas fa-robot"></i> Personalización IA
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" id="escalamiento-tab" data-toggle="pill" href="#escalamiento" role="tab">
-                                <i class="fas fa-user-tie"></i> Escalamiento
-                            </a>
-                        </li>
+                        <?php if (tieneEscalamiento()): ?>
+                            <li class="nav-item">
+                                <a class="nav-link" id="escalamiento-tab" data-toggle="pill" href="#escalamiento" role="tab">
+                                    <i class="fas fa-user-tie"></i> Escalamiento
+                                </a>
+                            </li>
+                        <?php endif; ?>
                         <li class="nav-item">
                             <a class="nav-link" id="pruebas-tab" data-toggle="pill" href="#pruebas" role="tab">
                                 <i class="fas fa-vial"></i> Modo Prueba
@@ -279,80 +281,27 @@ $tokens_usados_hoy = $stmt->fetchColumn();
                                             <label>Mensaje fuera de horario:</label>
                                             <textarea class="form-control" name="mensaje_fuera_horario" rows="3"><?= htmlspecialchars($config['mensaje_fuera_horario'] ?? '') ?></textarea>
                                         </div>
-                                    </div>
 
-                                    <div class="col-md-6">
-                                        <h4>Configuración OpenAI</h4>
-
-                                        <!-- API Key -->
-                                        <div class="form-group">
-                                            <label>API Key de OpenAI:</label>
-                                            <div class="input-group">
-                                                <input type="password" class="form-control" id="openai_api_key"
-                                                    name="openai_api_key" value="<?= $config['openai_api_key'] ?>">
-                                                <div class="input-group-append">
-                                                    <button class="btn btn-outline-secondary" type="button" onclick="toggleApiKey()">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
+                                        <div class="col-md-6">                                            
+                                            <!-- Responder a no registrados -->
+                                            <div class="form-group">
+                                                <div class="custom-control custom-checkbox">
+                                                    <input type="checkbox" class="custom-control-input" id="responder_no_registrados"
+                                                        name="responder_no_registrados" <?= $config['responder_no_registrados'] ? 'checked' : '' ?>>
+                                                    <label class="custom-control-label" for="responder_no_registrados">
+                                                        Responder a números no registrados
+                                                    </label>
                                                 </div>
                                             </div>
-                                            <small class="text-muted">
-                                                Obtén tu API Key en
-                                                <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>
-                                            </small>
-                                        </div>
 
-                                        <!-- Modelo -->
-                                        <div class="form-group">
-                                            <label>Modelo de IA:</label>
-                                            <select class="form-control" name="modelo_ai">
-                                                <option value="gpt-3.5-turbo" <?= $config['modelo_ai'] == 'gpt-3.5-turbo' ? 'selected' : '' ?>>
-                                                    GPT-3.5 Turbo (Más económico)
-                                                </option>
-                                                <option value="gpt-4" <?= $config['modelo_ai'] == 'gpt-4' ? 'selected' : '' ?>>
-                                                    GPT-4 (Más inteligente)
-                                                </option>
-                                                <option value="gpt-4-turbo-preview" <?= $config['modelo_ai'] == 'gpt-4-turbo-preview' ? 'selected' : '' ?>>
-                                                    GPT-4 Turbo (Más rápido)
-                                                </option>
-                                            </select>
-                                        </div>
-
-                                        <!-- Temperatura -->
-                                        <div class="form-group">
-                                            <label>Temperatura (Creatividad): <span id="tempValue"><?= $config['temperatura'] ?></span></label>
-                                            <input type="range" class="form-control-range" name="temperatura"
-                                                min="0" max="2" step="0.1" value="<?= $config['temperatura'] ?>"
-                                                oninput="document.getElementById('tempValue').textContent = this.value">
-                                            <small class="text-muted">0 = Más preciso | 2 = Más creativo</small>
-                                        </div>
-
-                                        <!-- Max Tokens -->
-                                        <div class="form-group">
-                                            <label>Tokens máximos por respuesta:</label>
-                                            <input type="number" class="form-control" name="max_tokens"
-                                                value="<?= $config['max_tokens'] ?>" min="50" max="2000">
-                                            <small class="text-muted">1 token ≈ 4 caracteres</small>
-                                        </div>
-
-                                        <!-- Responder a no registrados -->
-                                        <div class="form-group">
-                                            <div class="custom-control custom-checkbox">
-                                                <input type="checkbox" class="custom-control-input" id="responder_no_registrados"
-                                                    name="responder_no_registrados" <?= $config['responder_no_registrados'] ? 'checked' : '' ?>>
-                                                <label class="custom-control-label" for="responder_no_registrados">
-                                                    Responder a números no registrados
-                                                </label>
+                                            <!-- Palabras de activación -->
+                                            <div class="form-group">
+                                                <label>Palabras de activación (separadas por coma):</label>
+                                                <input type="text" class="form-control" name="palabras_activacion"
+                                                    value="<?= implode(', ', json_decode($config['palabras_activacion'] ?? '[]', true)) ?>"
+                                                    placeholder="hola, info, precio, consulta">
+                                                <small class="text-muted">Dejar vacío para responder a todos los mensajes</small>
                                             </div>
-                                        </div>
-
-                                        <!-- Palabras de activación -->
-                                        <div class="form-group">
-                                            <label>Palabras de activación (separadas por coma):</label>
-                                            <input type="text" class="form-control" name="palabras_activacion"
-                                                value="<?= implode(', ', json_decode($config['palabras_activacion'] ?? '[]', true)) ?>"
-                                                placeholder="hola, info, precio, consulta">
-                                            <small class="text-muted">Dejar vacío para responder a todos los mensajes</small>
                                         </div>
                                     </div>
                                 </div>
@@ -532,57 +481,58 @@ $tokens_usados_hoy = $stmt->fetchColumn();
                         </div>
 
                         <!-- Tab Escalamiento -->
-                        <div class="tab-pane fade" id="escalamiento" role="tabpanel">
-                            <h4>Configuración de Escalamiento a Humano</h4>
+                        <?php if (tieneEscalamiento()): ?>
+                            <div class="tab-pane fade" id="escalamiento" role="tabpanel">
+                                <h4>Configuración de Escalamiento a Humano</h4>
 
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Máximo de mensajes sin resolver:</label>
-                                        <input type="number" class="form-control" name="max_mensajes_sin_resolver"
-                                            value="<?= $escalamiento_config['max_mensajes_sin_resolver'] ?? 5 ?>" min="1" max="20">
-                                        <small class="text-muted">Después de X mensajes sin resolver, escalar a humano</small>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Máximo de mensajes sin resolver:</label>
+                                            <input type="number" class="form-control" name="max_mensajes_sin_resolver"
+                                                value="<?= $escalamiento_config['max_mensajes_sin_resolver'] ?? 5 ?>" min="1" max="20">
+                                            <small class="text-muted">Después de X mensajes sin resolver, escalar a humano</small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label>Mensaje de escalamiento:</label>
+                                            <textarea class="form-control" name="mensaje_escalamiento" rows="3"><?= htmlspecialchars($escalamiento_config['mensaje_escalamiento'] ?? 'Te estoy transfiriendo con un asesor humano que te ayudará mejor.') ?></textarea>
+                                        </div>
                                     </div>
 
-                                    <div class="form-group">
-                                        <label>Mensaje de escalamiento:</label>
-                                        <textarea class="form-control" name="mensaje_escalamiento" rows="3"><?= htmlspecialchars($escalamiento_config['mensaje_escalamiento'] ?? 'Te estoy transfiriendo con un asesor humano que te ayudará mejor.') ?></textarea>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Palabras clave para escalamiento (separadas por coma):</label>
+                                            <textarea class="form-control" name="palabras_escalamiento" rows="5"
+                                                placeholder="hablar con humano, operador, ayuda real, problema, reclamo, queja"><?= implode(', ', $escalamiento_config['palabras_clave'] ?? []) ?></textarea>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label>Palabras clave para escalamiento (separadas por coma):</label>
-                                        <textarea class="form-control" name="palabras_escalamiento" rows="5"
-                                            placeholder="hablar con humano, operador, ayuda real, problema, reclamo, queja"><?= implode(', ', $escalamiento_config['palabras_clave'] ?? []) ?></textarea>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <h5 class="text-primary"><i class="fas fa-bell"></i> Notificaciones de Escalamiento</h5>
-
-                            <div class="form-group">
-                                <div class="custom-control custom-checkbox">
-                                    <input type="checkbox" class="custom-control-input" id="notificar_escalamiento"
-                                        name="notificar_escalamiento" <?= $config['notificar_escalamiento'] ? 'checked' : '' ?>>
-                                    <label class="custom-control-label" for="notificar_escalamiento">
-                                        <strong>Notificar escalamiento por WhatsApp</strong> - Enviar alerta a números de soporte
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div id="config_notificacion" style="<?= !$config['notificar_escalamiento'] ? 'display:none;' : '' ?>">
-                                <div class="form-group">
-                                    <label>Números a notificar (separados por coma):</label>
-                                    <input type="text" class="form-control" name="numeros_notificacion"
-                                        value="<?= implode(', ', json_decode($config['numeros_notificacion'] ?? '[]', true)) ?>"
-                                        placeholder="+51999999999, +51888888888">
-                                    <small class="text-muted">Incluye el código de país. Estos números recibirán alertas cuando un cliente necesite atención humana.</small>
-                                </div>
+                                <h5 class="text-primary"><i class="fas fa-bell"></i> Notificaciones de Escalamiento</h5>
 
                                 <div class="form-group">
-                                    <label>Plantilla de mensaje de notificación:</label>
-                                    <textarea class="form-control" name="mensaje_notificacion" rows="5"><?= htmlspecialchars($config['mensaje_notificacion'] ?? '🚨 *ESCALAMIENTO URGENTE*
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="notificar_escalamiento"
+                                            name="notificar_escalamiento" <?= $config['notificar_escalamiento'] ? 'checked' : '' ?>>
+                                        <label class="custom-control-label" for="notificar_escalamiento">
+                                            <strong>Notificar escalamiento por WhatsApp</strong> - Enviar alerta a números de soporte
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div id="config_notificacion" style="<?= !$config['notificar_escalamiento'] ? 'display:none;' : '' ?>">
+                                    <div class="form-group">
+                                        <label>Números a notificar (separados por coma):</label>
+                                        <input type="text" class="form-control" name="numeros_notificacion"
+                                            value="<?= implode(', ', json_decode($config['numeros_notificacion'] ?? '[]', true)) ?>"
+                                            placeholder="+51999999999, +51888888888">
+                                        <small class="text-muted">Incluye el código de país. Estos números recibirán alertas cuando un cliente necesite atención humana.</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Plantilla de mensaje de notificación:</label>
+                                        <textarea class="form-control" name="mensaje_notificacion" rows="5"><?= htmlspecialchars($config['mensaje_notificacion'] ?? '🚨 *ESCALAMIENTO URGENTE*
 
 Cliente: {numero}
 Último mensaje: "{ultimo_mensaje}"
@@ -590,15 +540,16 @@ Motivo: {motivo}
 Hora: {hora}
 
 Por favor atiende este caso lo antes posible.') ?></textarea>
-                                    <small class="text-muted">Variables disponibles: {numero}, {ultimo_mensaje}, {motivo}, {hora}</small>
+                                        <small class="text-muted">Variables disponibles: {numero}, {ultimo_mensaje}, {motivo}, {hora}</small>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    Cuando se escala a humano, el bot deja de responder automáticamente hasta que un operador marque la conversación como resuelta.
                                 </div>
                             </div>
-
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i>
-                                Cuando se escala a humano, el bot deja de responder automáticamente hasta que un operador marque la conversación como resuelta.
-                            </div>
-                        </div>
+                        <?php endif; ?>
 
                         <!-- Tab Modo Prueba -->
                         <div class="tab-pane fade" id="pruebas" role="tabpanel">
@@ -820,21 +771,6 @@ Por favor atiende este caso lo antes posible.') ?></textarea>
         });
     }
 
-    function toggleApiKey() {
-        const input = document.getElementById('openai_api_key');
-        const icon = event.target;
-
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        } else {
-            input.type = 'password';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
-    }
-
     function agregarRespuestaRapida() {
         const html = `
         <div class="respuesta-rapida-item mb-3">
@@ -1001,12 +937,6 @@ Por favor atiende este caso lo antes posible.') ?></textarea>
             mensaje_fuera_horario: $('textarea[name="mensaje_fuera_horario"]').val(),
             responder_no_registrados: $('#responder_no_registrados').is(':checked') ? 1 : 0,
             palabras_activacion: $('input[name="palabras_activacion"]').val(),
-
-            // OpenAI
-            openai_api_key: $('input[name="openai_api_key"]').val(),
-            modelo_ai: $('select[name="modelo_ai"]').val(),
-            temperatura: $('input[name="temperatura"]').val(),
-            max_tokens: $('input[name="max_tokens"]').val(),
 
             // Prompts - IMPORTANTE: Obtener correctamente
             system_prompt: $('#system_prompt').val(),

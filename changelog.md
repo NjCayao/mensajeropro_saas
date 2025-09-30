@@ -209,7 +209,99 @@ Importar contactos masivamente
 Usar plantillas personalizadas
 Conectar WhatsApp por empresa
 
-# para agregar mas datos 
-FALTA PROBAR LO ESCALAR A HUMANO EL MODULO ESCALAR - (lo escalado tiene que funcionar con cualquier contacto asi sea un numero no registrado)
 
+
+✅ Archivos Creados:
+
+includes/plan-limits.php - Sistema completo de validación de límites
+
+obtenerLimitesPlan() - Obtiene límites del plan actual
+tieneEscalamiento() - Valida acceso a módulo escalamiento
+tieneCatalogoBot() - Valida acceso a catálogo bot
+tieneHorariosBot() - Valida acceso a horarios/citas
+tieneGoogleCalendar() - Valida acceso a Google Calendar
+verificarLimiteContactos() - Verifica límite de contactos
+verificarLimiteMensajes() - Verifica límite de mensajes
+obtenerResumenLimites() - Resumen completo de límites y uso
+verificarAccesoModulo() - Bloquea acceso a módulos restringidos
+
+
+
+✅ Archivos Modificados:
+
+sistema/cliente/layouts/sidebar.php
+
+Carga plan-limits.php
+Oculta "Escalados" si no tiene plan Profesional
+Oculta "Catálogo Bot" si no tiene plan Profesional O si no es bot de ventas
+Oculta "Horarios Bot" si no tiene plan Profesional O si no es bot de citas
+
+
+sistema/cliente/modulos/escalados.php
+
+Agregado require_once plan-limits.php
+Agregado verificarAccesoModulo('escalados') - redirecciona si no tiene acceso
+
+
+sistema/cliente/modulos/catalogo-bot.php
+
+Agregado require_once plan-limits.php
+Agregado verificarAccesoModulo('catalogo-bot')
+
+
+sistema/cliente/modulos/horarios-bot.php
+
+Agregado require_once plan-limits.php
+Agregado verificarAccesoModulo('horarios-bot')
+
+
+sistema/cliente/modulos/bot-config.php
+
+Agregado require_once plan-limits.php
+Tab "Escalamiento" envuelto en <?php if (tieneEscalamiento()): ?>
+Muestra mensaje "Plan insuficiente" si no tiene acceso
+
+
+sistema/cliente/modulos/mi-plan.php - COMPLETAMENTE RENOVADO
+
+Usa obtenerResumenLimites() para datos en tiempo real
+Muestra uso actual vs límites con porcentajes
+Visualización de módulos disponibles/bloqueados
+Comparación mejorada de planes
+Diseño modernizado con iconos y badges
+
+
+Base de datos - Tabla planes
+
+Plan 1 (Trial): 50 contactos, 100 mensajes, TODO habilitado por 48h
+Plan 2 (Básico): 500 contactos, 2000 mensajes, sin módulos avanzados
+Plan 3 (Profesional): 2000 contactos, 10000 mensajes, TODO habilitado
+JSON actualizado con claves consistentes
+
+
+
+📊 Lógica de Límites Implementada:
+Plan Trial (ID=1):
+
+✅ Escalamiento (solo si trial activo)
+✅ Catálogo Bot (solo si trial activo)
+✅ Horarios Bot (solo si trial activo)
+✅ Google Calendar (solo si trial activo)
+
+Plan Básico (ID=2):
+
+❌ Escalamiento
+❌ Catálogo Bot
+❌ Horarios Bot
+❌ Google Calendar
+
+Plan Profesional (ID=3):
+
+✅ Escalamiento
+✅ Catálogo Bot (10 MB)
+✅ Horarios Bot
+✅ Google Calendar
+
+
+# para agregar mas datos 
 agregar botones al bot para dar a elegir al cliente soporte pagos como lista. como bot.
