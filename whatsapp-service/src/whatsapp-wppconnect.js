@@ -68,7 +68,10 @@ class WhatsAppClient {
         ],
         refreshQR: 15000, // Regenerar QR cada 15 segundos
         autoClose: 60000, // Cerrar después de 60 segundos sin escanear
-        disableSpins: true,
+        disableSpins: true,        
+        puppeteerOptions: {
+          args: ["--disable-logging", "--log-level=3"], // AGREGAR ESTO
+        },
       });
 
       // El cliente ya está listo aquí
@@ -293,21 +296,38 @@ class WhatsAppClient {
 
       try {
         // Crear BotHandler si no existe
-        if (!this.botHandler) {
-          const BotHandler = require("./botHandler");
-          this.botHandler = new BotHandler(this);
-        }
-        // PRIMERO: Intentar responder con el bot
-        if (this.botHandler) {
-          const botResponse = await this.botHandler.handleIncomingMessage(
-            message.from,
-            message.body,
-            false
-          );
+        if (this.messageHandler && this.messageHandler.botHandler) {
+          const botResponse =
+            await this.messageHandler.botHandler.handleIncomingMessage(
+              message.from,
+              message.body,
+              false
+            );
 
           if (botResponse) {
+            // Primero enviar el mensaje de texto
             await this.client.sendText(message.from, botResponse.respuesta);
             console.log("🤖 Bot respondió automáticamente");
+
+            // Si hay archivo PDF, enviarlo
+            if (botResponse.tipo === "catalogo_pdf" && botResponse.archivo) {
+              try {
+                console.log(`📎 Enviando PDF: ${botResponse.archivo}`);
+                await this.client.sendFile(
+                  message.from,
+                  botResponse.archivo,
+                  "catalogo.pdf",
+                  "Aquí está nuestro catálogo completo"
+                );
+                console.log("✅ PDF enviado exitosamente");
+              } catch (error) {
+                console.error("❌ Error enviando PDF:", error);
+                await this.client.sendText(
+                  message.from,
+                  "Hubo un problema enviando el PDF. Por favor solicítalo nuevamente más tarde."
+                );
+              }
+            }
           }
         }
 
@@ -678,6 +698,10 @@ class MessageHandlerAdapter {
   constructor(whatsappClient) {
     this.client = whatsappClient;
     this.whatsappClient = whatsappClient; // IMPORTANTE: Agregar esta línea
+
+    // Inicializar BotHandler aquí, una sola vez
+    const BotHandler = require("./botHandler");
+    this.botHandler = new BotHandler(this);
   }
 
   formatNumber(numero) {

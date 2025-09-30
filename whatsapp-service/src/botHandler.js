@@ -30,8 +30,8 @@ class BotHandler {
           this.config.palabras_activacion || "[]"
         );
 
-        console.log("✅ Configuración del bot cargada desde BD");
-        console.log("   - Bot activo:", this.config.activo ? "SÍ" : "NO");
+        // console.log("✅ Configuración del bot cargada desde BD");
+        // console.log("   - Bot activo:", this.config.activo ? "SÍ" : "NO");
         const [globalConfig] = await db
           .getPool()
           .execute(
@@ -42,38 +42,57 @@ class BotHandler {
         globalConfig.forEach((row) => {
           this.globalConfig[row.clave] = row.valor;
         });
-        console.log(
-          "   - API Key Global:",
-          this.globalConfig.openai_api_key ? "Configurada" : "NO CONFIGURADA"
-        );
-        console.log(
-          "   - System prompt:",
-          this.config.system_prompt ? "Configurado" : "NO configurado"
-        );
-        console.log(
-          "   - Business info:",
-          this.config.business_info ? "Configurada" : "NO configurada"
-        );
-        console.log(
-          "   - Palabras activación:",
-          this.config.palabras_activacion.length
-        );
+        // console.log(
+        //   "   - API Key Global:",
+        //   this.globalConfig.openai_api_key ? "Configurada" : "NO CONFIGURADA"
+        // );
+        // console.log(
+        //   "   - System prompt:",
+        //   this.config.system_prompt ? "Configurado" : "NO configurado"
+        // );
+        // console.log(
+        //   "   - Business info:",
+        //   this.config.business_info ? "Configurada" : "NO configurada"
+        // );
+        // console.log(
+        //   "   - Palabras activación:",
+        //   this.config.palabras_activacion.length
+        // );
       } else {
         console.log("❌ No se encontró configuración del bot en la BD");
       }
 
       if (this.config && this.config.tipo_bot === "ventas") {
-        this.salesBot = new SalesBot(this.config.empresa_id || 1);
+        if (!this.salesBot) {
+          this.salesBot = new SalesBot(this.config.empresa_id || 1, this);
+          await this.salesBot.loadCatalog(); // Cargar catálogo aquí
+        } else {
+          // Actualizar solo la configuración sin recrear
+          await this.salesBot.loadCatalog(); // Recargar catálogo
+        }
+      } else {
+        this.salesBot = null;
       }
 
       if (this.config && this.config.tipo_bot === "citas") {
-        this.appointmentBot = new AppointmentBot(this.config.empresa_id || 1);
+        if (!this.appointmentBot) {
+          this.appointmentBot = new AppointmentBot(
+            this.config.empresa_id || 1,
+            this
+          );
+          await this.appointmentBot.loadConfig(); // Cargar config aquí
+        } else {
+          // Actualizar solo la configuración sin recrear
+          await this.appointmentBot.loadConfig(); // Recargar config
+        }
+      } else {
+        this.appointmentBot = null;
       }
 
       this.conocimientos = [];
-      console.log("✅ Bot configurado sin base de conocimiento adicional");
+      // console.log("✅ Bot configurado sin base de conocimiento adicional");
     } catch (error) {
-      console.error("Error cargando configuración del bot:", error);
+      // console.error("Error cargando configuración del bot:", error);
     }
   }
 
