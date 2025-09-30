@@ -282,7 +282,7 @@ $tokens_usados_hoy = $stmt->fetchColumn();
                                             <textarea class="form-control" name="mensaje_fuera_horario" rows="3"><?= htmlspecialchars($config['mensaje_fuera_horario'] ?? '') ?></textarea>
                                         </div>
 
-                                        <div class="col-md-6">                                            
+                                        <div class="col-md-6">
                                             <!-- Responder a no registrados -->
                                             <div class="form-group">
                                                 <div class="custom-control custom-checkbox">
@@ -990,12 +990,25 @@ Por favor atiende este caso lo antes posible.') ?></textarea>
                 if (response.success) {
                     Swal.fire({
                         icon: 'success',
-                        title: 'Éxito',
-                        text: 'Configuración guardada correctamente',
-                        timer: 1500,
-                        showConfirmButton: false
+                        title: 'Configuración guardada',
+                        html: `
+                            <div style="text-align: left;">
+                                <p><strong>✅ Configuración guardada correctamente</strong></p>
+                                <hr>
+                                <p><i class="fas fa-info-circle text-info"></i> <strong>Importante:</strong></p>
+                                <ul style="margin-left: 20px;">
+                                    <li>Los cambios se aplicarán en <strong>máximo 30 segundos</strong></li>
+                                    <li>Si activaste <strong>Modo Prueba</strong>, espera 30 segundos antes de probar</li>
+                                </ul>
+                                <div class="alert alert-warning mt-3 mb-0" style="font-size: 0.9em;">
+                                    <i class="fas fa-bolt"></i> <strong>¿Quieres aplicar los cambios INMEDIATAMENTE?</strong><br>
+                                    <small>Ve a <strong>WhatsApp</strong> → <strong>Detener Servicio</strong> → <strong>Iniciar Servicio</strong></small>
+                                </div>
+                            </div>
+                        `,
+                        confirmButtonText: 'Entendido',
+                        allowOutsideClick: false
                     }).then(() => {
-                        // Recargar la página para actualizar todo
                         location.reload();
                     });
                 } else {

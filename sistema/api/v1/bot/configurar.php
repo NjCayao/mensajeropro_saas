@@ -80,7 +80,7 @@ try {
     $existe = $stmt->fetch();
 
     if ($existe) {
-        // Actualizar configuración existente
+        // ✅ UPDATE CORREGIDO - SIN los 4 campos eliminados
         $sql = "UPDATE configuracion_bot SET
                 activo = ?,
                 delay_respuesta = ?,
@@ -130,7 +130,7 @@ try {
             $empresa_id
         ]);
     } else {
-        // Crear nueva configuración
+        // ✅ INSERT CORREGIDO - SIN los 4 campos eliminados
         $sql = "INSERT INTO configuracion_bot 
                 (empresa_id, activo, delay_respuesta, horario_inicio, horario_fin, 
                 mensaje_fuera_horario, responder_no_registrados, palabras_activacion,                  

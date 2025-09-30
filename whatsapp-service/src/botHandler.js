@@ -15,7 +15,7 @@ class BotHandler {
     this.appointmentBot = null;
 
     // Recargar configuración cada 5 minutos
-    setInterval(() => this.loadConfig(), 5 * 60 * 1000);
+    setInterval(() => this.loadConfig(), 30 * 1000);
   }
 
   async loadConfig() {

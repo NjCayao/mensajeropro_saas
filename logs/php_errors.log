@@ -91,3 +91,6 @@ Stack trace:
 [30-Sep-2025 02:00:49 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
 [30-Sep-2025 02:10:21 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
 [30-Sep-2025 02:12:41 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
+[30-Sep-2025 02:25:35 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
+[30-Sep-2025 02:30:55 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
+[30-Sep-2025 02:31:37 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2

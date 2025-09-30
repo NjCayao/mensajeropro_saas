@@ -16,7 +16,6 @@ class AppointmentBot {
 
   async loadConfig() {
     try {
-      // Cargar horarios de atención
       const [horariosRows] = await db
         .getPool()
         .execute(
@@ -25,7 +24,6 @@ class AppointmentBot {
         );
       this.horarios = horariosRows;
 
-      // Cargar servicios disponibles
       const [serviciosRows] = await db
         .getPool()
         .execute(
@@ -43,56 +41,37 @@ class AppointmentBot {
   }
 
   async procesarMensajeCita(mensaje, numero) {
-    // Obtener o crear sesión de cita
-    let cita = this.citasEnProceso.get(numero) || {
-      estado: "inicial",
-      servicio: null,
-      fecha: null,
-      hora: null,
-      nombre: null,
-    };
-
+    let cita = this.citasEnProceso.get(numero);
     const mensajeLower = mensaje.toLowerCase();
 
-    // Detectar intención inicial
-    if (cita.estado === "inicial") {
-      if (
-        mensajeLower.includes("cita") ||
-        mensajeLower.includes("turno") ||
-        mensajeLower.includes("reserva") ||
-        mensajeLower.includes("agendar")
-      ) {
-        return await this.iniciarProcesoCita(numero, cita);
+    // ============================================
+    // HARDCODE: Procesos técnicos de agendamiento
+    // ============================================
+    
+    // Si ya está en proceso de agendar
+    if (cita) {
+      switch (cita.estado) {
+        case "esperando_servicio":
+          return await this.procesarSeleccionServicio(mensaje, numero, cita);
+        case "esperando_fecha":
+          return await this.procesarSeleccionFecha(mensaje, numero, cita);
+        case "esperando_hora":
+          return await this.procesarSeleccionHora(mensaje, numero, cita);
+        case "esperando_nombre":
+          return await this.procesarNombreCliente(mensaje, numero, cita);
+        case "esperando_confirmacion":
+          return await this.procesarConfirmacion(mensaje, numero, cita);
       }
-
-      // Si no menciona cita, dar opciones generales
-      return {
-        respuesta:
-          `🤖 Hola! Soy el asistente de citas. Puedo ayudarte con:\n\n` +
-          `📅 Agendar una nueva cita\n` +
-          `❓ Consultar disponibilidad\n` +
-          `❌ Cancelar una cita existente\n\n` +
-          `¿Qué deseas hacer?`,
-        tipo: "menu_inicial",
-      };
     }
 
-    // Procesar según estado de la cita
-    switch (cita.estado) {
-      case "esperando_servicio":
-        return await this.procesarSeleccionServicio(mensaje, numero, cita);
-
-      case "esperando_fecha":
-        return await this.procesarSeleccionFecha(mensaje, numero, cita);
-
-      case "esperando_hora":
-        return await this.procesarSeleccionHora(mensaje, numero, cita);
-
-      case "esperando_nombre":
-        return await this.procesarNombreCliente(mensaje, numero, cita);
-
-      case "esperando_confirmacion":
-        return await this.procesarConfirmacion(mensaje, numero, cita);
+    // Detectar intención de agendar
+    if (
+      mensajeLower.includes("cita") ||
+      mensajeLower.includes("turno") ||
+      mensajeLower.includes("reserva") ||
+      mensajeLower.includes("agendar")
+    ) {
+      return await this.iniciarProcesoCita(numero, cita || {});
     }
 
     // Manejar cancelaciones
@@ -100,29 +79,69 @@ class AppointmentBot {
       return await this.procesarCancelacion(mensaje, numero);
     }
 
-    return {
-      respuesta:
-        "No entendí tu solicitud. ¿Deseas agendar una cita? Por favor, escribe 'agendar cita'.",
-      tipo: "no_entendido",
-    };
+    // ============================================
+    // IA: TODO LO DEMÁS usa OpenAI
+    // ============================================
+    return await this.usarOpenAI(mensaje, numero);
   }
+
+  async usarOpenAI(mensaje, numero) {
+    const BotHandler = require('./botHandler');
+    const botHandler = new BotHandler();
+    
+    await botHandler.loadConfig();
+    
+    // Agregar contexto de servicios y horarios
+    if (botHandler.config && botHandler.config.business_info) {
+      const infoServicios = this.generarInfoServicios();
+      botHandler.config.business_info += `\n\n${infoServicios}`;
+    }
+    
+    const respuesta = await botHandler.processMessage(mensaje, numero);
+    return respuesta;
+  }
+
+  generarInfoServicios() {
+    let info = '\n📅 SERVICIOS Y HORARIOS:\n\n';
+    
+    if (this.servicios.length > 0) {
+      info += '🏥 SERVICIOS DISPONIBLES:\n';
+      this.servicios.forEach((servicio, index) => {
+        info += `${index + 1}. ${servicio.nombre_servicio} (${servicio.duracion_minutos} min)\n`;
+        if (servicio.requiere_preparacion) {
+          info += `   ⚠️ ${servicio.requiere_preparacion}\n`;
+        }
+      });
+      info += '\n';
+    }
+
+    if (this.horarios.length > 0) {
+      info += '🕐 HORARIOS DE ATENCIÓN:\n';
+      const dias = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      this.horarios.forEach(h => {
+        info += `${dias[h.dia_semana]}: ${h.hora_inicio.substring(0,5)} - ${h.hora_fin.substring(0,5)}\n`;
+      });
+    }
+
+    return info;
+  }
+
+  // ============================================
+  // Métodos técnicos de agendamiento (hardcode necesario)
+  // ============================================
 
   async iniciarProcesoCita(numero, cita) {
     if (this.servicios.length === 0) {
       return {
-        respuesta:
-          "Lo siento, no hay servicios disponibles en este momento. Por favor, contacta directamente con el establecimiento.",
+        respuesta: "Lo siento, no hay servicios disponibles en este momento. Por favor, contacta directamente con el establecimiento.",
         tipo: "sin_servicios",
       };
     }
 
-    // Mostrar servicios disponibles
     let respuesta = "📋 *SERVICIOS DISPONIBLES*\n\n";
 
     this.servicios.forEach((servicio, index) => {
-      respuesta += `${index + 1}. *${servicio.nombre_servicio}* (${
-        servicio.duracion_minutos
-      } min)\n`;
+      respuesta += `${index + 1}. *${servicio.nombre_servicio}* (${servicio.duracion_minutos} min)\n`;
       if (servicio.requiere_preparacion) {
         respuesta += `   ⚠️ ${servicio.requiere_preparacion}\n`;
       }
@@ -154,26 +173,20 @@ class AppointmentBot {
     cita.estado = "esperando_fecha";
     this.citasEnProceso.set(numero, cita);
 
-    // Mostrar días disponibles
     return await this.mostrarDiasDisponibles(numero, cita);
   }
 
   async mostrarDiasDisponibles(numero, cita) {
-    // Obtener próximos 30 días con disponibilidad
     const diasDisponibles = [];
     const hoy = moment();
 
     for (let i = 1; i <= 30; i++) {
       const fecha = moment().add(i, "days");
-      const diaSemana = fecha.isoWeekday(); // 1=Lunes, 7=Domingo
+      const diaSemana = fecha.isoWeekday();
 
-      // Verificar si hay horario para este día
-      const horarioDelDia = this.horarios.find(
-        (h) => h.dia_semana === diaSemana
-      );
+      const horarioDelDia = this.horarios.find((h) => h.dia_semana === diaSemana);
 
       if (horarioDelDia) {
-        // Verificar que no esté completamente ocupado
         const disponible = await this.verificarDisponibilidadDia(
           fecha.format("YYYY-MM-DD"),
           cita.servicio.duracion_minutos
@@ -188,14 +201,12 @@ class AppointmentBot {
         }
       }
 
-      // Limitar a 7 días disponibles mostrados
       if (diasDisponibles.length >= 7) break;
     }
 
     if (diasDisponibles.length === 0) {
       return {
-        respuesta:
-          "😔 Lo siento, no hay disponibilidad en los próximos días. Por favor, contacta directamente con nosotros.",
+        respuesta: "😔 Lo siento, no hay disponibilidad en los próximos días. Por favor, contacta directamente con nosotros.",
         tipo: "sin_disponibilidad",
       };
     }
@@ -206,7 +217,6 @@ class AppointmentBot {
     });
     respuesta += "\nEscribe el *número* del día que prefieres.";
 
-    // Guardar días disponibles en la cita
     cita.diasDisponibles = diasDisponibles;
     this.citasEnProceso.set(numero, cita);
 
@@ -232,14 +242,11 @@ class AppointmentBot {
     cita.estado = "esperando_hora";
     this.citasEnProceso.set(numero, cita);
 
-    // Mostrar horarios disponibles
     return await this.mostrarHorariosDisponibles(numero, cita);
   }
 
   async mostrarHorariosDisponibles(numero, cita) {
-    const horarioDelDia = this.horarios.find(
-      (h) => h.dia_semana === cita.diaSemana
-    );
+    const horarioDelDia = this.horarios.find((h) => h.dia_semana === cita.diaSemana);
 
     if (!horarioDelDia) {
       return {
@@ -248,7 +255,6 @@ class AppointmentBot {
       };
     }
 
-    // Generar slots de tiempo disponibles
     const slotsDisponibles = await this.generarSlotsDisponibles(
       cita.fecha,
       horarioDelDia,
@@ -256,73 +262,13 @@ class AppointmentBot {
     );
 
     if (slotsDisponibles.length === 0) {
-      // Si no hay disponibilidad, buscar el próximo día con disponibilidad
-      let diasAlternativos = [];
-      const hoy = moment();
-
-      for (let i = 1; i <= 7; i++) {
-        const fechaAlternativa = moment(cita.fecha).add(i, "days");
-        if (fechaAlternativa.diff(hoy, "days") > 30) break; // No buscar más de 30 días
-
-        const diaSemanaAlt = fechaAlternativa.isoWeekday();
-        const horarioAlt = this.horarios.find(
-          (h) => h.dia_semana === diaSemanaAlt
-        );
-
-        if (horarioAlt) {
-          const slotsAlt = await this.generarSlotsDisponibles(
-            fechaAlternativa.format("YYYY-MM-DD"),
-            horarioAlt,
-            cita.servicio.duracion_minutos
-          );
-
-          if (slotsAlt.length > 0) {
-            diasAlternativos.push({
-              fecha: fechaAlternativa.format("YYYY-MM-DD"),
-              display: fechaAlternativa.format("dddd D [de] MMMM"),
-              slots: slotsAlt.length,
-            });
-
-            if (diasAlternativos.length >= 3) break; // Máximo 3 alternativas
-          }
-        }
-      }
-
-      let respuesta = `😔 No hay horarios disponibles para ${moment(
-        cita.fecha
-      ).format("dddd D [de] MMMM")}.\n\n`;
-
-      if (diasAlternativos.length > 0) {
-        respuesta += `📅 *Días alternativos con disponibilidad:*\n\n`;
-        diasAlternativos.forEach((dia, index) => {
-          respuesta += `${index + 1}. ${dia.display} (${
-            dia.slots
-          } horarios disponibles)\n`;
-        });
-        respuesta += `\n¿Te gustaría cambiar a uno de estos días? Escribe el número.`;
-
-        // Guardar alternativas en la sesión
-        cita.diasAlternativos = diasAlternativos;
-        cita.estado = "esperando_dia_alternativo";
-        this.citasEnProceso.set(numero, cita);
-
-        return {
-          respuesta: respuesta,
-          tipo: "sugerencia_dias_alternativos",
-        };
-      } else {
-        respuesta += "Por favor, contacta directamente al establecimiento.";
-        return {
-          respuesta: respuesta,
-          tipo: "sin_disponibilidad_total",
-        };
-      }
+      return {
+        respuesta: `😔 No hay horarios disponibles para ${moment(cita.fecha).format("dddd D [de] MMMM")}.\nPor favor, contacta directamente al establecimiento.`,
+        tipo: "sin_disponibilidad_total",
+      };
     }
 
-    // Continuar con el flujo normal si hay slots disponibles
-    let respuesta = `🕐 *HORARIOS DISPONIBLES* - ${moment(cita.fecha).format(
-      "dddd D [de] MMMM"
-    )}\n\n`;
+    let respuesta = `🕐 *HORARIOS DISPONIBLES* - ${moment(cita.fecha).format("dddd D [de] MMMM")}\n\n`;
 
     slotsDisponibles.forEach((slot, index) => {
       respuesta += `${index + 1}. ${slot}\n`;
@@ -354,8 +300,7 @@ class AppointmentBot {
     this.citasEnProceso.set(numero, cita);
 
     return {
-      respuesta:
-        "👤 Por favor, escribe tu *nombre completo* para registrar la cita:",
+      respuesta: "👤 Por favor, escribe tu *nombre completo* para registrar la cita:",
       tipo: "solicitar_nombre",
     };
   }
@@ -374,13 +319,10 @@ class AppointmentBot {
     cita.estado = "esperando_confirmacion";
     this.citasEnProceso.set(numero, cita);
 
-    // Mostrar resumen
     let respuesta = "📋 *RESUMEN DE TU CITA*\n\n";
     respuesta += `👤 *Nombre:* ${cita.nombre}\n`;
     respuesta += `🏥 *Servicio:* ${cita.servicio.nombre_servicio}\n`;
-    respuesta += `📅 *Fecha:* ${moment(cita.fecha).format(
-      "dddd D [de] MMMM [de] YYYY"
-    )}\n`;
+    respuesta += `📅 *Fecha:* ${moment(cita.fecha).format("dddd D [de] MMMM [de] YYYY")}\n`;
     respuesta += `🕐 *Hora:* ${cita.hora}\n`;
     respuesta += `⏱️ *Duración:* ${cita.servicio.duracion_minutos} minutos\n`;
 
@@ -388,8 +330,7 @@ class AppointmentBot {
       respuesta += `\n⚠️ *Importante:* ${cita.servicio.requiere_preparacion}\n`;
     }
 
-    respuesta +=
-      "\n¿Confirmas la cita? Responde *SÍ* para confirmar o *NO* para cancelar.";
+    respuesta += "\n¿Confirmas la cita? Responde *SÍ* para confirmar o *NO* para cancelar.";
 
     return {
       respuesta: respuesta,
@@ -401,7 +342,6 @@ class AppointmentBot {
     const respuesta = mensaje.toLowerCase().trim();
 
     if (respuesta === "si" || respuesta === "sí" || respuesta === "yes") {
-      // Guardar cita en base de datos
       try {
         const [result] = await db.getPool().execute(
           `INSERT INTO citas_bot 
@@ -421,10 +361,8 @@ class AppointmentBot {
 
         const citaId = result.insertId;
 
-        // Sincronizar con Google Calendar si está configurado
         await this.sincronizarConGoogleCalendar(citaId, cita);
 
-        // Limpiar sesión
         this.citasEnProceso.delete(numero);
 
         let respuestaFinal = `✅ *CITA CONFIRMADA*\n\n`;
@@ -444,23 +382,19 @@ class AppointmentBot {
       } catch (error) {
         console.error("Error guardando cita:", error);
         return {
-          respuesta:
-            "❌ Hubo un error al guardar tu cita. Por favor, intenta nuevamente o contacta directamente.",
+          respuesta: "❌ Hubo un error al guardar tu cita. Por favor, intenta nuevamente o contacta directamente.",
           tipo: "error_guardado",
         };
       }
     } else if (respuesta === "no") {
-      // Cancelar proceso
       this.citasEnProceso.delete(numero);
       return {
-        respuesta:
-          "❌ Cita cancelada. Si deseas agendar una cita más adelante, escribe 'agendar cita'.",
+        respuesta: "❌ Cita cancelada. Si deseas agendar una cita más adelante, escribe 'agendar cita'.",
         tipo: "cita_cancelada",
       };
     } else {
       return {
-        respuesta:
-          "Por favor responde *SÍ* para confirmar o *NO* para cancelar.",
+        respuesta: "Por favor responde *SÍ* para confirmar o *NO* para cancelar.",
         tipo: "respuesta_invalida",
       };
     }
@@ -468,7 +402,6 @@ class AppointmentBot {
 
   async sincronizarConGoogleCalendar(citaId, citaData) {
     try {
-      // Verificar si Google Calendar está activo
       const [configRows] = await db.getPool().execute(
         `SELECT google_calendar_activo, sincronizar_citas, empresa_id
        FROM configuracion_bot WHERE empresa_id = ?`,
@@ -480,11 +413,9 @@ class AppointmentBot {
         !configRows[0].google_calendar_activo ||
         !configRows[0].sincronizar_citas
       ) {
-        console.log("Google Calendar no está activo para esta empresa");
         return;
       }
 
-      // Preparar datos de la cita
       const citaCompleta = {
         id: citaId,
         tipo_servicio: citaData.servicio.nombre_servicio,
@@ -496,22 +427,15 @@ class AppointmentBot {
         empresa_id: this.empresaId,
       };
 
-      // Hacer llamada a la API PHP
-      const apiUrl =
-        process.env.API_BASE_URL || "http://localhost/mensajeroprov2";
+      const apiUrl = process.env.API_BASE_URL || "http://localhost/mensajeroprov2";
 
       const response = await axios.post(
         `${apiUrl}/sistema/api/v1/bot/crear-evento-google.php`,
         citaCompleta,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        { headers: { "Content-Type": "application/json" } }
       );
 
       if (response.data.success) {
-        // Actualizar la BD con el ID del evento
         await db
           .getPool()
           .execute("UPDATE citas_bot SET google_event_id = ? WHERE id = ?", [
@@ -519,18 +443,10 @@ class AppointmentBot {
             citaId,
           ]);
 
-        console.log(
-          `✅ Cita #${citaId} sincronizada con Google Calendar. Event ID: ${response.data.event_id}`
-        );
-      } else {
-        console.error(
-          `❌ Error sincronizando cita #${citaId}:`,
-          response.data.message
-        );
+        console.log(`✅ Cita #${citaId} sincronizada con Google Calendar`);
       }
     } catch (error) {
       console.error("Error sincronizando con Google Calendar:", error.message);
-      // No fallar la cita si Google Calendar falla
     }
   }
 
@@ -539,8 +455,7 @@ class AppointmentBot {
 
     if (!match) {
       return {
-        respuesta:
-          "Para cancelar una cita, escribe: cancelar cita #NUMERO\nEjemplo: cancelar cita #123",
+        respuesta: "Para cancelar una cita, escribe: cancelar cita #NUMERO\nEjemplo: cancelar cita #123",
         tipo: "formato_cancelacion",
       };
     }
@@ -548,7 +463,6 @@ class AppointmentBot {
     const citaId = match[1];
 
     try {
-      // Verificar que la cita existe
       const [rows] = await db.getPool().execute(
         `SELECT * FROM citas_bot 
        WHERE id = ? AND numero_cliente = ? AND empresa_id = ? 
@@ -558,37 +472,23 @@ class AppointmentBot {
 
       if (rows.length === 0) {
         return {
-          respuesta:
-            "No se encontró la cita #" +
-            citaId +
-            " o ya fue cancelada/completada.",
+          respuesta: "No se encontró la cita #" + citaId + " o ya fue cancelada/completada.",
           tipo: "cita_no_encontrada",
         };
       }
 
       const cita = rows[0];
 
-      // Actualizar estado en BD
       await db
         .getPool()
-        .execute("UPDATE citas_bot SET estado = 'cancelada' WHERE id = ?", [
-          citaId,
-        ]);
+        .execute("UPDATE citas_bot SET estado = 'cancelada' WHERE id = ?", [citaId]);
 
-      // Si tiene evento en Google Calendar, eliminarlo
       if (cita.google_event_id) {
         try {
-          const apiUrl =
-            process.env.API_BASE_URL || "http://localhost/mensajeroprov2";
-
-          await axios.post(
-            `${apiUrl}/sistema/api/v1/bot/cancelar-evento-google.php`,
-            { cita_id: citaId }
-          );
-
-          console.log(
-            `🗑️ Evento de Google Calendar eliminado para cita #${citaId}`
-          );
+          const apiUrl = process.env.API_BASE_URL || "http://localhost/mensajeroprov2";
+          await axios.post(`${apiUrl}/sistema/api/v1/bot/cancelar-evento-google.php`, {
+            cita_id: citaId,
+          });
         } catch (error) {
           console.error("Error eliminando evento de Google:", error.message);
         }
@@ -606,8 +506,7 @@ class AppointmentBot {
     } catch (error) {
       console.error("Error cancelando cita:", error);
       return {
-        respuesta:
-          "Hubo un error al cancelar la cita. Por favor, contacta directamente.",
+        respuesta: "Hubo un error al cancelar la cita. Por favor, contacta directamente.",
         tipo: "error_cancelacion",
       };
     }
@@ -615,7 +514,6 @@ class AppointmentBot {
 
   async verificarDisponibilidadDia(fecha, duracionMinutos) {
     try {
-      // Contar citas del día en la BD
       const [rows] = await db.getPool().execute(
         `SELECT COUNT(*) as total FROM citas_bot 
          WHERE empresa_id = ? AND fecha_cita = ? 
@@ -623,93 +521,19 @@ class AppointmentBot {
         [this.empresaId, fecha]
       );
 
-      // Verificar también en Google Calendar si está configurado
-      const disponibleGoogle = await this.verificarDisponibilidadGoogle(fecha);
-
-      // Por ahora, asumimos que si hay menos de 20 citas el día está disponible
-      // Y que Google Calendar no lo bloquea
-      return rows[0].total < 20 && disponibleGoogle;
+      return rows[0].total < 20;
     } catch (error) {
       console.error("Error verificando disponibilidad:", error);
-      return true; // En caso de error, mostrar como disponible
-    }
-  }
-
-  async verificarDisponibilidadGoogle(fecha) {
-    try {
-      // Verificar si Google Calendar está activo
-      const [configRows] = await db.getPool().execute(
-        `SELECT google_calendar_activo, google_refresh_token, google_calendar_id 
-         FROM configuracion_bot WHERE empresa_id = ?`,
-        [this.empresaId]
-      );
-
-      if (
-        configRows.length === 0 ||
-        !configRows[0].google_calendar_activo ||
-        !configRows[0].google_refresh_token
-      ) {
-        return true; // Si no está configurado, asumir disponible
-      }
-
-      // En una implementación real, aquí consultarías la API de Google Calendar
-      // para verificar si hay eventos que bloqueen ese día
-
-      return true; // Por simplicidad, retornamos true
-    } catch (error) {
-      console.error("Error verificando Google Calendar:", error);
       return true;
     }
   }
 
   async generarSlotsDisponibles(fecha, horario, duracionServicio) {
-    try {
-      // Primero intentar con Google Calendar si está activo
-      const [configRows] = await db
-        .getPool()
-        .execute(
-          `SELECT google_calendar_activo FROM configuracion_bot WHERE empresa_id = ?`,
-          [this.empresaId]
-        );
-
-      if (configRows.length > 0 && configRows[0].google_calendar_activo) {
-        const apiUrl =
-          process.env.API_BASE_URL || "http://localhost/mensajeroprov2";
-
-        try {
-          const response = await axios.get(
-            `${apiUrl}/sistema/api/v1/bot/verificar-disponibilidad-google.php`,
-            {
-              params: {
-                fecha: fecha,
-                empresa_id: this.empresaId,
-              },
-            }
-          );
-
-          if (response.data.success && response.data.slots) {
-            console.log(
-              `📅 Usando slots de Google Calendar para ${fecha}: ${response.data.slots.length} disponibles`
-            );
-            return response.data.slots;
-          }
-        } catch (error) {
-          console.log(
-            "No se pudo verificar con Google Calendar, usando método local"
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Error verificando Google Calendar:", error);
-    }
-
-    // Método original como fallback
     const slots = [];
     const horaInicio = moment(fecha + " " + horario.hora_inicio);
     const horaFin = moment(fecha + " " + horario.hora_fin);
     const duracionSlot = horario.duracion_cita;
 
-    // Obtener citas existentes del día
     const [citasExistentes] = await db.getPool().execute(
       `SELECT hora_cita FROM citas_bot 
      WHERE empresa_id = ? AND fecha_cita = ? 
@@ -718,11 +542,8 @@ class AppointmentBot {
       [this.empresaId, fecha]
     );
 
-    const horasOcupadas = citasExistentes.map((c) =>
-      c.hora_cita.substring(0, 5)
-    );
+    const horasOcupadas = citasExistentes.map((c) => c.hora_cita.substring(0, 5));
 
-    // Generar slots
     let horaActual = horaInicio.clone();
 
     while (horaActual.isBefore(horaFin)) {
@@ -739,77 +560,6 @@ class AppointmentBot {
     }
 
     return slots;
-  }
-
-  // Método para enviar recordatorios (llamado por un cron job)
-  async enviarRecordatorios() {
-    try {
-      // Recordatorios de 24 horas
-      const [citas24h] = await db.getPool().execute(
-        `SELECT * FROM citas_bot 
-         WHERE empresa_id = ? 
-         AND fecha_cita = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-         AND estado = 'confirmada'
-         AND recordatorio_24h = 0`,
-        [this.empresaId]
-      );
-
-      for (const cita of citas24h) {
-        const mensaje =
-          `⏰ *RECORDATORIO DE CITA*\n\n` +
-          `Hola ${cita.nombre_cliente}, te recordamos tu cita:\n\n` +
-          `📅 Mañana ${moment(cita.fecha_cita).format("dddd D [de] MMMM")}\n` +
-          `🕐 Hora: ${cita.hora_cita.substring(0, 5)}\n` +
-          `🏥 Servicio: ${cita.tipo_servicio}\n\n` +
-          `Para cancelar responde: cancelar cita #${cita.id}`;
-
-        // Aquí deberías enviar el mensaje por WhatsApp
-        console.log(`Enviando recordatorio 24h a ${cita.numero_cliente}`);
-
-        // Marcar como enviado
-        await db
-          .getPool()
-          .execute("UPDATE citas_bot SET recordatorio_24h = 1 WHERE id = ?", [
-            cita.id,
-          ]);
-      }
-
-      // Recordatorios de 2 horas
-      const ahora = moment();
-      const en2Horas = ahora.clone().add(2, "hours");
-
-      const [citas2h] = await db.getPool().execute(
-        `SELECT * FROM citas_bot 
-         WHERE empresa_id = ? 
-         AND fecha_cita = CURDATE()
-         AND TIME(CONCAT(hora_cita)) BETWEEN ? AND ?
-         AND estado = 'confirmada'
-         AND recordatorio_2h = 0`,
-        [this.empresaId, ahora.format("HH:mm:ss"), en2Horas.format("HH:mm:ss")]
-      );
-
-      for (const cita of citas2h) {
-        const mensaje =
-          `⏰ *RECORDATORIO - 2 HORAS*\n\n` +
-          `${cita.nombre_cliente}, tu cita es en 2 horas:\n\n` +
-          `🕐 Hora: ${cita.hora_cita.substring(0, 5)}\n` +
-          `🏥 ${cita.tipo_servicio}\n`;
-
-        if (cita.notas) {
-          mensaje += `\n⚠️ Recuerda: ${cita.notas}`;
-        }
-
-        console.log(`Enviando recordatorio 2h a ${cita.numero_cliente}`);
-
-        await db
-          .getPool()
-          .execute("UPDATE citas_bot SET recordatorio_2h = 1 WHERE id = ?", [
-            cita.id,
-          ]);
-      }
-    } catch (error) {
-      console.error("Error enviando recordatorios:", error);
-    }
   }
 }
 
