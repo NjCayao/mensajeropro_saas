@@ -31,10 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($resultado['success']) {
             crearSesion($resultado['usuario']);
-            header('Location: ' . url('cliente/dashboard'));
+
+            // Redirigir según el rol
+            if (isset($_SESSION['user_rol']) && $_SESSION['user_rol'] === 'superadmin') {
+                header('Location: ' . url('superadmin/dashboard'));
+            } else {
+                header('Location: ' . url('cliente/dashboard'));
+            }
             exit;
-        } else {
-            $error = $resultado['message'];
         }
     }
 }
@@ -158,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="mb-1">
                     <a href="recuperar-password.php">Olvidé mi contraseña</a>
                 </p>
-                 <div class="text-center mt-3">
+                <div class="text-center mt-3">
                     <p class="mb-0">
                         ¿No tienes una cuenta?
                         <a href="<?php echo url('registro.php'); ?>" class="text-primary">

@@ -17,9 +17,9 @@ $path = trim($path, '/');
 
 // Si no hay path o es 'app.php', redirigir según rol
 if (empty($path) || $path === 'app.php') {
-    if (isset($_SESSION['user_id'])) {
+    if (isset($_SESSION['user_id']) || isset($_SESSION['empresa_id'])) {
         // Redirigir según el rol
-        if ($_SESSION['user_rol'] === 'admin') {
+        if (isset($_SESSION['user_rol']) && $_SESSION['user_rol'] === 'superadmin') {
             header('Location: ' . APP_URL . '/superadmin/dashboard');
         } else {
             header('Location: ' . APP_URL . '/cliente/dashboard');

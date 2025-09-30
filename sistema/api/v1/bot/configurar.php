@@ -32,10 +32,6 @@ try {
     $mensaje_fuera_horario = $_POST['mensaje_fuera_horario'] ?? '';
     $responder_no_registrados = isset($_POST['responder_no_registrados']) ? (int)$_POST['responder_no_registrados'] : 0;
     $palabras_activacion = $_POST['palabras_activacion'] ?? '';
-    $openai_api_key = $_POST['openai_api_key'] ?? '';
-    $modelo_ai = $_POST['modelo_ai'] ?? 'gpt-3.5-turbo';
-    $temperatura = (float)($_POST['temperatura'] ?? 0.7);
-    $max_tokens = (int)($_POST['max_tokens'] ?? 150);
     $system_prompt = $_POST['system_prompt'] ?? '';
     $business_info = $_POST['business_info'] ?? '';
 
@@ -92,11 +88,7 @@ try {
                 horario_fin = ?,
                 mensaje_fuera_horario = ?,
                 responder_no_registrados = ?,
-                palabras_activacion = ?,
-                openai_api_key = ?,
-                modelo_ai = ?,
-                temperatura = ?,
-                max_tokens = ?,
+                palabras_activacion = ?,                
                 system_prompt = ?,
                 business_info = ?,
                 tipo_bot = ?,
@@ -121,11 +113,7 @@ try {
             $horario_fin,
             $mensaje_fuera_horario,
             $responder_no_registrados,
-            json_encode($palabras_array),
-            $openai_api_key,
-            $modelo_ai,
-            $temperatura,
-            $max_tokens,
+            json_encode($palabras_array),            
             $system_prompt,
             $business_info,
             $tipo_bot,
@@ -145,13 +133,12 @@ try {
         // Crear nueva configuración
         $sql = "INSERT INTO configuracion_bot 
                 (empresa_id, activo, delay_respuesta, horario_inicio, horario_fin, 
-                mensaje_fuera_horario, responder_no_registrados, palabras_activacion, 
-                openai_api_key, modelo_ai, temperatura, max_tokens, 
+                mensaje_fuera_horario, responder_no_registrados, palabras_activacion,                  
                 system_prompt, business_info, tipo_bot, prompt_ventas, prompt_citas,
                 templates_activo, respuestas_rapidas, escalamiento_config, modo_prueba, numero_prueba,
                 notificar_escalamiento, numeros_notificacion, mensaje_notificacion,
                 actualizado)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
         $stmt = $pdo->prepare($sql);
         $result = $stmt->execute([
@@ -162,11 +149,7 @@ try {
             $horario_fin,
             $mensaje_fuera_horario,
             $responder_no_registrados,
-            json_encode($palabras_array),
-            $openai_api_key,
-            $modelo_ai,
-            $temperatura,
-            $max_tokens,
+            json_encode($palabras_array),            
             $system_prompt,
             $business_info,
             $tipo_bot,

@@ -32,9 +32,19 @@ class BotHandler {
 
         console.log("✅ Configuración del bot cargada desde BD");
         console.log("   - Bot activo:", this.config.activo ? "SÍ" : "NO");
+        const [globalConfig] = await db
+          .getPool()
+          .execute(
+            "SELECT clave, valor FROM configuracion_plataforma WHERE clave IN ('openai_api_key', 'openai_modelo', 'openai_temperatura', 'openai_max_tokens')"
+          );
+
+        this.globalConfig = {};
+        globalConfig.forEach((row) => {
+          this.globalConfig[row.clave] = row.valor;
+        });
         console.log(
-          "   - API Key:",
-          this.config.openai_api_key ? "Configurada" : "NO CONFIGURADA"
+          "   - API Key Global:",
+          this.globalConfig.openai_api_key ? "Configurada" : "NO CONFIGURADA"
         );
         console.log(
           "   - System prompt:",
@@ -499,8 +509,10 @@ class BotHandler {
     const inicio = Date.now();
 
     // VERIFICAR configuración mínima
-    if (!this.config.system_prompt || !this.config.openai_api_key) {
-      throw new Error("Bot no configurado correctamente");
+    if (!this.config.system_prompt || !this.globalConfig.openai_api_key) {
+      throw new Error(
+        "Bot no configurado correctamente - falta API Key global"
+      );
     }
 
     // Usar prompt específico según tipo de bot
@@ -548,14 +560,14 @@ class BotHandler {
       const response = await axios.post(
         "https://api.openai.com/v1/chat/completions",
         {
-          model: this.config.modelo_ai || "gpt-3.5-turbo",
+          model: this.globalConfig.openai_modelo || "gpt-3.5-turbo",
           messages: messages,
-          temperature: parseFloat(this.config.temperatura) || 0.7,
-          max_tokens: parseInt(this.config.max_tokens) || 150,
+          temperature: parseFloat(this.globalConfig.openai_temperatura || 0.7),
+          max_tokens: parseInt(this.globalConfig.openai_max_tokens || 150),
         },
         {
           headers: {
-            Authorization: `Bearer ${this.config.openai_api_key}`,
+            Authorization: `Bearer ${this.globalConfig.openai_api_key}`,
             "Content-Type": "application/json",
           },
           timeout: 30000,

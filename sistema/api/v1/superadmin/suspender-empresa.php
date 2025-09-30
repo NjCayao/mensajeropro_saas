@@ -18,6 +18,15 @@ if (!$id) {
     exit;
 }
 
+// PROTECCIÓN: No se puede suspender la cuenta de SuperAdmin
+if ($id == 1) {
+    echo json_encode([
+        'success' => false, 
+        'message' => 'No se puede suspender la cuenta de SuperAdmin del sistema'
+    ]);
+    exit;
+}
+
 try {
     $pdo->beginTransaction();
     

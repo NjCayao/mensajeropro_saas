@@ -15,7 +15,7 @@ require_once __DIR__ . '/auth.php';
  * Verificar si el usuario es SuperAdmin
  */
 function esSuperAdmin() {
-    return estaLogueado() && isset($_SESSION['user_rol']) && $_SESSION['user_rol'] === 'admin';
+    return estaLogueado() && isset($_SESSION['user_rol']) && $_SESSION['user_rol'] === 'superadmin';
 }
 
 /**
@@ -28,10 +28,10 @@ function checkSuperAdminSession() {
         exit();
     }
     
-    // Verificar que sea admin
+    // Verificar que sea superadmin
     if (!esSuperAdmin()) {
         $_SESSION['error'] = 'No tienes permisos de administrador';
-        header('Location: ' . url('cliente/dashboard'));
+        header('Location: ' . url('login.php')); // CAMBIO: redirigir a login, no a cliente
         exit();
     }
     

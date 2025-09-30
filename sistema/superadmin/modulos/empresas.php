@@ -82,9 +82,9 @@ $empresas = $stmt->fetchAll();
                         </div>
 
                         <div class="form-group mr-2">
-                            <input type="text" name="search" class="form-control" 
-                                   placeholder="Buscar empresa..." 
-                                   value="<?= htmlspecialchars($search) ?>">
+                            <input type="text" name="search" class="form-control"
+                                placeholder="Buscar empresa..."
+                                value="<?= htmlspecialchars($search) ?>">
                         </div>
 
                         <button type="submit" class="btn btn-primary">
@@ -131,7 +131,7 @@ $empresas = $stmt->fetchAll();
                                         <?php if ($empresa['plan_id'] == 1 && $empresa['dias_trial_restantes'] > 0): ?>
                                             <br>
                                             <small class="text-warning">
-                                                <i class="fas fa-clock"></i> 
+                                                <i class="fas fa-clock"></i>
                                                 Trial: <?= $empresa['dias_trial_restantes'] ?> día(s)
                                             </small>
                                         <?php elseif ($empresa['plan_id'] == 1 && $empresa['dias_trial_restantes'] <= 0): ?>
@@ -160,28 +160,35 @@ $empresas = $stmt->fetchAll();
                                     </td>
                                     <td>
                                         <div class="btn-group">
-                                            <button type="button" class="btn btn-sm btn-info" 
-                                                    onclick="verDetalles(<?= $empresa['id'] ?>)">
+                                            <button type="button" class="btn btn-sm btn-info"
+                                                onclick="verDetalles(<?= $empresa['id'] ?>)">
                                                 <i class="fas fa-eye"></i>
                                             </button>
-                                            <button type="button" class="btn btn-sm btn-warning" 
-                                                    onclick="cambiarPlan(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')">
+                                            <button type="button" class="btn btn-sm btn-warning"
+                                                onclick="cambiarPlan(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')">
                                                 <i class="fas fa-exchange-alt"></i>
                                             </button>
                                             <?php if ($empresa['activo']): ?>
-                                                <button type="button" class="btn btn-sm btn-danger" 
+                                                <?php if ($empresa['id'] != 1): ?>
+                                                    <button type="button" class="btn btn-sm btn-danger"
                                                         onclick="suspenderEmpresa(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')">
-                                                    <i class="fas fa-ban"></i>
-                                                </button>
+                                                        <i class="fas fa-ban"></i>
+                                                    </button>
+                                                <?php else: ?>
+                                                    <button type="button" class="btn btn-sm btn-secondary" disabled
+                                                        title="No se puede suspender la cuenta SuperAdmin">
+                                                        <i class="fas fa-shield-alt"></i>
+                                                    </button>
+                                                <?php endif; ?>
                                             <?php else: ?>
-                                                <button type="button" class="btn btn-sm btn-success" 
-                                                        onclick="activarEmpresa(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')">
+                                                <button type="button" class="btn btn-sm btn-success"
+                                                    onclick="activarEmpresa(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')">
                                                     <i class="fas fa-check"></i>
                                                 </button>
                                             <?php endif; ?>
                                             <?php if ($empresa['plan_id'] == 1): ?>
-                                                <button type="button" class="btn btn-sm btn-primary" 
-                                                        onclick="extenderTrial(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')">
+                                                <button type="button" class="btn btn-sm btn-primary"
+                                                    onclick="extenderTrial(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')">
                                                     <i class="fas fa-clock"></i>
                                                 </button>
                                             <?php endif; ?>
@@ -228,12 +235,12 @@ $empresas = $stmt->fetchAll();
             <div class="modal-body">
                 <form id="formCambiarPlan">
                     <input type="hidden" id="cambiar_empresa_id" name="empresa_id">
-                    
+
                     <div class="form-group">
                         <label>Empresa:</label>
                         <input type="text" class="form-control" id="cambiar_empresa_nombre" readonly>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Nuevo Plan:</label>
                         <select class="form-control" name="plan_id" required>
@@ -248,7 +255,7 @@ $empresas = $stmt->fetchAll();
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Motivo del cambio:</label>
                         <textarea class="form-control" name="motivo" rows="3"></textarea>
@@ -268,14 +275,16 @@ $empresas = $stmt->fetchAll();
 <?php require_once __DIR__ . '/../layouts/footer.php'; ?>
 
 <script>
-function verDetalles(id) {
-    $('#modalDetalles').modal('show');
-    $('#detallesContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-3x"></i></div>');
-    
-    $.get(API_URL + '/superadmin/empresa-detalles.php', {id: id}, function(response) {
-        if (response.success) {
-            const e = response.data;
-            let html = `
+    function verDetalles(id) {
+        $('#modalDetalles').modal('show');
+        $('#detallesContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-3x"></i></div>');
+
+        $.get(API_URL + '/superadmin/empresa-detalles.php', {
+            id: id
+        }, function(response) {
+            if (response.success) {
+                const e = response.data;
+                let html = `
                 <table class="table">
                     <tr><th>ID:</th><td>${e.id}</td></tr>
                     <tr><th>Empresa:</th><td>${e.nombre_empresa}</td></tr>
@@ -289,105 +298,109 @@ function verDetalles(id) {
                     <tr><th>Estado:</th><td><span class="badge badge-${e.activo ? 'success' : 'danger'}">${e.activo ? 'Activo' : 'Suspendido'}</span></td></tr>
                 </table>
             `;
-            $('#detallesContent').html(html);
-        } else {
-            $('#detallesContent').html('<div class="alert alert-danger">Error al cargar detalles</div>');
-        }
-    });
-}
+                $('#detallesContent').html(html);
+            } else {
+                $('#detallesContent').html('<div class="alert alert-danger">Error al cargar detalles</div>');
+            }
+        });
+    }
 
-function cambiarPlan(id, nombre) {
-    $('#cambiar_empresa_id').val(id);
-    $('#cambiar_empresa_nombre').val(nombre);
-    $('#modalCambiarPlan').modal('show');
-}
+    function cambiarPlan(id, nombre) {
+        $('#cambiar_empresa_id').val(id);
+        $('#cambiar_empresa_nombre').val(nombre);
+        $('#modalCambiarPlan').modal('show');
+    }
 
-function confirmarCambioPlan() {
-    const formData = $('#formCambiarPlan').serialize();
-    
-    $.post(API_URL + '/superadmin/cambiar-plan.php', formData, function(response) {
-        if (response.success) {
-            mostrarExito('Plan cambiado correctamente');
-            $('#modalCambiarPlan').modal('hide');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            mostrarError(response.message);
-        }
-    });
-}
+    function confirmarCambioPlan() {
+        const formData = $('#formCambiarPlan').serialize();
 
-function suspenderEmpresa(id, nombre) {
-    Swal.fire({
-        title: '¿Suspender empresa?',
-        html: `Se suspenderá: <strong>${nombre}</strong><br>La empresa no podrá acceder al sistema.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Sí, suspender',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.post(API_URL + '/superadmin/suspender-empresa.php', {id: id}, function(response) {
-                if (response.success) {
-                    mostrarExito('Empresa suspendida');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    mostrarError(response.message);
-                }
-            });
-        }
-    });
-}
+        $.post(API_URL + '/superadmin/cambiar-plan.php', formData, function(response) {
+            if (response.success) {
+                mostrarExito('Plan cambiado correctamente');
+                $('#modalCambiarPlan').modal('hide');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                mostrarError(response.message);
+            }
+        });
+    }
 
-function activarEmpresa(id, nombre) {
-    Swal.fire({
-        title: '¿Activar empresa?',
-        html: `Se activará: <strong>${nombre}</strong>`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#28a745',
-        confirmButtonText: 'Sí, activar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.post(API_URL + '/superadmin/activar-empresa.php', {id: id}, function(response) {
-                if (response.success) {
-                    mostrarExito('Empresa activada');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    mostrarError(response.message);
-                }
-            });
-        }
-    });
-}
+    function suspenderEmpresa(id, nombre) {
+        Swal.fire({
+            title: '¿Suspender empresa?',
+            html: `Se suspenderá: <strong>${nombre}</strong><br>La empresa no podrá acceder al sistema.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Sí, suspender',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post(API_URL + '/superadmin/suspender-empresa.php', {
+                    id: id
+                }, function(response) {
+                    if (response.success) {
+                        mostrarExito('Empresa suspendida');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        mostrarError(response.message);
+                    }
+                });
+            }
+        });
+    }
 
-function extenderTrial(id, nombre) {
-    Swal.fire({
-        title: 'Extender Trial',
-        html: `Empresa: <strong>${nombre}</strong><br>¿Cuántos días agregar?`,
-        input: 'number',
-        inputAttributes: {
-            min: 1,
-            max: 30
-        },
-        showCancelButton: true,
-        confirmButtonText: 'Extender',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed && result.value) {
-            $.post(API_URL + '/superadmin/extender-trial.php', {
-                id: id,
-                dias: result.value
-            }, function(response) {
-                if (response.success) {
-                    mostrarExito('Trial extendido');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    mostrarError(response.message);
-                }
-            });
-        }
-    });
-}
+    function activarEmpresa(id, nombre) {
+        Swal.fire({
+            title: '¿Activar empresa?',
+            html: `Se activará: <strong>${nombre}</strong>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            confirmButtonText: 'Sí, activar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post(API_URL + '/superadmin/activar-empresa.php', {
+                    id: id
+                }, function(response) {
+                    if (response.success) {
+                        mostrarExito('Empresa activada');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        mostrarError(response.message);
+                    }
+                });
+            }
+        });
+    }
+
+    function extenderTrial(id, nombre) {
+        Swal.fire({
+            title: 'Extender Trial',
+            html: `Empresa: <strong>${nombre}</strong><br>¿Cuántos días agregar?`,
+            input: 'number',
+            inputAttributes: {
+                min: 1,
+                max: 30
+            },
+            showCancelButton: true,
+            confirmButtonText: 'Extender',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                $.post(API_URL + '/superadmin/extender-trial.php', {
+                    id: id,
+                    dias: result.value
+                }, function(response) {
+                    if (response.success) {
+                        mostrarExito('Trial extendido');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        mostrarError(response.message);
+                    }
+                });
+            }
+        });
+    }
 </script>

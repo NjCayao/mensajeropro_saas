@@ -5,55 +5,58 @@
 require_once __DIR__ . '/../config/database.php';
 
 /**
- * Verificar credenciales de login
+ * Verificar credenciales de login (usando tabla empresas directamente)
  */
 function verificarLogin($email, $password) {
     global $pdo;
     
-    // Buscar usuario por email
+    // Buscar empresa por email
     $stmt = $pdo->prepare("
-        SELECT u.*, e.nombre_empresa, e.activo as empresa_activa
-        FROM usuarios u
-        INNER JOIN empresas e ON u.empresa_id = e.id
-        WHERE u.email = ? AND u.activo = 1
+        SELECT * FROM empresas 
+        WHERE email = ? AND activo = 1
     ");
     $stmt->execute([$email]);
-    $usuario = $stmt->fetch();
+    $empresa = $stmt->fetch();
     
-    if (!$usuario) {
-        return ['success' => false, 'message' => 'Usuario no encontrado'];
+    if (!$empresa) {
+        return ['success' => false, 'message' => 'Empresa no encontrada'];
     }
     
     // Verificar contraseña
-    if (!password_verify($password, $usuario['password'])) {
+    if (!password_verify($password, $empresa['password_hash'])) {
         return ['success' => false, 'message' => 'Contraseña incorrecta'];
     }
     
-    // Verificar que la empresa esté activa
-    if (!$usuario['empresa_activa']) {
-        return ['success' => false, 'message' => 'Cuenta suspendida'];
-    }
-    
-    return ['success' => true, 'usuario' => $usuario];
+    return ['success' => true, 'usuario' => $empresa];
 }
 
 /**
- * Crear sesión de usuario
+ * Crear sesión de empresa/usuario
  */
-function crearSesion($usuario) {
-    $_SESSION['user_id'] = $usuario['id'];
-    $_SESSION['user_name'] = $usuario['nombre'];
-    $_SESSION['user_email'] = $usuario['email'];
-    $_SESSION['user_rol'] = $usuario['rol'];
-    $_SESSION['empresa_id'] = $usuario['empresa_id'];
-    $_SESSION['empresa_nombre'] = $usuario['nombre_empresa'];
+function crearSesion($empresa) {
+    $_SESSION['empresa_id'] = $empresa['id'];
+    $_SESSION['empresa_nombre'] = $empresa['nombre_empresa'];
+    $_SESSION['user_email'] = $empresa['email'];
+    
+    // NUEVO: Definir rol según campo es_superadmin
+    if (isset($empresa['es_superadmin']) && $empresa['es_superadmin'] == 1) {
+        $_SESSION['user_rol'] = 'superadmin';
+    } else {
+        $_SESSION['user_rol'] = 'cliente';
+    }
+    
+    // Alias para compatibilidad con código antiguo
+    $_SESSION['user_id'] = $empresa['id'];
+    $_SESSION['user_name'] = $empresa['nombre_empresa'];
+    
     $_SESSION['logged_in'] = true;
     $_SESSION['login_time'] = time();
+    $_SESSION['last_activity'] = time();
     
     // Actualizar último acceso
     global $pdo;
     $stmt = $pdo->prepare("UPDATE empresas SET ultimo_acceso = NOW() WHERE id = ?");
-    $stmt->execute([$usuario['empresa_id']]);
+    $stmt->execute([$empresa['id']]);
 }
 
 /**
@@ -113,4 +116,3 @@ function generarCSRFToken() {
 function verificarCSRFToken($token) {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
-?>

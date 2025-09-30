@@ -25,8 +25,21 @@ try {
         Response::error('No se encontró la configuración del bot. Por favor, guarda la configuración primero.');
     }
 
-    if (empty($config['openai_api_key'])) {
-        Response::error('Falta la API Key de OpenAI. Por favor, ingresa tu API Key en la configuración del bot.');
+    // Obtener API Key GLOBAL
+    $stmt = $pdo->prepare("SELECT valor FROM configuracion_plataforma WHERE clave = 'openai_api_key'");
+    $stmt->execute();
+    $api_key_global = $stmt->fetchColumn();
+
+    if (empty($api_key_global)) {
+        Response::error('El administrador no ha configurado la API Key de OpenAI en la plataforma. Contacta a soporte.');
+    }
+
+    // Obtener configuración global de OpenAI
+    $stmt = $pdo->prepare("SELECT clave, valor FROM configuracion_plataforma WHERE clave IN ('openai_modelo', 'openai_temperatura', 'openai_max_tokens')");
+    $stmt->execute();
+    $config_global = [];
+    while ($row = $stmt->fetch()) {
+        $config_global[$row['clave']] = $row['valor'];
     }
 
     // Preparar el prompt del sistema
@@ -37,15 +50,15 @@ try {
         $systemPrompt .= "\n\nINFORMACIÓN DEL NEGOCIO:\n" . $config['business_info'];
     }
 
-    // Llamar a OpenAI - asegurar tipos correctos
+    // Llamar a OpenAI
     $inicio = microtime(true);
     $respuesta = callOpenAI(
-        $config['openai_api_key'],
-        $config['modelo_ai'],
+        $api_key_global,
+        $config_global['openai_modelo'] ?? 'gpt-3.5-turbo',
         $systemPrompt,
         $mensaje,
-        floatval($config['temperatura']),  // Convertir a float
-        intval($config['max_tokens'])      // Convertir a int
+        floatval($config_global['openai_temperatura'] ?? 0.7),
+        intval($config_global['openai_max_tokens'] ?? 150)
     );
     $tiempoRespuesta = round((microtime(true) - $inicio) * 1000);
 
@@ -73,8 +86,8 @@ function callOpenAI($apiKey, $model, $systemPrompt, $userMessage, $temperature, 
             ['role' => 'system', 'content' => $systemPrompt],
             ['role' => 'user', 'content' => $userMessage]
         ],
-        'temperature' => floatval($temperature),  // Asegurar que sea float
-        'max_tokens' => intval($maxTokens)        // Asegurar que sea int
+        'temperature' => floatval($temperature),
+        'max_tokens' => intval($maxTokens)
     ];
 
     $ch = curl_init($url);

@@ -74,3 +74,20 @@ Stack trace:
 [29-Sep-2025 17:26:39 America/Lima] PHP Parse error:  syntax error, unexpected identifier "PAYMENT_SUCCESS_URL", expecting ")" in C:\xampp\htdocs\mensajeroprov2\config\payments.php on line 21
 [29-Sep-2025 17:26:42 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\cliente\pagos\crear-suscripcion.php on line 3
 [29-Sep-2025 17:26:42 America/Lima] PHP Parse error:  syntax error, unexpected identifier "PAYMENT_SUCCESS_URL", expecting ")" in C:\xampp\htdocs\mensajeroprov2\config\payments.php on line 21
+[30-Sep-2025 00:43:25 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\logout.php on line 3
+[30-Sep-2025 00:43:36 America/Lima] PHP Warning:  Undefined array key "user_name" in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\layouts\header.php on line 68
+[30-Sep-2025 00:43:40 America/Lima] PHP Warning:  Undefined array key "user_name" in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\layouts\header.php on line 68
+[30-Sep-2025 00:43:40 America/Lima] PHP Warning:  Undefined array key "user_id" in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\perfil.php on line 8
+[30-Sep-2025 00:43:40 America/Lima] PHP Warning:  Trying to access array offset on value of type bool in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\perfil.php on line 46
+[30-Sep-2025 00:45:15 America/Lima] PHP Warning:  Undefined array key "user_name" in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\layouts\header.php on line 68
+[30-Sep-2025 00:45:15 America/Lima] PHP Warning:  Undefined array key "user_id" in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\perfil.php on line 8
+[30-Sep-2025 00:45:15 America/Lima] PHP Warning:  Trying to access array offset on value of type bool in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\perfil.php on line 46
+[30-Sep-2025 01:10:03 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\logout.php on line 3
+[30-Sep-2025 01:22:24 America/Lima] PHP Deprecated:  number_format(): Passing null to parameter #1 ($num) of type float is deprecated in C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\pagos.php on line 96
+[30-Sep-2025 01:22:24 America/Lima] PHP Deprecated:  number_format(): Passing null to parameter #1 ($num) of type float is deprecated in C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\pagos.php on line 106
+[30-Sep-2025 01:35:15 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
+[30-Sep-2025 01:52:46 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
+[30-Sep-2025 01:57:13 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
+[30-Sep-2025 02:00:49 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
+[30-Sep-2025 02:10:21 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
+[30-Sep-2025 02:12:41 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
