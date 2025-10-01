@@ -111,3 +111,4 @@ Stack trace:
 [01-Oct-2025 14:45:52 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\verificar-config.php on line 59
 [01-Oct-2025 14:45:55 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\verificar-config.php on line 59
 [01-Oct-2025 14:46:41 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\verificar-config.php on line 59
+[01-Oct-2025 16:27:57 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\descargar-catalogo.php on line 3

@@ -512,13 +512,15 @@ class BotHandler {
   }
 
   async getContexto(numero) {
+    const empresaId = global.EMPRESA_ID || 1;
+
     const [rows] = await db.getPool().execute(
       `SELECT mensaje_cliente, respuesta_bot, fecha_hora 
-       FROM conversaciones_bot 
-       WHERE numero_cliente = ? 
-       ORDER BY fecha_hora DESC 
-       LIMIT 5`,
-      [numero]
+     FROM conversaciones_bot 
+     WHERE numero_cliente = ? AND empresa_id = ?
+     ORDER BY fecha_hora DESC 
+     LIMIT 5`,
+      [numero, empresaId]
     );
 
     return rows.reverse();
@@ -627,13 +629,15 @@ class BotHandler {
   async saveConversation(numero, mensajeCliente, respuestaIA) {
     try {
       const contactoId = await this.getContactoId(numero);
+      const empresaId = global.EMPRESA_ID || 1; // IMPORTANTE
 
       await db.getPool().execute(
         `INSERT INTO conversaciones_bot 
-         (numero_cliente, mensaje_cliente, respuesta_bot, contexto_conversacion,
-          es_cliente_registrado, tokens_usados, tiempo_respuesta)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (empresa_id, numero_cliente, mensaje_cliente, respuesta_bot, contexto_conversacion,
+        es_cliente_registrado, tokens_usados, tiempo_respuesta)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
+          empresaId, // AGREGAR ESTE PARÁMETRO
           numero,
           mensajeCliente,
           respuestaIA.content,
