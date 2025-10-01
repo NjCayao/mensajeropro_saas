@@ -9,8 +9,7 @@ class SalesBot {
     this.catalogo = null;
     this.catalogoPdf = null;
     this.ventas = new Map();
-    this.botHandler = botHandler; // Recibir botHandler como parámetro
-    // this.loadCatalog();
+    this.botHandler = botHandler;
   }
 
   async loadCatalog() {
@@ -34,86 +33,185 @@ class SalesBot {
   }
 
   async procesarMensajeVenta(mensaje, numero) {
-    const mensajeLower = mensaje.toLowerCase();
-
-    // Verificar si hay una venta en proceso
     let venta = this.ventas.get(numero);
 
-    // Si hay venta en proceso, manejar con flujo estructurado
+    // Si hay venta en proceso, continuar con el flujo
     if (venta) {
-      // Estados del flujo estructurado
-      switch (venta.estado) {
-        case "esperando_confirmacion":
-          if (
-            mensajeLower.includes("sí") ||
-            mensajeLower.includes("si") ||
-            mensajeLower.includes("confirmo") ||
-            mensajeLower.includes("correcto")
-          ) {
-            return await this.mostrarMetodosPago(numero, venta);
-          } else if (
-            mensajeLower.includes("no") ||
-            mensajeLower.includes("cancelar")
-          ) {
-            this.ventas.delete(numero);
-            return {
-              respuesta: "❌ Pedido cancelado. ¿En qué más puedo ayudarte?",
-              tipo: "pedido_cancelado",
-            };
-          }
-          break;
+      return await this.continuarFlujoVenta(mensaje, numero, venta);
+    }
 
-        case "esperando_pago":
-          if (
-            mensajeLower.includes("pagué") ||
-            mensajeLower.includes("pague") ||
-            mensajeLower.includes("yapeé") ||
-            mensajeLower.includes("yapee") ||
-            mensajeLower.includes("transferí")
-          ) {
-            return await this.confirmarPedido(numero, venta);
-          }
-          break;
+    // NUEVO: Analizar intención con IA
+    const intencion = await this.analizarIntencion(mensaje);
 
-        case "esperando_entrega":
-          return await this.procesarTipoEntrega(mensaje, numero, venta);
+    switch (intencion.tipo) {
+      case "COMPRAR":
+        return await this.iniciarVenta(mensaje, numero, intencion);
+      case "MENU":
+        return await this.mostrarMenu(numero);
+      case "PRECIO":
+        return await this.consultarPrecio(mensaje, numero);
+      case "DELIVERY":
+        return await this.infoDelivery(numero);
+      default:
+        return await this.respuestaIA(mensaje, numero);
+    }
+  }
 
-        case "esperando_direccion":
-          return await this.procesarDireccion(mensaje, numero, venta);
+  async analizarIntencion(mensaje) {
+    try {
+      const prompt = `Analiza este mensaje y responde con un JSON:
+      {
+        "tipo": "COMPRAR|MENU|PRECIO|DELIVERY|OTRO",
+        "productos": [] // si tipo es COMPRAR, lista los productos mencionados
+      }
+      
+      Mensaje: "${mensaje}"
+      
+      IMPORTANTE: 
+      - COMPRAR: si menciona productos específicos para ordenar
+      - MENU: si pide ver carta/menú/opciones
+      - PRECIO: si pregunta cuánto cuesta algo
+      - DELIVERY: si pregunta sobre envío/zonas
+      - OTRO: cualquier otra cosa`;
+
+      const respuesta = await this.botHandler.generateResponse(prompt, []);
+
+      try {
+        return JSON.parse(respuesta.content);
+      } catch {
+        return { tipo: "OTRO", productos: [] };
+      }
+    } catch (error) {
+      return { tipo: "OTRO", productos: [] };
+    }
+  }
+
+  async iniciarVenta(mensaje, numero, intencion) {
+    // Buscar productos en el catálogo usando IA
+    const productosEncontrados = await this.buscarProductosIA(
+      intencion.productos
+    );
+
+    if (productosEncontrados.length === 0) {
+      return {
+        respuesta: "No encontré esos productos. ¿Qué te gustaría ordenar?",
+        tipo: "productos_no_encontrados",
+      };
+    }
+
+    // Crear venta
+    const venta = {
+      productos: productosEncontrados,
+      total: this.calcularTotal(productosEncontrados),
+      estado: "esperando_confirmacion",
+    };
+    this.ventas.set(numero, venta);
+
+    // Respuesta corta y natural
+    let respuesta = "📦 ";
+    productosEncontrados.forEach((p) => {
+      respuesta += `${p.producto} `;
+    });
+    respuesta += `\n💰 S/${venta.total}\n¿Confirmas?`;
+
+    return {
+      respuesta: respuesta,
+      tipo: "confirmacion_pedido",
+    };
+  }
+
+  async buscarProductosIA(productosMencionados) {
+    if (!this.catalogo) return [];
+
+    const encontrados = [];
+
+    for (const productoMencionado of productosMencionados) {
+      // Usar IA para hacer match fuzzy
+      const prompt = `Del siguiente catálogo, encuentra el producto que mejor coincida con "${productoMencionado}":
+      ${JSON.stringify(this.catalogo.productos.map((p) => p.producto))}
+      Responde SOLO con el nombre exacto del producto o "NO_ENCONTRADO"`;
+
+      const respuesta = await this.botHandler.generateResponse(prompt, []);
+      const productoExacto = respuesta.content.trim();
+
+      if (productoExacto !== "NO_ENCONTRADO") {
+        const producto = this.catalogo.productos.find(
+          (p) => p.producto === productoExacto
+        );
+        if (producto) {
+          encontrados.push({
+            producto: producto.producto,
+            precio: producto.precio,
+            cantidad: 1,
+          });
+        }
       }
     }
 
-    // Detectar si el mensaje menciona productos del catálogo
-    const productosDetectados = await this.detectarProductos(mensaje);
+    return encontrados;
+  }
 
-    if (productosDetectados.length > 0) {
-      // Crear nueva venta
-      venta = {
-        productos: productosDetectados,
-        total: this.calcularTotal(productosDetectados),
-        estado: "esperando_confirmacion",
-      };
-      this.ventas.set(numero, venta);
+  async continuarFlujoVenta(mensaje, numero, venta) {
+    const mensajeLower = mensaje.toLowerCase();
 
-      // Responder con confirmación
-      let respuesta = "🛒 *RESUMEN DE TU PEDIDO:*\n\n";
-      productosDetectados.forEach((item) => {
-        respuesta += `• ${item.producto} x${item.cantidad} - S/ ${(
-          item.precio * item.cantidad
-        ).toFixed(2)}\n`;
-      });
-      respuesta += `\n💰 *TOTAL: S/ ${venta.total.toFixed(2)}*\n\n`;
-      respuesta +=
-        "¿Confirmas tu pedido? Responde *SÍ* para continuar o *NO* para cancelar.";
+    switch (venta.estado) {
+      case "esperando_confirmacion":
+        if (
+          mensajeLower.includes("si") ||
+          mensajeLower.includes("sí") ||
+          mensajeLower.includes("ok") ||
+          mensajeLower.includes("dale")
+        ) {
+          return await this.mostrarMetodosPago(numero, venta);
+        } else if (mensajeLower.includes("no")) {
+          this.ventas.delete(numero);
+          return {
+            respuesta: "Cancelado. ¿Qué más necesitas?",
+            tipo: "pedido_cancelado",
+          };
+        }
+        break;
 
-      return {
-        respuesta: respuesta,
-        tipo: "confirmacion_pedido",
-      };
+      case "esperando_pago":
+        if (
+          mensajeLower.includes("pag") ||
+          mensajeLower.includes("listo") ||
+          mensajeLower.includes("ya")
+        ) {
+          return await this.confirmarPedido(numero, venta);
+        }
+        break;
+
+      case "esperando_entrega":
+        if (mensajeLower.includes("delivery") || mensajeLower.includes("1")) {
+          venta.tipo_entrega = "delivery";
+          venta.estado = "esperando_direccion";
+          this.ventas.set(numero, venta);
+          return {
+            respuesta: "📍 Tu dirección:",
+            tipo: "solicitar_direccion",
+          };
+        } else if (
+          mensajeLower.includes("recog") ||
+          mensajeLower.includes("2")
+        ) {
+          venta.tipo_entrega = "tienda";
+          return await this.finalizarPedido(numero, venta);
+        }
+        break;
+
+      case "esperando_direccion":
+        venta.direccion_entrega = mensaje;
+        venta.costo_delivery = 5; // Simplificado
+        venta.total_con_delivery = venta.total + 5;
+        return await this.finalizarPedido(numero, venta);
     }
 
-    // Si no hay productos detectados, usar IA
-    return await this.usarOpenAI(mensaje, numero);
+    // Si no entendimos, preguntar de nuevo
+    return {
+      respuesta: "No entendí. ¿Puedes repetir?",
+      tipo: "no_entendido",
+    };
   }
 
   // Nuevo método para detectar productos
@@ -171,7 +269,6 @@ class SalesBot {
     venta.estado = "esperando_pago";
     this.ventas.set(numero, venta);
 
-    // Obtener métodos de pago de configuración_negocio
     const [config] = await db
       .getPool()
       .execute(
@@ -179,28 +276,19 @@ class SalesBot {
         [this.empresaId]
       );
 
-    let respuesta = "💳 *MÉTODOS DE PAGO DISPONIBLES:*\n\n";
+    let respuesta = "💳 PAGAR:\n";
 
-    if (config[0] && config[0].cuentas_pago) {
-      const cuentas = JSON.parse(config[0].cuentas_pago);
-      if (cuentas.yape) respuesta += `📱 *YAPE:* ${cuentas.yape}\n`;
-      if (cuentas.plin) respuesta += `📱 *PLIN:* ${cuentas.plin}\n`;
-      if (cuentas.bcp) respuesta += `🏦 *BCP:* ${cuentas.bcp}\n`;
-      if (cuentas.interbank)
-        respuesta += `🏦 *INTERBANK:* ${cuentas.interbank}\n`;
-    } else {
-      // Valores por defecto si no hay configuración
-      respuesta += `📱 *YAPE/PLIN:* 912345678\n`;
-      respuesta += `🏦 *BCP:* 123-456789-0-12\n`;
+    if (config[0]?.cuentas_pago) {
+      const datos = JSON.parse(config[0].cuentas_pago);
+      // Mostrar solo los primeros 2 métodos para ser breve
+      datos.metodos.slice(0, 2).forEach((m) => {
+        respuesta += `${m.tipo}: ${m.dato}\n`;
+      });
     }
 
-    respuesta += `\n💰 *Total a pagar: S/ ${venta.total.toFixed(2)}*\n`;
-    respuesta += `\nPor favor realiza el pago y luego escribe *"ya pagué"* o *"listo"* para confirmar.`;
+    respuesta += `Total: S/${venta.total}\nAvísame cuando pagues`;
 
-    return {
-      respuesta: respuesta,
-      tipo: "metodos_pago",
-    };
+    return { respuesta, tipo: "metodos_pago" };
   }
 
   async usarOpenAI(mensaje, numero) {
@@ -314,11 +402,7 @@ class SalesBot {
     this.ventas.set(numero, venta);
 
     return {
-      respuesta:
-        `✅ Perfecto. ¿Cómo prefieres recibir tu pedido?\n\n` +
-        `1️⃣ *Delivery* a domicilio\n` +
-        `2️⃣ *Recoger* en tienda\n\n` +
-        `Por favor, elige una opción.`,
+      respuesta: "¿Delivery(1) o Recoges(2)?",
       tipo: "tipo_entrega",
     };
   }
@@ -384,114 +468,138 @@ class SalesBot {
   }
 
   async finalizarPedido(numero, venta) {
-    try {
-      const [result] = await db.getPool().execute(
-        `INSERT INTO ventas_bot 
+    const [result] = await db.getPool().execute(
+      `INSERT INTO ventas_bot 
        (empresa_id, numero_cliente, productos_cotizados, total_cotizado, 
         estado, tipo_entrega, direccion_entrega)
-       VALUES (?, ?, ?, ?, 'cotizado', ?, ?)`,
-        [
-          this.empresaId,
-          numero,
-          JSON.stringify(venta.productos),
-          venta.total_con_delivery || venta.total,
-          venta.tipo_entrega,
-          venta.direccion_entrega || null,
-        ]
-      );
+       VALUES (?, ?, ?, ?, 'confirmado', ?, ?)`,
+      [
+        this.empresaId,
+        numero,
+        JSON.stringify(venta.productos),
+        venta.total_con_delivery || venta.total,
+        venta.tipo_entrega,
+        venta.direccion_entrega || null,
+      ]
+    );
 
-      const ventaId = result.insertId;
+    this.ventas.delete(numero);
 
-      // Notificar venta si está configurado
-      const config = this.botHandler?.config;
-      if (
-        config?.notificar_ventas &&
-        config?.numeros_notificacion &&
-        this.botHandler?.whatsappClient
-      ) {
-        try {
-          const numeros = JSON.parse(config.numeros_notificacion);
+    const total = venta.total_con_delivery || venta.total;
+    return {
+      respuesta: `✅ Pedido #${result.insertId}\nTotal: S/${total}\nTiempo: 30min`,
+      tipo: "pedido_confirmado",
+    };
+  }
 
-          let notificacion = `🎉 *NUEVA VENTA #${ventaId}*\n\n`;
-          notificacion += `📱 Cliente: ${numero.replace("@c.us", "")}\n`;
-          notificacion += `📦 *Productos:*\n`;
-          venta.productos.forEach((item) => {
-            notificacion += `  • ${item.producto} x${item.cantidad}\n`;
-          });
-          notificacion += `\n💰 *TOTAL: S/ ${(
-            venta.total_con_delivery || venta.total
-          ).toFixed(2)}*\n`;
+  async mostrarMenu(numero) {
+    if (!this.catalogo) {
+      return {
+        respuesta: "Un momento, cargando menú...",
+        tipo: "menu_cargando",
+      };
+    }
 
-          if (venta.tipo_entrega === "delivery") {
-            notificacion += `📍 Delivery: ${venta.direccion_entrega}\n`;
-          } else {
-            notificacion += `📍 Recoger en tienda\n`;
-          }
+    // Agrupar por categorías y mostrar breve
+    let respuesta = "🍽️ MENÚ:\n";
+    const categorias = {};
 
-          notificacion += `\n⏰ ${new Date().toLocaleTimeString("es-PE", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}`;
-          notificacion += `\n\n💬 Contactar: https://wa.me/${numero.replace(
-            "@c.us",
-            ""
-          )}`;
-
-          for (const numeroNotificar of numeros) {
-            await this.botHandler.whatsappClient.client.sendText(
-              numeroNotificar.includes("@")
-                ? numeroNotificar
-                : `${numeroNotificar}@c.us`,
-              notificacion
-            );
-            console.log(
-              `📢 Notificación de venta enviada a ${numeroNotificar}`
-            );
-          }
-        } catch (error) {
-          console.error("Error enviando notificación de venta:", error);
-        }
+    this.catalogo.productos.slice(0, 5).forEach((p) => {
+      if (!categorias[p.categoria]) {
+        categorias[p.categoria] = [];
       }
+      categorias[p.categoria].push(`${p.producto} S/${p.precio}`);
+    });
 
-      // Respuesta al cliente
-      let respuesta = `✅ *PEDIDO CONFIRMADO*\n`;
-      respuesta += `Número de pedido: #${ventaId}\n\n`;
-      respuesta += `📦 *Productos:*\n`;
+    for (const [cat, prods] of Object.entries(categorias)) {
+      respuesta += `\n${cat}:\n`;
+      prods.forEach((p) => (respuesta += `• ${p}\n`));
+    }
+
+    respuesta += "\n¿Qué te gustaría?";
+
+    return { respuesta, tipo: "menu" };
+  }
+
+
+  async respuestaIA(mensaje, numero) {
+    // Respuesta general con IA pero corta
+    const contexto = await this.botHandler.getContexto(numero);
+    
+    // Agregar instrucción de brevedad al prompt
+    const promptOriginal = this.botHandler.config.system_prompt;
+    this.botHandler.config.system_prompt = promptOriginal + 
+      "\nIMPORTANTE: Responde en máximo 2 líneas. Sé breve y directo.";
+    
+    const respuestaIA = await this.botHandler.generateResponse(mensaje, contexto);
+    
+    // Restaurar prompt original
+    this.botHandler.config.system_prompt = promptOriginal;
+    
+    await this.botHandler.saveConversation(numero, mensaje, respuestaIA);
+    
+    return {
+      respuesta: respuestaIA.content,
+      tipo: "bot"
+    };
+  }
+
+  calcularTotal(productos) {
+    return productos.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
+  }
+}
+
+  // Método auxiliar para notificar venta
+  async notificarVenta(ventaId, venta, numero, simbolo) {
+    try {
+      const config = this.botHandler.config;
+      const numeros = JSON.parse(config.numeros_notificacion || "[]");
+
+      if (numeros.length === 0) return;
+
+      let notificacion = `🎉 *NUEVA VENTA #${ventaId}*\n\n`;
+      notificacion += `📱 Cliente: ${numero.replace("@c.us", "")}\n`;
+      notificacion += `💳 Método pago: ${
+        venta.metodo_pago || "Por confirmar"
+      }\n\n`;
+
+      notificacion += `📦 *PRODUCTOS:*\n`;
       venta.productos.forEach((item) => {
-        respuesta += `• ${item.producto} x${item.cantidad}\n`;
+        notificacion += `• ${item.producto} x${item.cantidad}\n`;
       });
-      respuesta += `\n💰 Subtotal: S/ ${venta.total.toFixed(2)}`;
+
+      notificacion += `\n💰 *TOTAL: ${simbolo} ${(
+        venta.total_con_delivery || venta.total
+      ).toFixed(2)}*\n`;
 
       if (venta.tipo_entrega === "delivery") {
-        if (venta.costo_delivery > 0) {
-          respuesta += `\n🚚 Delivery: S/ ${venta.costo_delivery.toFixed(2)}`;
-        } else {
-          respuesta += `\n🚚 Delivery: GRATIS`;
-        }
-        respuesta += `\n📍 Dirección: ${venta.direccion_entrega}`;
-        respuesta += `\n\n*TOTAL: S/ ${venta.total_con_delivery.toFixed(2)}*`;
+        notificacion += `📍 Delivery a: ${venta.direccion_entrega}\n`;
       } else {
-        respuesta += `\n\n*TOTAL: S/ ${venta.total.toFixed(2)}*`;
-        respuesta += `\n\n📍 *Recoger en tienda*`;
+        notificacion += `📍 Recoger en tienda\n`;
       }
 
-      respuesta += `\n\n⏱️ Tiempo estimado: 30-45 minutos\n\n`;
-      respuesta += `¡Gracias por tu pedido! Te contactaremos pronto para confirmar.`;
+      notificacion += `\n⏰ ${new Date().toLocaleTimeString("es-PE", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`;
 
-      this.ventas.delete(numero);
+      notificacion += `\n\n💬 Contactar: https://wa.me/${numero.replace(
+        "@c.us",
+        ""
+      )}`;
 
-      return {
-        respuesta: respuesta,
-        tipo: "pedido_confirmado",
-        ventaId: ventaId,
-      };
+      // Enviar a cada número configurado
+      for (const numeroNotificar of numeros) {
+        await this.botHandler.whatsappClient.client.sendText(
+          numeroNotificar.includes("@")
+            ? numeroNotificar
+            : `${numeroNotificar}@c.us`,
+          notificacion
+        );
+        console.log(`📢 Notificación de venta enviada a ${numeroNotificar}`);
+      }
     } catch (error) {
-      console.error("Error guardando venta:", error);
-      return {
-        respuesta:
-          "Hubo un error procesando tu pedido. Por favor, intenta nuevamente.",
-        tipo: "error_pedido",
-      };
+      console.error("Error enviando notificación de venta:", error);
     }
   }
 

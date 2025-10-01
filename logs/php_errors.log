@@ -94,3 +94,10 @@ Stack trace:
 [30-Sep-2025 02:25:35 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
 [30-Sep-2025 02:30:55 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
 [30-Sep-2025 02:31:37 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\test.php on line 2
+[30-Sep-2025 18:30:14 America/Lima] PHP Fatal error:  Uncaught Error: Call to undefined function getEmpresaActual() in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\negocio\actualizar.php:7
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\web\app.php(48): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\negocio\actualizar.php on line 7
+[30-Sep-2025 18:31:23 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\negocio\actualizar.php on line 3
+[30-Sep-2025 18:32:13 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\negocio\actualizar.php on line 3

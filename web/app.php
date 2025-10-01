@@ -74,7 +74,7 @@ if (strpos($path, 'superadmin/') === 0) {
         'pagos' => '/modulos/pagos.php',
         'configuracion' => '/modulos/configuracion.php',
         'emails' => '/modulos/emails.php',
-        'logs' => '/modulos/logs.php',
+        'logs' => '/modulos/logs.php',        
     ];
 
     // Buscar en el mapeo
@@ -108,6 +108,7 @@ if (strpos($path, 'cliente/') === 0) {
         'plantillas' => '/modulos/plantillas.php',
         'programados' => '/modulos/programados.php',
         'whatsapp' => '/modulos/whatsapp.php',
+        'negocio-config' => '/modulos/negocio-config.php',
         'perfil' => '/modulos/perfil.php',
         'bot-config' => '/modulos/bot-config.php',
         'escalados' => '/modulos/escalados.php',

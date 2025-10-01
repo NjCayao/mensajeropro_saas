@@ -61,24 +61,24 @@ $tiene_horarios = tieneHorariosBot();
                 </li>
 
                 <?php if ($tiene_escalamiento): ?>
-                <li class="nav-item">
-                    <a href="<?php echo url('cliente/escalados'); ?>" class="nav-link <?php echo ($current_page == 'escalados') ? 'active' : ''; ?>">
-                        <i class="nav-icon fas fa-user-tie"></i>
-                        <p>
-                            Escalados
-                            <?php
-                            // Mostrar badge con pendientes - agregar filtro de empresa
-                            $empresa_id = getEmpresaActual();
-                            $stmt = $pdo->prepare("SELECT COUNT(*) FROM estados_conversacion WHERE estado = 'escalado_humano' AND empresa_id = ?");
-                            $stmt->execute([$empresa_id]);
-                            $pendientes = $stmt->fetchColumn();
-                            if ($pendientes > 0):
-                            ?>
-                                <span class="badge badge-warning right"><?= $pendientes ?></span>
-                            <?php endif; ?>
-                        </p>
-                    </a>
-                </li>
+                    <li class="nav-item">
+                        <a href="<?php echo url('cliente/escalados'); ?>" class="nav-link <?php echo ($current_page == 'escalados') ? 'active' : ''; ?>">
+                            <i class="nav-icon fas fa-user-tie"></i>
+                            <p>
+                                Escalados
+                                <?php
+                                // Mostrar badge con pendientes - agregar filtro de empresa
+                                $empresa_id = getEmpresaActual();
+                                $stmt = $pdo->prepare("SELECT COUNT(*) FROM estados_conversacion WHERE estado = 'escalado_humano' AND empresa_id = ?");
+                                $stmt->execute([$empresa_id]);
+                                $pendientes = $stmt->fetchColumn();
+                                if ($pendientes > 0):
+                                ?>
+                                    <span class="badge badge-warning right"><?= $pendientes ?></span>
+                                <?php endif; ?>
+                            </p>
+                        </a>
+                    </li>
                 <?php endif; ?>
 
                 <li class="nav-item">
@@ -91,9 +91,10 @@ $tiene_horarios = tieneHorariosBot();
                 <li class="nav-header">SISTEMA</li>
 
                 <li class="nav-item">
-                    <a href="<?php echo url('cliente/whatsapp'); ?>" class="nav-link <?php echo ($current_page == 'whatsapp') ? 'active' : ''; ?>">
-                        <i class="nav-icon fab fa-whatsapp"></i>
-                        <p>WhatsApp</p>
+                    <a href="<?php echo url('cliente/negocio-config'); ?>"
+                        class="nav-link <?php echo ($current_page == 'negocio-config') ? 'active' : ''; ?>">
+                        <i class="nav-icon fas fa-store"></i>
+                        <p>Mi Negocio</p>
                     </a>
                 </li>
 
@@ -122,9 +123,9 @@ $tiene_horarios = tieneHorariosBot();
                     </li>
                 <?php endif; ?>
 
-                <?php 
+                <?php
                 // MOSTRAR HORARIOS SOLO SI: tiene el módulo Y es bot de citas
-                if ($tiene_horarios && $config_bot && $config_bot['tipo_bot'] === 'citas'): 
+                if ($tiene_horarios && $config_bot && $config_bot['tipo_bot'] === 'citas'):
                 ?>
                     <li class="nav-item">
                         <a href="<?php echo url('cliente/horarios-bot'); ?>" class="nav-link <?php echo ($current_page == 'horarios-bot') ? 'active' : ''; ?>">
@@ -133,6 +134,13 @@ $tiene_horarios = tieneHorariosBot();
                         </a>
                     </li>
                 <?php endif; ?>
+
+                <li class="nav-item">
+                    <a href="<?php echo url('cliente/whatsapp'); ?>" class="nav-link <?php echo ($current_page == 'whatsapp') ? 'active' : ''; ?>">
+                        <i class="nav-icon fab fa-whatsapp"></i>
+                        <p>WhatsApp</p>
+                    </a>
+                </li>
 
                 <li class="nav-item">
                     <a href="<?php echo url('cliente/bot-templates'); ?>" class="nav-link <?php echo ($current_page == 'bot-templates') ? 'active' : ''; ?>">
