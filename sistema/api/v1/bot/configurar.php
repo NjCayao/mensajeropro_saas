@@ -35,28 +35,13 @@ try {
     $system_prompt = $_POST['system_prompt'] ?? '';
     $business_info = $_POST['business_info'] ?? '';
 
-    $notificar_escalamiento = isset($_POST['notificar_escalamiento']) ? 1 : 0;
-    $numeros_notificacion = $_POST['numeros_notificacion'] ?? '';
-    $mensaje_notificacion = $_POST['mensaje_notificacion'] ?? '';
-    $numeros_array = [];
-    if (!empty($numeros_notificacion)) {
-        $numeros_array = array_map('trim', explode(',', $numeros_notificacion));
-        $numeros_array = array_filter($numeros_array);
-    }
-
-    // NUEVOS CAMPOS FASE 1.1
+    // NUEVOS CAMPOS 
     $tipo_bot = $_POST['tipo_bot'] ?? 'ventas';
     $prompt_ventas = $_POST['prompt_ventas'] ?? '';
     $prompt_citas = $_POST['prompt_citas'] ?? '';
     $templates_activo = isset($_POST['templates_activo']) ? (int)$_POST['templates_activo'] : 1;
     $modo_prueba = isset($_POST['modo_prueba']) ? (int)$_POST['modo_prueba'] : 0;
     $numero_prueba = $_POST['numero_prueba'] ?? '';
-
-    // Respuestas rápidas como JSON
-    $respuestas_rapidas = [];
-    if (isset($_POST['respuestas_rapidas']) && is_array($_POST['respuestas_rapidas'])) {
-        $respuestas_rapidas = $_POST['respuestas_rapidas'];
-    }
 
     // Configuración de escalamiento
     $escalamiento_config = [
@@ -94,14 +79,10 @@ try {
                 tipo_bot = ?,
                 prompt_ventas = ?,
                 prompt_citas = ?,
-                templates_activo = ?,
-                respuestas_rapidas = ?,
+                templates_activo = ?,                
                 escalamiento_config = ?,
                 modo_prueba = ?,
-                numero_prueba = ?,
-                notificar_escalamiento = ?,
-                numeros_notificacion = ?,
-                mensaje_notificacion = ?,
+                numero_prueba = ?,                
                 actualizado = NOW()
             WHERE empresa_id = ?";
 
@@ -119,14 +100,10 @@ try {
             $tipo_bot,
             $prompt_ventas,
             $prompt_citas,
-            $templates_activo,
-            json_encode($respuestas_rapidas),
+            $templates_activo,            
             json_encode($escalamiento_config),
             $modo_prueba,
-            $numero_prueba,
-            $notificar_escalamiento,
-            json_encode($numeros_array),
-            $mensaje_notificacion,
+            $numero_prueba,            
             $empresa_id
         ]);
     } else {
@@ -135,10 +112,9 @@ try {
                 (empresa_id, activo, delay_respuesta, horario_inicio, horario_fin, 
                 mensaje_fuera_horario, responder_no_registrados, palabras_activacion,                  
                 system_prompt, business_info, tipo_bot, prompt_ventas, prompt_citas,
-                templates_activo, respuestas_rapidas, escalamiento_config, modo_prueba, numero_prueba,
-                notificar_escalamiento, numeros_notificacion, mensaje_notificacion,
+                templates_activo, escalamiento_config, modo_prueba, numero_prueba,                
                 actualizado)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
         $stmt = $pdo->prepare($sql);
         $result = $stmt->execute([
@@ -155,14 +131,10 @@ try {
             $tipo_bot,
             $prompt_ventas,
             $prompt_citas,
-            $templates_activo,
-            json_encode($respuestas_rapidas),
+            $templates_activo,            
             json_encode($escalamiento_config),
             $modo_prueba,
-            $numero_prueba,
-            $notificar_escalamiento,              
-            json_encode($numeros_array),          
-            $mensaje_notificacion
+            $numero_prueba            
         ]);
     }
 

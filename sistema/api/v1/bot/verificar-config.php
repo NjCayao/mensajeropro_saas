@@ -38,6 +38,11 @@ try {
         $config_global[$row['clave']] = $row['valor'];
     }
     
+    // Obtener estado de notificaciones desde la nueva tabla
+    $stmt = $pdo->prepare("SELECT notificar_escalamiento, notificar_ventas, notificar_citas FROM notificaciones_bot WHERE empresa_id = ?");
+    $stmt->execute([$empresa_id]);
+    $notif = $stmt->fetch();
+    
     // Analizar configuración
     $response = [
         'success' => true,
@@ -56,7 +61,7 @@ try {
             'tipo_bot' => $config['tipo_bot'] ?? 'No configurado',
             'modo_prueba' => $config['modo_prueba'] == 1,
             'escalamiento_configurado' => !empty($config['escalamiento_config']),
-            'notificaciones_activas' => $config['notificar_escalamiento'] == 1
+            'notificaciones_activas' => ($notif && ($notif['notificar_escalamiento'] || $notif['notificar_ventas'] || $notif['notificar_citas']))
         ]
     ];
 

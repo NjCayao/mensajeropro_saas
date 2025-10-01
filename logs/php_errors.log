@@ -101,3 +101,13 @@ Stack trace:
   thrown in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\negocio\actualizar.php on line 7
 [30-Sep-2025 18:31:23 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\negocio\actualizar.php on line 3
 [30-Sep-2025 18:32:13 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\negocio\actualizar.php on line 3
+[01-Oct-2025 11:45:04 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\bot-config.php on line 517
+[01-Oct-2025 11:45:04 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\bot-config.php on line 524
+[01-Oct-2025 12:01:29 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\bot-config.php on line 517
+[01-Oct-2025 12:01:29 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\bot-config.php on line 524
+[01-Oct-2025 12:12:05 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\bot-config.php on line 517
+[01-Oct-2025 12:12:05 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\bot-config.php on line 524
+[01-Oct-2025 13:32:03 America/Lima] Error en configurar bot: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'respuestas_rapidas' in 'field list'
+[01-Oct-2025 14:45:52 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\verificar-config.php on line 59
+[01-Oct-2025 14:45:55 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\verificar-config.php on line 59
+[01-Oct-2025 14:46:41 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\verificar-config.php on line 59

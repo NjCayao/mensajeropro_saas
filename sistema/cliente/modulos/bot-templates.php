@@ -53,34 +53,34 @@ $templates = $stmt->fetchAll();
                         </thead>
                         <tbody>
                             <?php foreach ($templates as $template): ?>
-                            <tr>
-                                <td><?= $template['id'] ?></td>
-                                <td><?= ucfirst($template['tipo_negocio']) ?></td>
-                                <td>
-                                    <span class="badge badge-<?= $template['tipo_bot'] == 'ventas' ? 'success' : 'info' ?>">
-                                        <?= ucfirst($template['tipo_bot']) ?>
-                                    </span>
-                                </td>
-                                <td><?= htmlspecialchars($template['nombre_template']) ?></td>
-                                <td>
-                                    <?php if($template['activo']): ?>
-                                        <span class="badge badge-success">Activo</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-danger">Inactivo</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <button class="btn btn-sm btn-warning" onclick="editarTemplate(<?= $template['id'] ?>)">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-info" onclick="verTemplate(<?= $template['id'] ?>)">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" onclick="eliminarTemplate(<?= $template['id'] ?>)">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
+                                <tr>
+                                    <td><?= $template['id'] ?></td>
+                                    <td><?= ucfirst($template['tipo_negocio']) ?></td>
+                                    <td>
+                                        <span class="badge badge-<?= $template['tipo_bot'] == 'ventas' ? 'success' : 'info' ?>">
+                                            <?= ucfirst($template['tipo_bot']) ?>
+                                        </span>
+                                    </td>
+                                    <td><?= htmlspecialchars($template['nombre_template']) ?></td>
+                                    <td>
+                                        <?php if ($template['activo']): ?>
+                                            <span class="badge badge-success">Activo</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-danger">Inactivo</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-warning" onclick="editarTemplate(<?= $template['id'] ?>)">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-info" onclick="verTemplate(<?= $template['id'] ?>)">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="eliminarTemplate(<?= $template['id'] ?>)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -101,12 +101,12 @@ $templates = $stmt->fetchAll();
             <form id="formTemplate">
                 <div class="modal-body">
                     <input type="hidden" id="template_id" name="id">
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Tipo de Negocio:</label>
-                                <input type="text" class="form-control" name="tipo_negocio" 
+                                <input type="text" class="form-control" name="tipo_negocio"
                                     placeholder="Ej: restaurante, tienda, clinica" required>
                             </div>
                         </div>
@@ -132,9 +132,18 @@ $templates = $stmt->fetchAll();
                     </div>
 
                     <div class="form-group">
-                        <label>Respuestas Rápidas (JSON):</label>
-                        <textarea class="form-control" name="respuestas_rapidas" rows="6" 
-                            placeholder='{"pregunta1": "respuesta1", "pregunta2": "respuesta2"}'></textarea>
+                        <label>Mensaje Notificación Escalamiento:</label>
+                        <textarea class="form-control" name="mensaje_notificacion_escalamiento" rows="4"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Mensaje Notificación Ventas:</label>
+                        <textarea class="form-control" name="mensaje_notificacion_ventas" rows="4"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Mensaje Notificación Citas:</label>
+                        <textarea class="form-control" name="mensaje_notificacion_citas" rows="4"></textarea>
                     </div>
 
                     <div class="form-group">
@@ -161,95 +170,105 @@ $templates = $stmt->fetchAll();
 <?php require_once __DIR__ . '/../layouts/footer.php'; ?>
 
 <script>
-function nuevoTemplate() {
-    $('#modalTitle').text('Nuevo Template');
-    $('#formTemplate')[0].reset();
-    $('#template_id').val('');
-    $('#modalTemplate').modal('show');
-}
+    function nuevoTemplate() {
+        $('#modalTitle').text('Nuevo Template');
+        $('#formTemplate')[0].reset();
+        $('#template_id').val('');
+        $('#modalTemplate').modal('show');
+    }
 
-function editarTemplate(id) {
-    $.get(API_URL + "/bot/obtener-template.php", { id: id }, function(response) {
-        if (response.success) {
-            const template = response.data;
-            $('#modalTitle').text('Editar Template');
-            $('#template_id').val(template.id);
-            $('input[name="tipo_negocio"]').val(template.tipo_negocio);
-            $('select[name="tipo_bot"]').val(template.tipo_bot);
-            $('input[name="nombre_template"]').val(template.nombre_template);
-            $('textarea[name="prompt_template"]').val(template.prompt_template);
-            $('textarea[name="respuestas_rapidas"]').val(JSON.stringify(template.respuestas_rapidas_template, null, 2));
-            $('textarea[name="configuracion_adicional"]').val(JSON.stringify(template.configuracion_adicional, null, 2));
-            $('#activo').prop('checked', template.activo == 1);
-            $('#modalTemplate').modal('show');
-        }
-    });
-}
+    function editarTemplate(id) {
+        $.get(API_URL + "/bot/obtener-template.php", {
+            id: id
+        }, function(response) {
+            if (response.success) {
+                const template = response.data;
+                $('#modalTitle').text('Editar Template');
+                $('#template_id').val(template.id);
+                $('input[name="tipo_negocio"]').val(template.tipo_negocio);
+                $('select[name="tipo_bot"]').val(template.tipo_bot);
+                $('input[name="nombre_template"]').val(template.nombre_template);
+                $('textarea[name="prompt_template"]').val(template.prompt_template);
+                $('textarea[name="mensaje_notificacion_escalamiento"]').val(template.mensaje_notificacion_escalamiento || '');
+                $('textarea[name="mensaje_notificacion_ventas"]').val(template.mensaje_notificacion_ventas || '');
+                $('textarea[name="mensaje_notificacion_citas"]').val(template.mensaje_notificacion_citas || '');
+                $('textarea[name="configuracion_adicional"]').val(JSON.stringify(template.configuracion_adicional, null, 2));
+                $('#activo').prop('checked', template.activo == 1);
+                $('#modalTemplate').modal('show');
+            }
+        });
+    }
 
-function verTemplate(id) {
-    $.get(API_URL + "/bot/obtener-template.php", { id: id }, function(response) {
-        if (response.success) {
-            const template = response.data;
-            Swal.fire({
-                title: template.nombre_template,
-                html: `
+    function verTemplate(id) {
+        $.get(API_URL + "/bot/obtener-template.php", {
+            id: id
+        }, function(response) {
+            if (response.success) {
+                const template = response.data;
+                Swal.fire({
+                    title: template.nombre_template,
+                    html: `
                     <div style="text-align: left;">
                         <p><strong>Tipo:</strong> ${template.tipo_negocio} - ${template.tipo_bot}</p>
                         <hr>
                         <p><strong>Prompt:</strong></p>
                         <pre style="background: #f8f9fa; padding: 10px; white-space: pre-wrap;">${template.prompt_template}</pre>
                         <hr>
-                        <p><strong>Respuestas Rápidas:</strong></p>
-                        <pre style="background: #f8f9fa; padding: 10px;">${JSON.stringify(template.respuestas_rapidas_template, null, 2)}</pre>
+                        <p><strong>Mensajes de Notificación:</strong></p>
+                        <p><strong>Escalamiento:</strong><br>${template.mensaje_notificacion_escalamiento || 'No configurado'}</p>
+                        <p><strong>Ventas:</strong><br>${template.mensaje_notificacion_ventas || 'No configurado'}</p>
+                        <p><strong>Citas:</strong><br>${template.mensaje_notificacion_citas || 'No configurado'}</p>
                     </div>
                 `,
-                width: '800px'
-            });
-        }
-    });
-}
+                    width: '800px'
+                });
+            }
+        });
+    }
 
-$('#formTemplate').on('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = $(this).serialize();
-    const url = $('#template_id').val() ? 
-        API_URL + "/bot/actualizar-template.php" : 
-        API_URL + "/bot/crear-template.php";
-    
-    $.post(url, formData, function(response) {
-        if (response.success) {
-            $('#modalTemplate').modal('hide');
-            Swal.fire('Éxito', response.message, 'success').then(() => {
-                location.reload();
-            });
-        } else {
-            Swal.fire('Error', response.message, 'error');
-        }
-    });
-});
+    $('#formTemplate').on('submit', function(e) {
+        e.preventDefault();
 
-function eliminarTemplate(id) {
-    Swal.fire({
-        title: '¿Eliminar template?',
-        text: "Esta acción no se puede deshacer",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, eliminar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.post(API_URL + "/bot/eliminar-template.php", { id: id }, function(response) {
-                if (response.success) {
-                    Swal.fire('Eliminado', response.message, 'success').then(() => {
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire('Error', response.message, 'error');
-                }
-            });
-        }
+        const formData = $(this).serialize();
+        const url = $('#template_id').val() ?
+            API_URL + "/bot/actualizar-template.php" :
+            API_URL + "/bot/crear-template.php";
+
+        $.post(url, formData, function(response) {
+            if (response.success) {
+                $('#modalTemplate').modal('hide');
+                Swal.fire('Éxito', response.message, 'success').then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Error', response.message, 'error');
+            }
+        });
     });
-}
+
+    function eliminarTemplate(id) {
+        Swal.fire({
+            title: '¿Eliminar template?',
+            text: "Esta acción no se puede deshacer",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post(API_URL + "/bot/eliminar-template.php", {
+                    id: id
+                }, function(response) {
+                    if (response.success) {
+                        Swal.fire('Eliminado', response.message, 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error', response.message, 'error');
+                    }
+                });
+            }
+        });
+    }
 </script>

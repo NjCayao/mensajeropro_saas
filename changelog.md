@@ -303,5 +303,221 @@ Plan Profesional (ID=3):
 ✅ Google Calendar
 
 
+
+# 01-10-25
+
+CHANGELOG - Sistema de Bot IA Multi-Tipo
+Versión 2.0.0 - Refactorización de Notificaciones y Tipos de Bot
+🎯 Objetivo
+Implementar soporte para 3 tipos de bot (Ventas, Citas, Soporte) y separar la lógica de notificaciones en una tabla independiente.
+
+📊 Cambios en Base de Datos
+Tablas Modificadas
+configuracion_bot
+Agregado:
+
+Ninguno
+
+Modificado:
+
+tipo_bot → Cambiado de ENUM('ventas','citas') a ENUM('ventas','citas','soporte')
+
+Eliminado:
+
+respuestas_rapidas (LONGTEXT JSON)
+notificar_escalamiento (TINYINT)
+notificar_ventas (TINYINT)
+notificar_citas (TINYINT)
+numeros_notificacion (LONGTEXT JSON)
+mensaje_notificacion (TEXT)
+
+bot_templates
+Agregado:
+
+mensaje_notificacion_escalamiento (TEXT)
+mensaje_notificacion_ventas (TEXT)
+mensaje_notificacion_citas (TEXT)
+
+Modificado:
+
+tipo_bot → Cambiado de ENUM('ventas','citas') a ENUM('ventas','citas','soporte')
+
+Eliminado:
+
+respuestas_rapidas_template (LONGTEXT JSON)
+
+Tablas Nuevas
+notificaciones_bot
+sqlCREATE TABLE notificaciones_bot (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    empresa_id INT UNIQUE NOT NULL,
+    
+    -- Números compartidos
+    numeros_notificacion LONGTEXT CHECK (json_valid(numeros_notificacion)),
+    
+    -- Escalamiento (todos los bots)
+    notificar_escalamiento TINYINT(1) DEFAULT 1,
+    mensaje_escalamiento TEXT,
+    
+    -- Ventas (solo ventas y soporte)
+    notificar_ventas TINYINT(1) DEFAULT 1,
+    mensaje_ventas TEXT,
+    
+    -- Citas (solo citas y soporte)
+    notificar_citas TINYINT(1) DEFAULT 1,
+    mensaje_citas TEXT,
+    
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE
+);
+
+📁 Archivos Modificados
+Backend - APIs
+✅ sistema/api/v1/bot/configurar.php
+Cambios:
+
+Eliminadas variables: $respuestas_rapidas, $notificar_escalamiento, $numeros_notificacion, $mensaje_notificacion
+Eliminadas estas columnas del UPDATE SQL
+Eliminadas estas columnas del INSERT SQL
+Eliminados valores correspondientes de los execute()
+
+✅ sistema/api/v1/bot/cargar-template.php
+Cambios:
+
+Eliminado parseo de respuestas_rapidas_template
+Solo parsea configuracion_adicional
+
+✅ sistema/api/v1/bot/notificar-escalamiento.php
+Cambios:
+
+Cambiado query para leer desde notificaciones_bot en lugar de configuracion_bot
+SELECT ahora usa: SELECT notificar_escalamiento, numeros_notificacion, mensaje_escalamiento FROM notificaciones_bot
+
+✅ sistema/api/v1/bot/verificar-config.php
+Cambios:
+
+Agregado query para obtener estado de notificaciones desde notificaciones_bot
+Cambiado 'notificaciones_activas' para leer desde la nueva tabla
+
+🆕 sistema/api/v1/bot/guardar-notificaciones.php (NUEVO)
+Función:
+
+Guarda/actualiza configuración de notificaciones en tabla notificaciones_bot
+Validación crítica: Solo guarda notificaciones que corresponden al tipo de bot activo
+
+Bot Ventas → Guarda escalamiento + ventas (fuerza citas a 0)
+Bot Citas → Guarda escalamiento + citas (fuerza ventas a 0)
+Bot Soporte → Guarda escalamiento + ventas + citas
+
+
+
+
+Frontend - Módulos
+✅ sistema/cliente/modulos/bot-config.php (REESCRITO COMPLETO)
+Cambios principales:
+1. Tipo de Bot:
+
+Agregado selector visual para 3 tipos: Ventas, Citas, Soporte
+Cada tipo muestra icono y descripción distintiva
+
+2. Tab Templates:
+
+Filtrado dinámico según tipo_bot seleccionado
+Muestra solo plantillas relevantes al tipo actual
+
+3. Tab Personalización IA:
+
+Sección de instrucciones cambia dinámicamente:
+
+Ventas → Muestra "Estrategia de Ventas"
+Citas → Muestra "Protocolo de Agendamiento"
+Soporte → Muestra AMBOS campos (ventas + citas)
+
+
+
+4. Tab Notificaciones (NUEVO):
+
+Separado del tab de Escalamiento
+3 tarjetas independientes: Escalamiento, Ventas, Citas
+Visibilidad dinámica:
+
+Bot Ventas → Muestra: Escalamiento + Ventas
+Bot Citas → Muestra: Escalamiento + Citas
+Bot Soporte → Muestra: Escalamiento + Ventas + Citas
+
+
+Números de WhatsApp compartidos entre todos los tipos
+Mensajes personalizables por cada tipo de notificación
+
+5. JavaScript:
+
+Función actualizarUISegunTipo(tipo) controla toda la UI según el bot seleccionado
+Función actualizarNotificacionesSegunTipo(tipo) muestra/oculta tarjetas
+Función guardarNotificaciones() separada para guardar en tabla notificaciones_bot
+Carga de templates ahora incluye mensajes de notificación
+
+Eliminado:
+
+Toda la sección de "Respuestas Rápidas"
+Referencias a campos de notificación en configuracion_bot
+
+
+🎨 Lógica de Negocio
+Tipos de Bot
+Bot de Ventas
+
+Propósito: Vender productos, tomar pedidos, gestionar delivery
+Templates: Restaurante, Tienda, Farmacia, Ferretería
+Notificaciones activas: Escalamiento + Ventas
+Campos usados: prompt_ventas, business_info
+
+Bot de Citas
+
+Propósito: Agendar citas, reservas, turnos
+Templates: Clínica Médica, Salón de Belleza, Clínica Dental
+Notificaciones activas: Escalamiento + Citas
+Campos usados: prompt_citas, business_info
+
+Bot de Soporte (NUEVO)
+
+Propósito: Soporte técnico, ISP, SaaS, mesa de ayuda
+Templates: ISP, Soporte Técnico, SaaS/Software
+Notificaciones activas: Escalamiento + Ventas + Citas
+Campos usados: prompt_ventas, prompt_citas, business_info
+
+Validación de Notificaciones
+Backend valida y fuerza valores según tipo:
+Bot Ventas:
+  ✓ notificar_escalamiento (según checkbox)
+  ✓ notificar_ventas (según checkbox)
+  ✗ notificar_citas = 0 (forzado)
+
+Bot Citas:
+  ✓ notificar_escalamiento (según checkbox)
+  ✗ notificar_ventas = 0 (forzado)
+  ✓ notificar_citas (según checkbox)
+
+Bot Soporte:
+  ✓ notificar_escalamiento (según checkbox)
+  ✓ notificar_ventas (según checkbox)
+  ✓ notificar_citas (según checkbox)
+Esto previene que se notifiquen eventos que nunca ocurrirán en ese tipo de bot.
+
+🔒 Seguridad
+
+Validación en backend previene manipulación del HTML del frontend
+Incluso si un usuario modifica el DOM y envía notificar_citas=1 en un bot de ventas, el backend lo rechaza
+
+
+
+⚠️ Breaking Changes
+
+Columnas eliminadas de configuracion_bot: Cualquier código que intente leer/escribir respuestas_rapidas, notificar_escalamiento, notificar_ventas, notificar_citas, numeros_notificacion, o mensaje_notificacion causará errores
+Nueva tabla requerida: notificaciones_bot debe existir antes de usar el sistema
+Migración de datos: Si había datos en las columnas eliminadas, deben migrarse a notificaciones_bot antes de eliminarlas
+
 # para agregar mas datos 
 agregar botones al bot para dar a elegir al cliente soporte pagos como lista. como bot.
+poner si un humano esta en conversaion de chat con el cliente el bot no debe de responder colocar un input de espera. 

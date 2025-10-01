@@ -33,8 +33,7 @@ try {
         Response::error('Template no encontrado');
     }
     
-    // Parsear JSONs
-    $template['respuestas_rapidas_template'] = json_decode($template['respuestas_rapidas_template'], true);
+    // Parsear JSON (solo configuracion_adicional, ya no existe respuestas_rapidas_template)
     $template['configuracion_adicional'] = json_decode($template['configuracion_adicional'], true);
     
     Response::success($template);

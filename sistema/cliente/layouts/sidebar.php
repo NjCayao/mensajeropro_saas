@@ -112,8 +112,8 @@ $tiene_horarios = tieneHorariosBot();
                 $stmt_bot->execute([$empresa_id]);
                 $config_bot = $stmt_bot->fetch();
 
-                // MOSTRAR CATÁLOGO SOLO SI: tiene el módulo Y es bot de ventas
-                if ($tiene_catalogo && $config_bot && $config_bot['tipo_bot'] === 'ventas'):
+                // MOSTRAR CATÁLOGO SI: tiene el módulo Y es bot de ventas O soporte
+                if ($tiene_catalogo && $config_bot && in_array($config_bot['tipo_bot'], ['ventas', 'soporte'])):
                 ?>
                     <li class="nav-item">
                         <a href="<?php echo url('cliente/catalogo-bot'); ?>" class="nav-link <?php echo ($current_page == 'catalogo-bot') ? 'active' : ''; ?>">
@@ -124,8 +124,8 @@ $tiene_horarios = tieneHorariosBot();
                 <?php endif; ?>
 
                 <?php
-                // MOSTRAR HORARIOS SOLO SI: tiene el módulo Y es bot de citas
-                if ($tiene_horarios && $config_bot && $config_bot['tipo_bot'] === 'citas'):
+                // MOSTRAR HORARIOS SI: tiene el módulo Y es bot de citas O soporte
+                if ($tiene_horarios && $config_bot && in_array($config_bot['tipo_bot'], ['citas', 'soporte'])):
                 ?>
                     <li class="nav-item">
                         <a href="<?php echo url('cliente/horarios-bot'); ?>" class="nav-link <?php echo ($current_page == 'horarios-bot') ? 'active' : ''; ?>">
