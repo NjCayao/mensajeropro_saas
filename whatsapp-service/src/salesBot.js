@@ -1,4 +1,4 @@
-// whatsapp-service/src/salesBot.js - VERSIÓN GENÉRICA PARA TODOS LOS NEGOCIOS
+// whatsapp-service/src/salesBot.js - VERSIÓN COMPLETA CORREGIDA
 const db = require("./database");
 const path = require("path");
 
@@ -7,26 +7,24 @@ class SalesBot {
     this.empresaId = empresaId;
     this.catalogo = null;
     this.catalogoPdf = null;
-    this.infoCatalogo = {}; // promociones, delivery, etc
-    this.infoNegocio = {}; // Todo de configuracion_negocio
-    this.infoBot = {}; // Todo de configuracion_bot
+    this.infoCatalogo = {};
+    this.infoNegocio = {};
+    this.infoBot = {};
     this.moneda = { codigo: "PEN", simbolo: "S/" };
     this.carrito = new Map();
+    this.ventasCompletadas = new Map();
     this.botHandler = botHandler;
     this.maxTokens = 150;
+    this.temperature = 0.7;
 
     setInterval(() => this.limpiarCarritosInactivos(), 5 * 60 * 1000);
+    setInterval(() => this.limpiarVentasCompletadas(), 5 * 60 * 1000);
   }
-
-  // ============================================
-  // CARGAR TODO DE BD - GENÉRICO
-  // ============================================
 
   async loadCatalog() {
     try {
-      console.log("📦 Cargando configuración del negocio...");
+      // console.log("📦 Cargando configuración del negocio...");
 
-      // 1. CARGAR CATÁLOGO COMPLETO
       const [catalogoRows] = await db
         .getPool()
         .execute("SELECT * FROM catalogo_bot WHERE empresa_id = ?", [
@@ -36,26 +34,19 @@ class SalesBot {
       if (catalogoRows.length > 0) {
         if (catalogoRows[0].datos_json) {
           const datos = JSON.parse(catalogoRows[0].datos_json);
-
-          // Guardar productos
           this.catalogo = { productos: datos.productos || [] };
-
-          // Guardar TODO lo demás sin asumir estructura
           this.infoCatalogo = {
             promociones: datos.promociones || [],
             delivery: datos.delivery || null,
-            // Cualquier otro campo que venga en el JSON
             ...datos,
           };
-
-          console.log(
-            `   ✅ ${this.catalogo.productos.length} productos cargados`
-          );
+          // console.log(
+          //   `   ✅ ${this.catalogo.productos.length} productos cargados`
+          // );
         }
         this.catalogoPdf = catalogoRows[0].archivo_pdf;
       }
 
-      // 2. CARGAR INFO DEL NEGOCIO (TODO)
       const [negocio] = await db
         .getPool()
         .execute("SELECT * FROM configuracion_negocio WHERE empresa_id = ?", [
@@ -65,30 +56,25 @@ class SalesBot {
       if (negocio[0]) {
         this.infoNegocio = negocio[0];
 
-        // Procesar métodos de pago
         if (negocio[0].cuentas_pago) {
           try {
             const cuentas = JSON.parse(negocio[0].cuentas_pago);
-
             if (cuentas.moneda && cuentas.simbolo) {
               this.moneda = {
                 codigo: cuentas.moneda,
                 simbolo: cuentas.simbolo,
               };
             }
-
             this.infoNegocio.metodos_pago_array = cuentas.metodos || [];
           } catch (e) {
             console.error("Error parseando cuentas_pago:", e);
           }
         }
-
-        console.log(
-          `   ✅ Negocio: ${this.infoNegocio.nombre_negocio || "Sin nombre"}`
-        );
+        // console.log(
+        //   `   ✅ Negocio: ${this.infoNegocio.nombre_negocio || "Sin nombre"}`
+        // );
       }
 
-      // 3. CARGAR CONFIG DEL BOT
       const [botConfig] = await db
         .getPool()
         .execute("SELECT * FROM configuracion_bot WHERE empresa_id = ?", [
@@ -99,7 +85,6 @@ class SalesBot {
         this.infoBot = botConfig[0];
       }
 
-      // 4. CARGAR MAX TOKENS
       const [tokenConfig] = await db
         .getPool()
         .execute(
@@ -110,8 +95,7 @@ class SalesBot {
         this.maxTokens = parseInt(tokenConfig[0].valor);
       }
 
-      // 5. CARGAR TEMPERATURE (SIN DEFAULT HARDCODED)
-      cconst[tempConfig] = await db
+      const [tempConfig] = await db
         .getPool()
         .execute(
           "SELECT valor FROM configuracion_plataforma WHERE clave = 'openai_temperatura'"
@@ -121,33 +105,30 @@ class SalesBot {
         this.temperature = parseFloat(tempConfig[0].valor);
       }
 
-      console.log(`   ✅ Temperature: ${this.temperature || "no configurada"}`);
+      // console.log(`   ✅ Temperature: ${this.temperature}`);
     } catch (error) {
       console.error("❌ Error cargando configuración:", error);
     }
   }
 
-  // ============================================
-  // FUNCIONES GENÉRICAS (sin cambios)
-  // ============================================
-
   getFunctions() {
     return [
       {
         name: "agregar_al_carrito",
-        description: "Agrega productos al carrito",
+        description:
+          "Agrega productos específicos al carrito. SOLO usa esta función cuando el cliente pida productos NUEVOS que NO están en el carrito.",
         parameters: {
           type: "object",
           properties: {
             productos: {
               type: "array",
               items: { type: "string" },
-              description: "Nombres de productos",
+              description: "Nombres exactos de productos NUEVOS a agregar",
             },
             cantidades: {
               type: "array",
               items: { type: "integer" },
-              description: "Cantidades",
+              description: "Cantidades correspondientes",
             },
           },
           required: ["productos", "cantidades"],
@@ -155,25 +136,23 @@ class SalesBot {
       },
       {
         name: "ver_carrito",
-        description: "Muestra el carrito actual",
+        description: "Muestra el resumen actual del carrito",
       },
-      // NUEVA FUNCIÓN
       {
         name: "vaciar_carrito",
         description:
           "Elimina TODOS los productos del carrito cuando el cliente dice que no quiere nada o que está mal el pedido",
       },
-      // NUEVA FUNCIÓN
       {
         name: "actualizar_cantidad",
         description:
-          "Cambia la cantidad de un producto específico en el carrito",
+          "Cambia la cantidad de un producto YA existente en el carrito",
         parameters: {
           type: "object",
           properties: {
             producto: {
               type: "string",
-              description: "Nombre del producto a modificar",
+              description: "Nombre del producto existente a modificar",
             },
             nueva_cantidad: {
               type: "integer",
@@ -186,7 +165,7 @@ class SalesBot {
       {
         name: "confirmar_pedido",
         description:
-          "⚠️ OBLIGATORIO llamar cuando cliente confirma pedido con palabras: 'confirmo', 'listo', 'eso nomás', 'no más', 'ok' (después de agregar productos). NO manejes confirmación con texto conversacional, esta función existe específicamente para eso.",
+          "OBLIGATORIO: Llama esta función cuando el cliente confirme su pedido con palabras como: confirmo, listo, ok, sí, adelante, dale, está bien",
       },
       {
         name: "cancelar_carrito",
@@ -199,18 +178,49 @@ class SalesBot {
     ];
   }
 
-  // ============================================
-  // PROCESAMIENTO (sin cambios)
-  // ============================================
-
   async procesarMensajeVenta(mensaje, numero) {
+    if (this.ventasCompletadas.has(numero)) {
+      const ventaInfo = this.ventasCompletadas.get(numero);
+      const tiempoTranscurrido = Date.now() - ventaInfo.timestamp;
+
+      console.log(
+        `🔍 Venta completada detectada. Tiempo: ${Math.floor(
+          tiempoTranscurrido / 1000
+        )}s`
+      );
+
+      if (tiempoTranscurrido < 3 * 60 * 1000) {
+        const respuestas = [
+          "¡Que disfrutes! 😊",
+          "¡Hasta pronto! 😊",
+          "¡Gracias a ti! 😊",
+          "¡Buen provecho! 😊",
+          "Tu pedido ya está confirmado y en proceso. espera 3 minutos para volver hacer un nuevo pedido😊",
+        ];
+        const respuesta =
+          respuestas[Math.floor(Math.random() * respuestas.length)];
+
+        console.log("✅ Respondiendo con despedida post-venta");
+
+        await this.botHandler.saveConversation(numero, mensaje, {
+          content: respuesta,
+          tokens: 0,
+          tiempo: 0,
+        });
+
+        return { respuesta, tipo: "despedida_post_venta" };
+      } else {
+        console.log("⏰ Timeout de venta completada alcanzado, limpiando...");
+        this.ventasCompletadas.delete(numero);
+      }
+    }
+
     const carrito = this.carrito.get(numero);
 
     if (carrito) {
       carrito.ultimaActividad = Date.now();
     }
 
-    // Estados estructurados (siempre tienen prioridad)
     if (carrito?.estado === "esperando_pago") {
       return await this.manejarPago(mensaje, numero, carrito);
     }
@@ -219,34 +229,6 @@ class SalesBot {
     }
     if (carrito?.estado === "esperando_direccion") {
       return await this.manejarDireccion(mensaje, numero, carrito);
-    }
-
-    // DETECCIÓN INTELIGENTE DE INTENCIÓN para estado "agregando"
-    if (
-      carrito &&
-      carrito.productos.length > 0 &&
-      carrito.estado === "agregando"
-    ) {
-      const contexto = await this.botHandler.getContexto(numero);
-      const ultimoMensajeBot =
-        contexto.length > 0 ? contexto[contexto.length - 1].respuesta_bot : "";
-
-      const intencion = await this.detectarIntencion(mensaje, ultimoMensajeBot);
-      console.log(`🎯 Intención detectada: ${intencion}`);
-
-      switch (intencion) {
-        case "CONFIRMAR_PEDIDO":
-          return await this.funcionConfirmarPedido(numero);
-
-        case "VACIAR_CARRITO":
-          return await this.funcionVaciarCarrito(numero);
-
-        case "VER_CARRITO":
-          return await this.funcionVerCarrito(numero);
-
-        default:
-          break;
-      }
     }
 
     if (
@@ -262,18 +244,39 @@ class SalesBot {
         ultimoMensajeBot.toLowerCase().includes("confirmamos") ||
         ultimoMensajeBot.toLowerCase().includes("algo más");
 
-      const mensajeCorto = mensaje.trim().length <= 20;
-
-      if (botPregunto && mensajeCorto) {
-        const intencion = await this.detectarIntencion(
-          mensaje,
-          ultimoMensajeBot
+      if (botPregunto) {
+        const mensajeLower = mensaje.toLowerCase();
+        const mencionaPagoEntrega = mensajeLower.match(
+          /\b(yape|pago|delivery|envio|envío|recog|tienda|transfer|efectivo|tarjeta|paypal)\b/
         );
-        console.log(`🎯 Intención detectada: ${intencion}`);
+        const esConfirmacionExplicita = mensajeLower.match(
+          /^(si|sí|yes|ok|listo|confirmo|dale|está bien|vale|adelante|perfecto)$/
+        );
 
-        if (intencion === "CONFIRMAR_PEDIDO") {
+        if (mencionaPagoEntrega || esConfirmacionExplicita) {
+          console.log(
+            "🎯 Confirmación detectada después de 'confirmamos' → Auto-confirmar pedido"
+          );
           return await this.funcionConfirmarPedido(numero);
         }
+      }
+
+      const intencion = await this.detectarIntencionMejorada(
+        mensaje,
+        ultimoMensajeBot,
+        carrito
+      );
+      console.log(`🎯 Intención detectada: ${intencion}`);
+
+      switch (intencion) {
+        case "CONFIRMAR_PEDIDO":
+          return await this.funcionConfirmarPedido(numero);
+        case "VACIAR_CARRITO":
+          return await this.funcionVaciarCarrito(numero);
+        case "VER_CARRITO":
+          return await this.funcionVerCarrito(numero);
+        default:
+          break;
       }
     }
 
@@ -289,27 +292,50 @@ class SalesBot {
       const contexto = await this.botHandler.getContexto(numero);
       const carrito = this.carrito.get(numero);
 
-      const ultimasRespuestas = contexto
-        .slice(-2)
-        .map((c) => c.respuesta_bot)
-        .join(" ");
+      const ultimoMensaje =
+        contexto.length > 0 ? contexto[contexto.length - 1].respuesta_bot : "";
       const acabaDeComprar =
-        ultimasRespuestas.includes("Pedido #") &&
-        ultimasRespuestas.includes("confirmado");
+        ultimoMensaje.includes("Pedido #") &&
+        ultimoMensaje.includes("confirmado");
 
-      // NUEVA DETECCIÓN: Si acaba de comprar y dice algo corto, despedida simple
+      if (acabaDeComprar) {
+        console.log("✅ Post-venta detectado - NO usar function calling");
+
+        const respuestas = [
+          "¡Que disfrutes! 😊",
+          "¡Hasta pronto! 😊",
+          "¡Gracias a ti! 😊",
+          "Tu pedido ya está confirmado y en proceso 😊",
+        ];
+        const respuesta =
+          respuestas[Math.floor(Math.random() * respuestas.length)];
+
+        await this.botHandler.saveConversation(numero, mensaje, {
+          content: respuesta,
+          tokens: 0,
+          tiempo: 0,
+        });
+
+        return { respuesta, tipo: "despedida_post_venta" };
+      }
+
       const mensajeCorto = mensaje.toLowerCase().trim();
       const esDespedidaSimple = mensajeCorto.match(
         /^(ok|gracias|thank|bien|perfecto|listo|vale|bueno|si|sí|no)$/
       );
 
-      if (acabaDeComprar && esDespedidaSimple) {
+      const ultimasRespuestas = contexto
+        .slice(-2)
+        .map((c) => c.respuesta_bot)
+        .join(" ");
+
+      if (ultimasRespuestas.includes("confirmado") && esDespedidaSimple) {
         const respuestas = [
           "¡Que disfrutes! 😊",
           "¡Hasta pronto! 😊",
           "¡Gracias a ti! 😊",
           "¡Buen provecho! 😊",
-          "¡Excelente día! 😊",
+          "¡Excelente! 😊",
         ];
 
         const respuesta =
@@ -387,14 +413,9 @@ class SalesBot {
     }
   }
 
-  // ============================================
-  // PROMPT TOTALMENTE GENÉRICO
-  // ============================================
-
   construirPromptGenerico(carrito, acabaDeComprar, yaEnvioCatalogo) {
     let prompt = "";
 
-    // PERSONALIDAD Y PROMPTS PERSONALIZADOS
     if (this.infoBot.system_prompt) {
       prompt += `${this.infoBot.system_prompt}\n\n`;
     }
@@ -407,7 +428,6 @@ class SalesBot {
       prompt += `INFORMACIÓN DEL NEGOCIO:\n${this.infoBot.business_info}\n\n`;
     }
 
-    // INFO BÁSICA DEL NEGOCIO (solo lo que existe)
     prompt += `📍 DATOS DE CONTACTO:\n`;
     if (this.infoNegocio.nombre_negocio) {
       prompt += `• Nombre: ${this.infoNegocio.nombre_negocio}\n`;
@@ -429,12 +449,10 @@ class SalesBot {
     }
     prompt += "\n";
 
-    // PRODUCTOS
     prompt += `📦 PRODUCTOS/SERVICIOS DISPONIBLES:\n`;
     prompt += this.generarListaProductos();
     prompt += "\n";
 
-    // PROMOCIONES/COMBOS (solo mostrar activos HOY)
     if (
       this.infoCatalogo.promociones &&
       this.infoCatalogo.promociones.length > 0
@@ -452,14 +470,11 @@ class SalesBot {
 
       const promocionesActivas = this.infoCatalogo.promociones.filter((p) => {
         if (!p.descripcion) return true;
-
         const descripcionLower = p.descripcion.toLowerCase();
         const tieneDias = descripcionLower.match(
           /(lunes|martes|miércoles|jueves|viernes|sábado|domingo)/gi
         );
-
         if (!tieneDias) return true;
-
         const diasPromo = tieneDias.map((d) => d.toLowerCase());
         return diasPromo.includes(hoy);
       });
@@ -475,10 +490,8 @@ class SalesBot {
       }
     }
 
-    // DELIVERY (si existe)
     if (this.infoCatalogo.delivery) {
       prompt += `🚚 INFORMACIÓN DE ENTREGA:\n`;
-
       if (
         this.infoCatalogo.delivery.zonas &&
         this.infoCatalogo.delivery.zonas.length > 0
@@ -491,15 +504,12 @@ class SalesBot {
           prompt += "\n";
         });
       }
-
       if (this.infoCatalogo.delivery.gratis_desde) {
         prompt += `• Entrega GRATIS desde ${this.moneda.simbolo}${this.infoCatalogo.delivery.gratis_desde}\n`;
       }
-
       prompt += "\n";
     }
 
-    // CARRITO ACTUAL
     prompt += `🛒 CARRITO DEL CLIENTE:\n`;
     if (carrito && carrito.productos.length > 0) {
       carrito.productos.forEach((p) => {
@@ -509,53 +519,134 @@ class SalesBot {
       });
       prompt += `Total actual: ${this.moneda.simbolo}${carrito.total.toFixed(
         2
-      )}\n`;
-      prompt += `\n⚠️ CRÍTICO: Si cliente confirma este pedido, DEBES llamar confirmar_pedido. NO lo confirmes con texto.\n`;
+      )}\n\n`;
+      prompt += `⚠️ IMPORTANTE: Este carrito tiene productos agregados. Si el cliente confirma, DEBES llamar confirmar_pedido.\n`;
     } else {
       prompt += "Vacío\n";
     }
     prompt += "\n";
 
-    // ALERTAS ESPECIALES
     if (acabaDeComprar) {
-      prompt += `⚠️ El cliente ACABA DE COMPLETAR su compra. NO menciones confirmación ni pago. Solo responde amablemente.\n\n`;
+      prompt += `✅ El cliente YA completó su compra (Pedido confirmado). 
+⚠️ CRÍTICO: NO preguntes nada sobre pago ni delivery. Solo responde cordialmente a cualquier despedida o agradecimiento.
+Si el cliente dice "ya pagué" de nuevo, responde: "Tu pedido ya está confirmado y en proceso 😊".\n\n`;
     }
 
     if (yaEnvioCatalogo) {
-      prompt += `📋 Ya enviaste el catálogo recientemente. NO uses enviar_catalogo a menos que lo pida explícitamente de nuevo.\n\n`;
+      prompt += `📋 Ya enviaste el catálogo recientemente. NO uses enviar_catalogo a menos que lo pida explícitamente.\n\n`;
     }
 
-    // REGLAS GENERALES
-    prompt += `🎯 REGLAS:
-1. Sé natural y conversacional
-2. NUNCA inventes información que no esté arriba
-3. Si no sabes algo, di "déjame verificar"
-4. Máximo ${this.maxTokens} caracteres por respuesta
+    prompt += `🎯 REGLAS PARA USO DE FUNCIONES:
 
-⚠️ IMPORTANTE SOBRE FUNCIONES:
-Las funciones estructuran el proceso de venta. Úsalas cuando detectes estas intenciones:
+⚠️ CRÍTICO: Cuando uses una función, NO generes texto conversacional adicional. La función ya retorna el mensaje apropiado.
 
-- agregar_al_carrito: Cliente quiere comprar productos
-- confirmar_pedido: Cliente está listo para finalizar su pedido
-- actualizar_cantidad: Cliente quiere modificar cantidades
-- vaciar_carrito: Cliente quiere reiniciar su pedido
-- ver_carrito: Cliente pregunta qué tiene en su pedido
-- enviar_catalogo: Cliente quiere ver todos los productos disponibles
+1. **agregar_al_carrito**: 
+   - SOLO cuando el cliente pida productos/servicios NUEVOS que NO están en el carrito
+   - Si el cliente pide "otro producto más" y YA tiene productos en el carrito, agregar SOLO el nuevo item
+   - NO agregues texto como "perfecto, agrego eso". La función ya responde.
+
+2. **confirmar_pedido**:
+   - OBLIGATORIO cuando el cliente diga: "confirmo", "listo", "ok", "sí", "dale", "está bien"
+   - TAMBIÉN cuando mencione método de pago o tipo de entrega (implica confirmación)
+   - DESPUÉS de que se agregaron productos al carrito
+   - NO generes texto conversacional, la función maneja el flujo
+
+3. **actualizar_cantidad**:
+   - Cuando el cliente quiera cambiar cantidad de algo YA en el carrito
+   - NO agregues texto explicativo, la función responde
+
+4. **ver_carrito**:
+   - Cuando el cliente pregunte qué tiene en su pedido
+   - La función muestra el resumen completo
+
+5. **vaciar_carrito**:
+   - Cuando el cliente diga "borra todo", "empezar de nuevo", "está mal"
+   - La función confirma la acción
+
+6. **enviar_catalogo**:
+   - SOLO si el cliente pide ver productos/servicios/menú y NO lo enviaste recientemente
 
 ❌ NO HAGAS:
-- Confirmar pedidos con texto (usa la función confirmar_pedido)
-- Manejar pago/entrega conversacionalmente (las funciones lo hacen)
+- Agregar productos duplicados (verifica el carrito primero)
+- Generar texto conversacional cuando llamas una función
+- Preguntar sobre pago/entrega antes de confirmar pedido
+- Ignorar cuando el cliente confirma
 
 ✅ HAZ:
-- Usa las funciones cuando identifiques la intención del cliente
-- Las funciones manejarán el flujo automáticamente`;
+- Llama las funciones directamente sin texto adicional
+- Las funciones ya contienen los mensajes apropiados
+- Máximo ${this.maxTokens} caracteres solo cuando NO uses funciones`;
 
     return prompt;
   }
 
-  // ============================================
-  // RESTO DE FUNCIONES (sin cambios hardcodeados)
-  // ============================================
+  async detectarIntencionMejorada(mensaje, contextoBot, carrito) {
+    try {
+      const axios = require("axios");
+
+      let contextCarrito = "Carrito actual:\n";
+      carrito.productos.forEach((p) => {
+        contextCarrito += `- ${p.producto} x${p.cantidad}\n`;
+      });
+      contextCarrito += `Total: ${this.moneda.simbolo}${carrito.total.toFixed(
+        2
+      )}`;
+
+      const prompt = `Eres un asistente que detecta la intención del cliente en una conversación de ventas.
+
+CONTEXTO DEL CARRITO:
+${contextCarrito}
+
+ÚLTIMO MENSAJE DEL BOT:
+"${contextoBot}"
+
+MENSAJE DEL CLIENTE:
+"${mensaje}"
+
+Analiza el mensaje del cliente y detecta su intención principal. Responde SOLO con una de estas opciones:
+
+- CONFIRMAR_PEDIDO: El cliente está de acuerdo y quiere finalizar/confirmar su pedido actual
+- AGREGAR_PRODUCTO: El cliente quiere comprar algo NUEVO
+- VER_CARRITO: El cliente pregunta qué tiene en su pedido
+- MODIFICAR_CANTIDAD: El cliente quiere cambiar cantidad de algo YA agregado
+- VACIAR_CARRITO: El cliente quiere borrar todo y empezar de nuevo
+- CANCELAR: El cliente quiere cancelar la compra
+- VER_CATALOGO: El cliente pide ver productos/menú
+- CONVERSACION: Solo está conversando, sin acción específica
+
+IMPORTANTE:
+- Si el bot preguntó "¿confirmamos?" y el cliente dice "sí/ok/listo/confirmo/dale", la intención es CONFIRMAR_PEDIDO
+- Si el cliente reclama o dice que algo está mal, NO es confirmación
+- Si el cliente pide "otra bebida" y YA tiene bebidas, es AGREGAR_PRODUCTO
+
+Responde SOLO la palabra clave, nada más.`;
+
+      const response = await axios.post(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          model: "gpt-3.5-turbo",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.0,
+          max_tokens: 20,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.botHandler.globalConfig.openai_api_key}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const intencion = response.data.choices[0].message.content
+        .trim()
+        .toUpperCase();
+      console.log(`🧠 GPT detectó: ${intencion}`);
+      return intencion;
+    } catch (error) {
+      console.error("Error detectando intención:", error);
+      return "CONVERSACION";
+    }
+  }
 
   async callOpenAIWithFunctions(messages) {
     const axios = require("axios");
@@ -587,50 +678,6 @@ Las funciones estructuran el proceso de venta. Úsalas cuando detectes estas int
     };
   }
 
-  async detectarIntencion(mensaje, contextoBot = "") {
-    try {
-      const axios = require("axios");
-
-      const prompt = `Analiza el mensaje del cliente y detecta su intención principal.
-
-CONTEXTO: El bot preguntó: "${contextoBot}"
-MENSAJE CLIENTE: "${mensaje}"
-
-Responde SOLO con una de estas opciones:
-- CONFIRMAR_PEDIDO (cliente quiere confirmar/finalizar su pedido)
-- AGREGAR_PRODUCTO (cliente quiere comprar algo)
-- VER_CARRITO (cliente pregunta qué tiene en su pedido)
-- MODIFICAR_CANTIDAD (cliente quiere cambiar cantidad de algo)
-- VACIAR_CARRITO (cliente quiere borrar todo)
-- CANCELAR (cliente quiere cancelar)
-- VER_CATALOGO (cliente pide ver productos/menú)
-- CONVERSACION (solo está conversando, sin acción específica)
-
-Responde solo la palabra clave, nada más.`;
-
-      const response = await axios.post(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          model: "gpt-3.5-turbo",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.1,
-          max_tokens: 20,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.botHandler.globalConfig.openai_api_key}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      return response.data.choices[0].message.content.trim().toUpperCase();
-    } catch (error) {
-      console.error("Error detectando intención:", error);
-      return "CONVERSACION";
-    }
-  }
-
   async detectarIntencionPago(mensaje) {
     try {
       const axios = require("axios");
@@ -640,13 +687,13 @@ Responde solo la palabra clave, nada más.`;
 Mensaje: "${mensaje}"
 
 Ejemplos de confirmación de pago:
-- Ya pagué
-- Listo, hice el yape
-- Transferí
+- Ya pagué / Ya pague
+- Listo, hice el yape / yapee
+- Transferí / Transferi
 - Ya deposité
 - Hecho
 - Pagado
-- etc.
+- Listo con el pago
 
 Responde SOLO "SI" o "NO".`;
 
@@ -655,7 +702,7 @@ Responde SOLO "SI" o "NO".`;
         {
           model: "gpt-3.5-turbo",
           messages: [{ role: "user", content: prompt }],
-          temperature: 0.1,
+          temperature: 0.0,
           max_tokens: 5,
         },
         {
@@ -672,46 +719,6 @@ Responde SOLO "SI" o "NO".`;
       return respuesta === "SI" || respuesta === "SÍ" || respuesta === "YES";
     } catch (error) {
       console.error("Error detectando pago:", error);
-      return false;
-    }
-  }
-
-  async esIntencionConfirmar(mensaje) {
-    try {
-      const axios = require("axios");
-
-      const prompt = `Analiza si el siguiente mensaje es una confirmación o respuesta afirmativa.
-Responde SOLO "SI" o "NO".
-
-Mensaje: "${mensaje}"
-
-Ejemplos de confirmación: sí, ok, vale, listo, confirmo, eso nomás, ya, bien, perfecto, adelante, dale, está bien, etc.
-También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc.
-
-¿Es una confirmación?`;
-
-      const response = await axios.post(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          model: "gpt-3.5-turbo",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.1,
-          max_tokens: 5,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.botHandler.globalConfig.openai_api_key}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const respuesta = response.data.choices[0].message.content
-        .trim()
-        .toUpperCase();
-      return respuesta === "SI" || respuesta === "SÍ" || respuesta === "YES";
-    } catch (error) {
-      console.error("Error detectando intención:", error);
       return false;
     }
   }
@@ -746,31 +753,22 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
           args.productos,
           args.cantidades
         );
-
       case "ver_carrito":
         return await this.funcionVerCarrito(numero);
-
-      // NUEVA FUNCIÓN
       case "vaciar_carrito":
         return await this.funcionVaciarCarrito(numero);
-
-      // NUEVA FUNCIÓN
       case "actualizar_cantidad":
         return await this.funcionActualizarCantidad(
           numero,
           args.producto,
           args.nueva_cantidad
         );
-
       case "confirmar_pedido":
         return await this.funcionConfirmarPedido(numero);
-
       case "cancelar_carrito":
         return await this.funcionCancelarCarrito(numero);
-
       case "enviar_catalogo":
         return await this.funcionEnviarCatalogo(numero);
-
       default:
         return { respuesta: "¿En qué puedo ayudarte?", tipo: "error" };
     }
@@ -806,7 +804,6 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
     }
 
     if (nuevaCantidad === 0) {
-      // Eliminar producto
       carrito.productos = carrito.productos.filter(
         (p) => p !== productoEnCarrito
       );
@@ -819,16 +816,13 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
         };
       }
     } else {
-      // Actualizar cantidad
       productoEnCarrito.cantidad = nuevaCantidad;
     }
 
-    // Recalcular total
     carrito.total = carrito.productos.reduce(
       (sum, p) => sum + p.precio * p.cantidad,
       0
     );
-
     this.carrito.set(numero, carrito);
 
     let msg = "✅ Carrito actualizado:\n\n";
@@ -855,7 +849,21 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
     for (let i = 0; i < productos.length; i++) {
       const nombreBuscado = productos[i].toLowerCase();
 
-      // PRIMERO: Buscar en promociones/combos
+      const existeEnCarrito = carrito.productos.find(
+        (p) =>
+          p.producto.toLowerCase().includes(nombreBuscado) ||
+          nombreBuscado.includes(p.producto.toLowerCase())
+      );
+
+      if (existeEnCarrito) {
+        console.log(`⚠️ Producto ya existe en carrito, incrementando cantidad`);
+        existeEnCarrito.cantidad += cantidades[i];
+        productosAgregados.push(
+          `${existeEnCarrito.producto} x${cantidades[i]}`
+        );
+        continue;
+      }
+
       let productoEncontrado = null;
       if (this.infoCatalogo.promociones) {
         productoEncontrado = this.infoCatalogo.promociones.find(
@@ -866,23 +874,12 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
 
         if (productoEncontrado && productoEncontrado.precio_promo) {
           console.log(`✅ Combo encontrado: ${productoEncontrado.producto}`);
-
-          const existe = carrito.productos.find(
-            (x) => x.producto === productoEncontrado.producto
-          );
-
-          if (existe) {
-            console.log(`⚠️ Combo ya existe, incrementando cantidad`);
-            existe.cantidad += cantidades[i];
-          } else {
-            console.log(`➕ Agregando nuevo combo`);
-            carrito.productos.push({
-              producto: productoEncontrado.producto,
-              precio: productoEncontrado.precio_promo,
-              cantidad: cantidades[i],
-              es_combo: true,
-            });
-          }
+          carrito.productos.push({
+            producto: productoEncontrado.producto,
+            precio: productoEncontrado.precio_promo,
+            cantidad: cantidades[i],
+            es_combo: true,
+          });
           productosAgregados.push(
             `${productoEncontrado.producto} x${cantidades[i]}`
           );
@@ -890,7 +887,6 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
         }
       }
 
-      // SEGUNDO: Buscar en productos normales
       const producto = this.catalogo.productos.find(
         (p) =>
           p.producto.toLowerCase().includes(nombreBuscado) ||
@@ -898,18 +894,11 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
       );
 
       if (producto) {
-        const existe = carrito.productos.find(
-          (x) => x.producto === producto.producto
-        );
-        if (existe) {
-          existe.cantidad += cantidades[i];
-        } else {
-          carrito.productos.push({
-            producto: producto.producto,
-            precio: producto.precio,
-            cantidad: cantidades[i],
-          });
-        }
+        carrito.productos.push({
+          producto: producto.producto,
+          precio: producto.precio,
+          cantidad: cantidades[i],
+        });
         productosAgregados.push(`${producto.producto} x${cantidades[i]}`);
       }
     }
@@ -918,7 +907,6 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
       (sum, p) => sum + p.precio * p.cantidad,
       0
     );
-
     this.carrito.set(numero, carrito);
 
     let msg = `✅ Agregado:\n`;
@@ -960,14 +948,11 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
       };
     }
 
-    // Recalcular subtotal (sin delivery aún)
     carrito.subtotal = carrito.productos.reduce(
       (sum, p) => sum + p.precio * p.cantidad,
       0
     );
-    carrito.total = carrito.subtotal; // Por ahora igual
-
-    // Cambiar estado a "esperando_entrega" (primero preguntamos tipo de entrega)
+    carrito.total = carrito.subtotal;
     carrito.estado = "esperando_entrega";
     this.carrito.set(numero, carrito);
 
@@ -1011,26 +996,22 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
     };
   }
 
-  // Resto de funciones de pago/entrega (sin cambios, ya son genéricas)
   async solicitarPago(numero, carrito) {
     try {
       const carritoActual = this.carrito.get(numero) || carrito;
 
       let msg = "✅ RESUMEN DE TU PEDIDO:\n\n";
 
-      // Productos
       carritoActual.productos.forEach((p) => {
         msg += `• ${p.producto} x${p.cantidad} - ${this.moneda.simbolo}${(
           p.precio * p.cantidad
         ).toFixed(2)}\n`;
       });
 
-      // Subtotal
       msg += `\nSubtotal: ${
         this.moneda.simbolo
       }${carritoActual.subtotal.toFixed(2)}\n`;
 
-      // Delivery (si aplica)
       if (carritoActual.tipo_entrega === "delivery") {
         if (carritoActual.costo_delivery > 0) {
           msg += `Delivery: ${
@@ -1044,11 +1025,9 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
         }
       }
 
-      // Total final
       msg += `\n💰 *TOTAL A PAGAR: ${
         this.moneda.simbolo
       }${carritoActual.total.toFixed(2)}*\n\n`;
-
       msg += "💳 MÉTODOS DE PAGO:\n\n";
 
       if (
@@ -1074,20 +1053,11 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
   }
 
   async manejarPago(mensaje, numero, carrito) {
-    // Usar GPT para detectar si confirmó el pago
     const intencionPago = await this.detectarIntencionPago(mensaje);
 
     if (intencionPago) {
-      console.log("💰 Pago confirmado por IA, cambiando estado");
-
-      carrito.estado = "esperando_entrega";
-      this.carrito.set(numero, carrito);
-
-      return {
-        respuesta:
-          "¿Cómo prefieres recibirlo?\n\n1️⃣ Delivery/Envío\n2️⃣ Recoger en tienda",
-        tipo: "tipo_entrega",
-      };
+      console.log("💰 Pago confirmado por IA, finalizando venta");
+      return await this.finalizarVenta(numero, carrito);
     }
 
     return {
@@ -1105,7 +1075,8 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
       this.carrito.set(numero, carrito);
 
       return {
-        respuesta: "📍 ¿Cuál es tu dirección completa?",
+        respuesta:
+          "📍 Por favor indica tu *dirección y sector*\n\nEjemplo: Jr Comercio 304 / La Molina",
         tipo: "solicitar_direccion",
       };
     }
@@ -1113,9 +1084,8 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
     if (msgLower.match(/\b(recog|tienda|local|2)\b/)) {
       carrito.tipo_entrega = "tienda";
       carrito.costo_delivery = 0;
-      carrito.total = carrito.subtotal; // Sin delivery
+      carrito.total = carrito.subtotal;
 
-      // Ir directo a mostrar resumen de pago
       return await this.solicitarPago(numero, carrito);
     }
 
@@ -1128,7 +1098,6 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
   async manejarDireccion(mensaje, numero, carrito) {
     carrito.direccion = mensaje;
 
-    // CALCULAR COSTO DE DELIVERY
     let costoDelivery = 0;
     let tiempoEstimado = "30-45 min";
 
@@ -1146,7 +1115,6 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
       }
     }
 
-    // Delivery gratis si supera monto
     if (
       this.infoCatalogo.delivery?.gratis_desde &&
       carrito.subtotal >= this.infoCatalogo.delivery.gratis_desde
@@ -1157,7 +1125,7 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
     carrito.costo_delivery = costoDelivery;
     carrito.tiempo_estimado = tiempoEstimado;
     carrito.total = carrito.subtotal + costoDelivery;
-    carrito.estado = "esperando_pago"; // IMPORTANTE: Cambia a esperando_pago
+    carrito.estado = "esperando_pago";
 
     this.carrito.set(numero, carrito);
 
@@ -1183,6 +1151,14 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
 
       const ventaId = result.insertId;
       await this.notificarVenta(ventaId, carrito, numero);
+
+      this.ventasCompletadas.set(numero, {
+        ventaId: ventaId,
+        timestamp: Date.now(),
+      });
+      console.log(
+        `✅ Venta #${ventaId} marcada como completada para ${numero}`
+      );
 
       this.carrito.delete(numero);
 
@@ -1218,9 +1194,14 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
         ]);
 
       if (!notifRows[0]) {
-        console.log("❌ No hay configuración de notificaciones");
+        console.log("❌ No hay configuración de notificaciones en BD");
         return;
       }
+
+      console.log("✅ Configuración encontrada:", {
+        notificar_ventas: notifRows[0].notificar_ventas,
+        tiene_numeros: !!notifRows[0].numeros_notificacion,
+      });
 
       if (!notifRows[0].notificar_ventas) {
         console.log("📵 Notificaciones de ventas desactivadas");
@@ -1232,12 +1213,12 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
         numeros = JSON.parse(notifRows[0].numeros_notificacion || "[]");
         console.log("📱 Números para notificar:", numeros);
       } catch (e) {
-        console.error("Error parseando números:", e);
+        console.error("❌ Error parseando números:", e);
         return;
       }
 
       if (!Array.isArray(numeros) || numeros.length === 0) {
-        console.log("📵 No hay números configurados");
+        console.log("📵 No hay números configurados para notificar");
         return;
       }
 
@@ -1255,39 +1236,60 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
 
       console.log("📝 Mensaje preparado:", msg.substring(0, 100));
 
-      // VERIFICAR ESTRUCTURA
-      console.log("🔍 Verificando botHandler:", {
-        existe: !!this.botHandler,
-        whatsappClient: !!this.botHandler?.whatsappClient,
-        client: !!this.botHandler?.whatsappClient?.client,
-        sendText: typeof this.botHandler?.whatsappClient?.client?.sendText,
-      });
-
       for (const num of numeros) {
         try {
-          let numeroLimpio = num.replace(/[^\d]/g, ""); // Solo dígitos
-
+          let numeroLimpio = num.replace(/[^\d]/g, "");
           if (!numeroLimpio.includes("@")) {
             numeroLimpio = `${numeroLimpio}@c.us`;
           }
 
-          console.log(`📤 Enviando a: ${numeroLimpio}`);
+          console.log(`📤 Enviando notificación a: ${numeroLimpio}`);
 
-          // ACCEDER AL CLIENTE CORRECTO
-          const whatsappClient = this.botHandler?.whatsappClient;
+          let enviado = false;
 
-          if (
-            whatsappClient &&
-            whatsappClient.client &&
-            typeof whatsappClient.client.sendText === "function"
-          ) {
-            await whatsappClient.client.sendText(numeroLimpio, msg);
-            console.log(`✅ Notificación enviada a ${num}`);
-          } else {
-            console.error(
-              `❌ sendText no disponible. Estructura:`,
-              Object.keys(whatsappClient?.client || {})
+          if (this.botHandler.whatsappClient?.client?.client?.sendText) {
+            await this.botHandler.whatsappClient.client.client.sendText(
+              numeroLimpio,
+              msg
             );
+            enviado = true;
+            console.log(`✅ Enviado vía client.client.sendText`);
+          } else if (this.botHandler.whatsappClient?.client?.sendText) {
+            await this.botHandler.whatsappClient.client.sendText(
+              numeroLimpio,
+              msg
+            );
+            enviado = true;
+            console.log(`✅ Enviado vía client.sendText`);
+          } else if (this.botHandler.whatsappClient?.sendMessage) {
+            await this.botHandler.whatsappClient.sendMessage(numeroLimpio, msg);
+            enviado = true;
+            console.log(`✅ Enviado vía sendMessage`);
+          }
+
+          if (!enviado) {
+            console.error("❌ No se encontró método de envío disponible");
+            console.log(
+              "Estructura:",
+              JSON.stringify(
+                {
+                  hasWhatsappClient: !!this.botHandler.whatsappClient,
+                  hasClient: !!this.botHandler.whatsappClient?.client,
+                  hasClientClient:
+                    !!this.botHandler.whatsappClient?.client?.client,
+                  clientClientKeys: this.botHandler.whatsappClient?.client
+                    ?.client
+                    ? Object.keys(
+                        this.botHandler.whatsappClient.client.client
+                      ).slice(0, 10)
+                    : [],
+                },
+                null,
+                2
+              )
+            );
+          } else {
+            console.log(`✅ Notificación enviada exitosamente a ${num}`);
           }
         } catch (error) {
           console.error(`❌ Error enviando a ${num}:`, error.message);
@@ -1305,6 +1307,21 @@ También mensajes con errores de tipeo como: "si", "oka", "list", "cofirmo", etc
     for (const [numero, carrito] of this.carrito.entries()) {
       if (ahora - carrito.ultimaActividad > timeout) {
         this.carrito.delete(numero);
+        console.log(`🧹 Carrito limpiado por inactividad: ${numero}`);
+      }
+    }
+  }
+
+  limpiarVentasCompletadas() {
+    const ahora = Date.now();
+    const timeout = 3 * 60 * 1000;
+
+    for (const [numero, ventaInfo] of this.ventasCompletadas.entries()) {
+      if (ahora - ventaInfo.timestamp > timeout) {
+        this.ventasCompletadas.delete(numero);
+        console.log(
+          `🧹 Venta completada limpiada: ${numero} (Venta #${ventaInfo.ventaId})`
+        );
       }
     }
   }
