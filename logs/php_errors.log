@@ -141,3 +141,8 @@ Stack trace:
 #0 C:\xampp\htdocs\mensajeroprov2\web\app.php(134): require_once()
 #1 {main}
   thrown in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 311
+[02-Oct-2025 11:29:32 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\descargar-catalogo.php on line 3
+[02-Oct-2025 11:29:47 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\descargar-catalogo.php on line 3
+[02-Oct-2025 11:44:44 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\descargar-catalogo.php on line 3
+[02-Oct-2025 11:49:59 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\descargar-catalogo.php on line 3
+[02-Oct-2025 11:51:16 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\descargar-catalogo.php on line 3

@@ -42,7 +42,7 @@ if ($catalogo && $catalogo['datos_json']) {
     <!-- Main content -->
     <section class="content">
         <div class="container-fluid">
-            
+
             <!-- Alerta informativa -->
             <div class="alert alert-info">
                 <h5><i class="icon fas fa-info"></i> Importante!</h5>
@@ -76,8 +76,8 @@ if ($catalogo && $catalogo['datos_json']) {
                                         <div class="form-group">
                                             <label>Archivo Excel con productos:</label>
                                             <div class="custom-file">
-                                                <input type="file" class="custom-file-input" id="archivo_excel" 
-                                                       name="archivo_excel" accept=".xlsx,.xls">
+                                                <input type="file" class="custom-file-input" id="archivo_excel"
+                                                    name="archivo_excel" accept=".xlsx,.xls">
                                                 <label class="custom-file-label" for="archivo_excel">
                                                     Seleccionar Excel...
                                                 </label>
@@ -93,14 +93,14 @@ if ($catalogo && $catalogo['datos_json']) {
                                                 </small>
                                             <?php endif; ?>
                                         </div>
-                                        
+
                                         <button type="submit" class="btn btn-success btn-block">
                                             <i class="fas fa-upload"></i> Subir Excel
                                         </button>
-                                        
+
                                         <?php if ($catalogo && $catalogo['archivo_excel']): ?>
-                                            <a href="<?= url('api/v1/bot/descargar-catalogo.php?tipo=excel') ?>" 
-                                               class="btn btn-outline-success btn-block mt-2">
+                                            <a href="<?= url('api/v1/bot/descargar-catalogo.php?tipo=excel') ?>"
+                                                class="btn btn-outline-success btn-block mt-2">
                                                 <i class="fas fa-download"></i> Descargar Excel Actual
                                             </a>
                                         <?php endif; ?>
@@ -108,7 +108,7 @@ if ($catalogo && $catalogo['datos_json']) {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Sección PDF -->
                         <div class="col-md-6">
                             <div class="card border-danger">
@@ -122,8 +122,8 @@ if ($catalogo && $catalogo['datos_json']) {
                                         <div class="form-group">
                                             <label>Catálogo PDF (opcional):</label>
                                             <div class="custom-file">
-                                                <input type="file" class="custom-file-input" id="archivo_pdf" 
-                                                       name="archivo_pdf" accept=".pdf">
+                                                <input type="file" class="custom-file-input" id="archivo_pdf"
+                                                    name="archivo_pdf" accept=".pdf">
                                                 <label class="custom-file-label" for="archivo_pdf">
                                                     Seleccionar PDF...
                                                 </label>
@@ -138,14 +138,14 @@ if ($catalogo && $catalogo['datos_json']) {
                                                 </small>
                                             <?php endif; ?>
                                         </div>
-                                        
+
                                         <button type="submit" class="btn btn-danger btn-block">
                                             <i class="fas fa-upload"></i> Subir PDF
                                         </button>
-                                        
+
                                         <?php if ($catalogo && $catalogo['archivo_pdf']): ?>
-                                            <a href="<?= url('api/v1/bot/descargar-catalogo.php?tipo=pdf') ?>" 
-                                               class="btn btn-outline-danger btn-block mt-2" target="_blank">
+                                            <a href="<?= url('api/v1/bot/descargar-catalogo.php?tipo=pdf') ?>"
+                                                class="btn btn-outline-danger btn-block mt-2" target="_blank">
                                                 <i class="fas fa-eye"></i> Ver PDF Actual
                                             </a>
                                         <?php endif; ?>
@@ -154,7 +154,7 @@ if ($catalogo && $catalogo['datos_json']) {
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Botón plantilla -->
                     <div class="text-center mt-3">
                         <a href="#" class="btn btn-info" onclick="descargarPlantilla()">
@@ -177,7 +177,7 @@ if ($catalogo && $catalogo['datos_json']) {
                             </div>
                             <div class="card-body">
                                 <?php if (!empty($datos_catalogo['productos'])): ?>
-                                    <?php 
+                                    <?php
                                     // Paginación para productos
                                     $productos_por_pagina = 10;
                                     $total_productos = count($datos_catalogo['productos']);
@@ -203,7 +203,7 @@ if ($catalogo && $catalogo['datos_json']) {
                                             </tbody>
                                         </table>
                                     </div>
-                                    
+
                                     <?php if ($total_productos > $productos_por_pagina): ?>
                                         <div class="text-center mt-2">
                                             <button class="btn btn-sm btn-primary" onclick="verTodosProductos()">
@@ -211,7 +211,7 @@ if ($catalogo && $catalogo['datos_json']) {
                                             </button>
                                         </div>
                                     <?php endif; ?>
-                                    
+
                                     <!-- Modal para ver todos los productos -->
                                     <div class="modal fade" id="modalProductos" tabindex="-1">
                                         <div class="modal-dialog modal-lg">
@@ -223,8 +223,8 @@ if ($catalogo && $catalogo['datos_json']) {
                                                     </button>
                                                 </div>
                                                 <div class="modal-body">
-                                                    <input type="text" class="form-control mb-3" id="buscarProducto" 
-                                                           placeholder="Buscar producto...">
+                                                    <input type="text" class="form-control mb-3" id="buscarProducto"
+                                                        placeholder="Buscar producto...">
                                                     <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                                                         <table class="table table-sm" id="tablaProductosCompleta">
                                                             <thead>
@@ -323,11 +323,11 @@ if ($catalogo && $catalogo['datos_json']) {
                                             </tbody>
                                         </table>
                                     </div>
-                                    
+
                                     <?php if (isset($datos_catalogo['delivery']['gratis_desde'])): ?>
                                         <div class="alert alert-info mt-3">
-                                            <i class="fas fa-info-circle"></i> 
-                                            Delivery gratis en compras desde: 
+                                            <i class="fas fa-info-circle"></i>
+                                            Delivery gratis en compras desde:
                                             <strong>S/ <?= number_format($datos_catalogo['delivery']['gratis_desde'], 2) ?></strong>
                                         </div>
                                     <?php endif; ?>
@@ -361,162 +361,163 @@ if ($catalogo && $catalogo['datos_json']) {
 <?php require_once __DIR__ . '/../layouts/footer.php'; ?>
 
 <script>
-// Actualizar nombre del archivo seleccionado
-$('.custom-file-input').on('change', function() {
-    let fileName = $(this).val().split('\\').pop();
-    $(this).siblings('.custom-file-label').addClass('selected').html(fileName);
-});
+    // Actualizar nombre del archivo seleccionado
+    $('.custom-file-input').on('change', function() {
+        let fileName = $(this).val().split('\\').pop();
+        $(this).siblings('.custom-file-label').addClass('selected').html(fileName);
+    });
 
-// Manejar envío del formulario Excel
-$('#formExcel').on('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const btnSubmit = $(this).find('button[type="submit"]');
-    const textOriginal = btnSubmit.html();
-    
-    // Validar que se haya seleccionado archivo
-    if (!$('#archivo_excel')[0].files[0]) {
-        Swal.fire('Error', 'Debes seleccionar un archivo Excel', 'error');
-        return;
-    }
-    
-    // Mostrar loading
-    btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
-    
-    $.ajax({
-        url: API_URL + '/bot/subir-catalogo.php',
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function(response) {
-            btnSubmit.prop('disabled', false).html(textOriginal);
-            
-            if (response.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Excel cargado',
-                    text: `Se procesaron ${response.data.productos} productos`,
-                    showConfirmButton: false,
-                    timer: 1500
-                }).then(() => {
-                    location.reload();
-                });
-            } else {
-                Swal.fire('Error', response.message, 'error');
-            }
-        },
-        error: function(xhr) {
-            btnSubmit.prop('disabled', false).html(textOriginal);
-            Swal.fire('Error', xhr.responseJSON?.message || 'Error al cargar el archivo', 'error');
+    // Manejar envío del formulario Excel
+    $('#formExcel').on('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const btnSubmit = $(this).find('button[type="submit"]');
+        const textOriginal = btnSubmit.html();
+
+        // Validar que se haya seleccionado archivo
+        if (!$('#archivo_excel')[0].files[0]) {
+            Swal.fire('Error', 'Debes seleccionar un archivo Excel', 'error');
+            return;
         }
-    });
-});
 
-// Manejar envío del formulario PDF
-$('#formPDF').on('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const btnSubmit = $(this).find('button[type="submit"]');
-    const textOriginal = btnSubmit.html();
-    
-    // Validar que se haya seleccionado archivo
-    if (!$('#archivo_pdf')[0].files[0]) {
-        Swal.fire('Error', 'Debes seleccionar un archivo PDF', 'error');
-        return;
-    }
-    
-    // Mostrar loading
-    btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
-    
-    $.ajax({
-        url: API_URL + '/bot/subir-catalogo.php',
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function(response) {
-            btnSubmit.prop('disabled', false).html(textOriginal);
-            
-            if (response.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'PDF cargado',
-                    text: 'El catálogo visual se actualizó correctamente',
-                    showConfirmButton: false,
-                    timer: 1500
-                }).then(() => {
-                    location.reload();
-                });
-            } else {
-                Swal.fire('Error', response.message, 'error');
+        // Mostrar loading
+        btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
+
+        $.ajax({
+            url: API_URL + '/bot/subir-catalogo.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                btnSubmit.prop('disabled', false).html(textOriginal);
+
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Excel cargado',
+                        text: `Se procesaron ${response.data.productos} productos`,
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', response.message, 'error');
+                }
+            },
+            error: function(xhr) {
+                btnSubmit.prop('disabled', false).html(textOriginal);
+                Swal.fire('Error', xhr.responseJSON?.message || 'Error al cargar el archivo', 'error');
             }
-        },
-        error: function(xhr) {
-            btnSubmit.prop('disabled', false).html(textOriginal);
-            Swal.fire('Error', xhr.responseJSON?.message || 'Error al cargar el archivo', 'error');
+        });
+    });
+
+    // Manejar envío del formulario PDF
+    $('#formPDF').on('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const btnSubmit = $(this).find('button[type="submit"]');
+        const textOriginal = btnSubmit.html();
+
+        // Validar que se haya seleccionado archivo
+        if (!$('#archivo_pdf')[0].files[0]) {
+            Swal.fire('Error', 'Debes seleccionar un archivo PDF', 'error');
+            return;
         }
+
+        // Mostrar loading
+        btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
+
+        $.ajax({
+            url: API_URL + '/bot/subir-catalogo.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                btnSubmit.prop('disabled', false).html(textOriginal);
+
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'PDF cargado',
+                        text: 'El catálogo visual se actualizó correctamente',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', response.message, 'error');
+                }
+            },
+            error: function(xhr) {
+                btnSubmit.prop('disabled', false).html(textOriginal);
+                Swal.fire('Error', xhr.responseJSON?.message || 'Error al cargar el archivo', 'error');
+            }
+        });
     });
-});
 
-// Función para ver todos los productos
-function verTodosProductos() {
-    $('#modalProductos').modal('show');
-}
+    // Función para ver todos los productos
+    function verTodosProductos() {
+        $('#modalProductos').modal('show');
+    }
 
-// Búsqueda en la tabla de productos
-$('#buscarProducto').on('keyup', function() {
-    const valor = $(this).val().toLowerCase();
-    $('#tablaProductosCompleta tbody tr').filter(function() {
-        $(this).toggle($(this).text().toLowerCase().indexOf(valor) > -1);
+    // Búsqueda en la tabla de productos
+    $('#buscarProducto').on('keyup', function() {
+        const valor = $(this).val().toLowerCase();
+        $('#tablaProductosCompleta tbody tr').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(valor) > -1);
+        });
     });
-});
 
-// Descargar plantilla Excel
-function descargarPlantilla() {
-    // Crear un Excel de ejemplo con la estructura correcta
-    const wb = XLSX.utils.book_new();
-    
-    // Hoja 1: PRODUCTOS
-    const productos = [
-        ['Categoría', 'Producto', 'Precio', 'Disponible'],
-        ['Pizzas', 'Pizza Familiar Americana', '35.90', 'SI'],
-        ['Pizzas', 'Pizza Familiar Hawaiana', '38.90', 'SI'],
-        ['Bebidas', 'Coca Cola 1.5L', '8.00', 'SI'],
-        ['Bebidas', 'Inca Kola 1.5L', '8.00', 'SI']
-    ];
-    const ws1 = XLSX.utils.aoa_to_sheet(productos);
-    XLSX.utils.book_append_sheet(wb, ws1, 'PRODUCTOS');
-    
-    // Hoja 2: PROMOCIONES
-    const promociones = [
-        ['Producto', 'Tipo', 'Descripción', 'Precio Promo'],
-        ['Pizza Familiar Americana', '2x1', 'Martes y Jueves', '35.90'],
-        ['Combo Familiar', 'Descuento', '2 Pizzas + Bebida 1.5L', '65.00']
-    ];
-    const ws2 = XLSX.utils.aoa_to_sheet(promociones);
-    XLSX.utils.book_append_sheet(wb, ws2, 'PROMOCIONES');
-    
-    // Hoja 3: DELIVERY
-    const delivery = [
-        ['Zona', 'Costo', 'Tiempo'],
-        ['Centro', '5.00', '20-30 min'],
-        ['Norte', '8.00', '30-40 min'],
-        ['Sur', '8.00', '30-40 min'],
-        ['GRATIS DESDE:', '50.00', '']
-    ];
-    const ws3 = XLSX.utils.aoa_to_sheet(delivery);
-    XLSX.utils.book_append_sheet(wb, ws3, 'DELIVERY');
-    
-    // Descargar
-    XLSX.writeFile(wb, 'plantilla_catalogo_bot.xlsx');
-    
-    Swal.fire({
-        icon: 'info',
-        title: 'Plantilla descargada',
-        html: `
+    // Descargar plantilla Excel
+    function descargarPlantilla() {
+        // Crear un Excel de ejemplo con la estructura correcta
+        const wb = XLSX.utils.book_new();
+
+        // Hoja 1: PRODUCTOS
+        const productos = [
+            ['Categoría', 'Producto', 'Precio', 'Disponible', 'Descripción'],
+            ['Pizzas', 'Pizza Familiar Americana', '35.90', 'SI', 'Queso, jamón y tocino'],
+            ['Planes Internet', 'Internet 20 Mbps', '49.90', 'SI', 'Instalación S/100 (incluye router)'],
+            ['Planes Internet', 'Internet 50 Mbps', '79.90', 'SI', 'Instalación: S/100 al instalar (incluye router). Mensualidad: S/79.90 a fin de mes'],
+            ['Planes SaaS', 'Plan Básico', '99.00', 'SI', 'Hasta 5 usuarios']
+        ];
+        const ws1 = XLSX.utils.aoa_to_sheet(productos);
+        XLSX.utils.book_append_sheet(wb, ws1, 'PRODUCTOS');
+
+        // Hoja 2: PROMOCIONES
+        const promociones = [
+            ['Producto', 'Tipo', 'Descripción', 'Precio Promo'],
+            ['Pizza Familiar Americana', '2x1', 'Martes y Jueves', '35.90'],
+            ['Internet 50 Mbps', 'Descuento', 'Primer mes 50% OFF', '40.00']
+        ];
+        const ws2 = XLSX.utils.aoa_to_sheet(promociones);
+        XLSX.utils.book_append_sheet(wb, ws2, 'PROMOCIONES');
+
+        // Hoja 3: DELIVERY
+        const delivery = [
+            ['Zona', 'Costo', 'Tiempo'],
+            ['Centro', '5.00', '20-30 min'],
+            ['Ventanilla', '0.00', 'Tecnico Agenda contigo'],
+            ['Sur', '8.00', '30-40 min'],
+            ['GRATIS DESDE:', '50.00', ''],
+            ['PARA BOT DE SOPORTE NO APLICA ELIMINAR TODO Y DEJAR EN BLANCO (NO ELIMINAR LOS ENCABEZADOS):', '00.00', '']
+        ];
+        const ws3 = XLSX.utils.aoa_to_sheet(delivery);
+        XLSX.utils.book_append_sheet(wb, ws3, 'DELIVERY');
+
+        // Descargar
+        XLSX.writeFile(wb, 'plantilla_catalogo_bot.xlsx');
+
+        Swal.fire({
+            icon: 'info',
+            title: 'Plantilla descargada',
+            html: `
             <p>Modifica la plantilla con tus productos y vuelve a subirla.</p>
             <ul class="text-left">
                 <li><strong>PRODUCTOS:</strong> Lista todos tus productos con precio</li>
@@ -524,9 +525,9 @@ function descargarPlantilla() {
                 <li><strong>DELIVERY:</strong> Zonas y costos de entrega</li>
             </ul>
         `,
-        width: 600
-    });
-}
+            width: 600
+        });
+    }
 </script>
 
 <!-- Incluir SheetJS para generar Excel -->

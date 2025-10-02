@@ -4,7 +4,6 @@ const SalesBot = require("./salesBot");
 const AppointmentBot = require("./appointmentBot");
 const ReminderService = require("./reminderService");
 
-
 class BotHandler {
   constructor(whatsappClient = null) {
     this.config = null;
@@ -18,7 +17,7 @@ class BotHandler {
     if (whatsappClient) {
       const ReminderService = require("./reminderService");
       this.reminderService = new ReminderService(whatsappClient);
-      
+
       // Verificar recordatorios cada hora
       setInterval(() => {
         this.reminderService.verificarRecordatorios();
@@ -98,6 +97,18 @@ class BotHandler {
         }
       } else {
         this.appointmentBot = null;
+      }
+
+      if (this.config && this.config.tipo_bot === "soporte") {
+        if (!this.supportBot) {
+          const SupportBot = require("./supportBot");
+          this.supportBot = new SupportBot(this.config.empresa_id || 1, this);
+          await this.supportBot.loadConfig();
+        } else {
+          await this.supportBot.loadConfig();
+        }
+      } else {
+        this.supportBot = null;
       }
 
       this.conocimientos = [];
@@ -273,6 +284,18 @@ class BotHandler {
         return {
           respuesta: citaResponse.respuesta,
           tipo: citaResponse.tipo,
+        };
+      }
+
+      if (this.config.tipo_bot === "soporte" && this.supportBot) {
+        const soporteResponse = await this.supportBot.procesarMensajeSoporte(
+          mensaje,
+          numero
+        );
+
+        return {
+          respuesta: soporteResponse.respuesta,
+          tipo: soporteResponse.tipo,
         };
       }
 

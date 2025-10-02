@@ -1,4 +1,4 @@
-// whatsapp-service/src/appointmentBot.js 
+// whatsapp-service/src/appointmentBot.js
 const db = require("./database");
 const moment = require("moment");
 const axios = require("axios");
@@ -274,9 +274,7 @@ class AppointmentBot {
   async manejarCancelacion(mensaje, numero, procesoActual) {
     const msgLower = mensaje.toLowerCase().trim();
 
-    if (
-      msgLower.match(/^(si|sí|yes|ok|cancelar|dale|confirmo|está bien)$/)
-    ) {
+    if (msgLower.match(/^(si|sí|yes|ok|cancelar|dale|confirmo|está bien)$/)) {
       const citaId = procesoActual.citaExistente.id;
 
       await db
@@ -581,8 +579,7 @@ class AppointmentBot {
     const fechaMoment = moment(fecha);
     if (!fechaMoment.isValid() || fechaMoment.isBefore(moment(), "day")) {
       return {
-        respuesta:
-          "Por favor indica una fecha válida (desde hoy en adelante).",
+        respuesta: "Por favor indica una fecha válida (desde hoy en adelante).",
         tipo: "fecha_invalida",
       };
     }
@@ -599,11 +596,7 @@ class AppointmentBot {
       };
     }
 
-    const slots = await this.generarSlotsDisponibles(
-      fecha,
-      horarioDelDia,
-      30
-    );
+    const slots = await this.generarSlotsDisponibles(fecha, horarioDelDia, 30);
 
     if (slots.length === 0) {
       return {
@@ -697,7 +690,10 @@ class AppointmentBot {
         cita.tipo_servicio
       }\nFecha: ${moment(cita.fecha_cita).format(
         "D/MM"
-      )}\nHora: ${cita.hora_cita.substring(0, 5)}\n\n¿Deseas agendar una nueva?`,
+      )}\nHora: ${cita.hora_cita.substring(
+        0,
+        5
+      )}\n\n¿Deseas agendar una nueva?`,
       tipo: "cita_cancelada",
       citaId: cita.id,
     };
@@ -818,9 +814,7 @@ class AppointmentBot {
       return {
         respuesta: `😔 No hay horarios disponibles para ${moment(
           cita.fecha
-        ).format(
-          "dddd D [de] MMMM"
-        )}.\nPor favor, contacta directamente.`,
+        ).format("dddd D [de] MMMM")}.\nPor favor, contacta directamente.`,
         tipo: "sin_disponibilidad_total",
       };
     }
@@ -946,8 +940,7 @@ class AppointmentBot {
     }
 
     return {
-      respuesta:
-        "Por favor responde *SÍ* para confirmar o *NO* para cancelar.",
+      respuesta: "Por favor responde *SÍ* para confirmar o *NO* para cancelar.",
       tipo: "respuesta_invalida",
     };
   }
@@ -1007,17 +1000,19 @@ class AppointmentBot {
   async guardarCitaBD(numero, cita) {
     const [result] = await db.getPool().execute(
       `INSERT INTO citas_bot 
-       (empresa_id, numero_cliente, nombre_cliente, fecha_cita, hora_cita, 
-        tipo_servicio, estado, notas)
-       VALUES (?, ?, ?, ?, ?, ?, 'agendada', ?)`,
+       (empresa_id, numero_cliente, nombre_cliente, dni_cedula, fecha_cita, hora_cita, 
+        tipo_servicio, estado, notas, direccion_completa)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'agendada', ?, ?)`,
       [
         this.empresaId,
         numero,
         cita.nombre || numero.replace("@c.us", ""),
+        cita.dni_cedula || null,
         cita.fecha,
         cita.hora + ":00",
         cita.servicio.nombre_servicio,
         cita.servicio.requiere_preparacion || null,
+        cita.direccion || null,
       ]
     );
 
@@ -1147,10 +1142,7 @@ class AppointmentBot {
 
           console.log(`📢 Notificación de cita enviada a ${num}`);
         } catch (error) {
-          console.error(
-            `Error enviando notificación a ${num}:`,
-            error.message
-          );
+          console.error(`Error enviando notificación a ${num}:`, error.message);
         }
       }
     } catch (error) {
@@ -1180,6 +1172,41 @@ class AppointmentBot {
         console.log(`🧹 Cita completada limpiada: ${numero}`);
       }
     }
+  }
+
+  // Inicia agendamiento con datos prellenados
+  async iniciarAgendamientoConDatos(datosPrevios) {
+    const { numero, nombre, dni_cedula, direccion, servicio } = datosPrevios;
+
+    // Buscar el servicio por nombre
+    const servicioEncontrado = this.servicios.find(
+      (s) =>
+        s.nombre_servicio.toLowerCase().includes("instalación") ||
+        s.nombre_servicio.toLowerCase().includes("visita")
+    );
+
+    if (!servicioEncontrado) {
+      return {
+        respuesta: "Error: No hay servicios de instalación disponibles.",
+        tipo: "error_servicio",
+      };
+    }
+
+    // Crear proceso de cita con datos prellenados
+    this.citasEnProceso.set(numero, {
+      estado: "esperando_fecha",
+      nombre: nombre,
+      dni_cedula: dni_cedula,
+      direccion: direccion,
+      servicio: servicioEncontrado, // Usar el servicio completo de BD
+      ultimaActividad: Date.now(),
+    });
+
+    // Mostrar días disponibles directamente
+    return await this.mostrarDiasDisponibles(
+      numero,
+      this.citasEnProceso.get(numero)
+    );
   }
 }
 
