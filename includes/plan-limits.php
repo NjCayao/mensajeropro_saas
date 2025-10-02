@@ -6,12 +6,13 @@
  * Obtener límites del plan actual de la empresa
  * @return array Límites del plan
  */
-function obtenerLimitesPlan() {
+function obtenerLimitesPlan()
+{
     global $pdo;
-    
+
     try {
         $empresa_id = getEmpresaActual();
-        
+
         $stmt = $pdo->prepare("
             SELECT 
                 e.id as empresa_id,
@@ -27,24 +28,24 @@ function obtenerLimitesPlan() {
         ");
         $stmt->execute([$empresa_id]);
         $data = $stmt->fetch();
-        
+
         if (!$data) {
             throw new Exception('No se encontró información del plan');
         }
-        
+
         // Decodificar características
         $caracteristicas = json_decode($data['caracteristicas_json'] ?? '{}', true);
-        
+
         // Determinar si es trial
         $es_trial = ($data['plan_id'] == 1);
         $trial_activo = false;
-        
+
         if ($es_trial && $data['fecha_expiracion_trial']) {
             $fecha_exp = new DateTime($data['fecha_expiracion_trial']);
             $hoy = new DateTime();
             $trial_activo = ($hoy < $fecha_exp);
         }
-        
+
         return [
             'plan_id' => $data['plan_id'],
             'plan_nombre' => $data['plan_nombre'],
@@ -54,7 +55,6 @@ function obtenerLimitesPlan() {
             'limite_mensajes_mes' => $data['limite_mensajes_mes'],
             'caracteristicas' => $caracteristicas
         ];
-        
     } catch (Exception $e) {
         error_log("Error en obtenerLimitesPlan: " . $e->getMessage());
         return [
@@ -69,31 +69,105 @@ function obtenerLimitesPlan() {
     }
 }
 
+
+/**
+ * Obtener límite de un recurso específico
+ * @param string $tipo 'contactos' o 'mensajes'
+ * @return int Límite o PHP_INT_MAX si es ilimitado
+ */
+function obtenerLimite($tipo)
+{
+    $limites = obtenerLimitesPlan();
+
+    if ($tipo === 'contactos') {
+        $limite = $limites['limite_contactos'] ?? 0;
+        return ($limite === 0 || $limite === null) ? PHP_INT_MAX : (int)$limite;
+    }
+
+    if ($tipo === 'mensajes') {
+        $limite = $limites['limite_mensajes_mes'] ?? 0;
+        return ($limite === 0 || $limite === null) ? PHP_INT_MAX : (int)$limite;
+    }
+
+    return PHP_INT_MAX;
+}
+
+/**
+ * Verificar si se alcanzó el límite de un recurso
+ * @param string $tipo 'contactos' o 'mensajes'
+ * @return bool True si alcanzó el límite
+ */
+function verificarLimiteAlcanzado($tipo)
+{
+    if ($tipo === 'contactos') {
+        $check = verificarLimiteContactos();
+        return $check['alcanzado'];
+    }
+
+    if ($tipo === 'mensajes') {
+        $check = verificarLimiteMensajes();
+        return $check['alcanzado'];
+    }
+
+    return false;
+}
+
+/**
+ * Mostrar mensaje de límite alcanzado
+ * @param string $tipo 'contactos' o 'mensajes'
+ * @return string HTML del mensaje
+ */
+function mostrarMensajeLimite($tipo)
+{
+    $limites = obtenerLimitesPlan();
+
+    if ($tipo === 'contactos') {
+        $check = verificarLimiteContactos();
+        $recurso = 'contactos';
+    } else {
+        $check = verificarLimiteMensajes();
+        $recurso = 'mensajes este mes';
+    }
+
+    return sprintf(
+        'Has alcanzado el límite de <strong>%s</strong> de tu plan <strong>%s</strong> (%d/%d).<br><br>
+        <a href="%s" class="btn btn-warning">
+            <i class="fas fa-arrow-up"></i> Mejorar Plan
+        </a>',
+        $recurso,
+        $limites['plan_nombre'],
+        $check['actual'],
+        $check['limite'],
+        url('cliente/mi-plan')
+    );
+}
+
 /**
  * Verificar si el plan tiene acceso a una característica específica
  * @param string $caracteristica Nombre de la característica a verificar
  * @return bool True si tiene acceso, False si no
  */
-function tieneAccesoCaracteristica($caracteristica) {
+function tieneAccesoCaracteristica($caracteristica)
+{
     $limites = obtenerLimitesPlan();
     $plan_id = $limites['plan_id'];
-    
+
     // Trial (Plan 1): TODO habilitado por 48h
     if ($plan_id == 1) {
         return $limites['trial_activo'];
     }
-    
+
     // Básico (Plan 2)
     if ($plan_id == 2) {
         $caracteristicas_basico = ['bot_ventas', 'bot_citas', 'mensajes', 'contactos'];
         return in_array($caracteristica, $caracteristicas_basico);
     }
-    
+
     // Profesional (Plan 3): TODO habilitado
     if ($plan_id == 3) {
         return true;
     }
-    
+
     return false;
 }
 
@@ -101,14 +175,15 @@ function tieneAccesoCaracteristica($caracteristica) {
  * Verificar si tiene acceso al módulo de escalamiento
  * @return bool
  */
-function tieneEscalamiento() {
+function tieneEscalamiento()
+{
     $limites = obtenerLimitesPlan();
-    
+
     // Solo Trial (mientras esté activo) y Profesional tienen escalamiento
     if ($limites['plan_id'] == 1) {
         return $limites['trial_activo'];
     }
-    
+
     return $limites['plan_id'] == 3; // Solo Profesional
 }
 
@@ -116,14 +191,15 @@ function tieneEscalamiento() {
  * Verificar si tiene acceso al módulo de catálogo bot
  * @return bool
  */
-function tieneCatalogoBot() {
+function tieneCatalogoBot()
+{
     $limites = obtenerLimitesPlan();
-    
+
     // Solo Trial (mientras esté activo) y Profesional tienen catálogo bot
     if ($limites['plan_id'] == 1) {
         return $limites['trial_activo'];
     }
-    
+
     return $limites['plan_id'] == 3; // Solo Profesional
 }
 
@@ -131,14 +207,15 @@ function tieneCatalogoBot() {
  * Verificar si tiene acceso al módulo de horarios/citas
  * @return bool
  */
-function tieneHorariosBot() {
+function tieneHorariosBot()
+{
     $limites = obtenerLimitesPlan();
-    
+
     // Solo Trial (mientras esté activo) y Profesional tienen horarios bot
     if ($limites['plan_id'] == 1) {
         return $limites['trial_activo'];
     }
-    
+
     return $limites['plan_id'] == 3; // Solo Profesional
 }
 
@@ -146,14 +223,15 @@ function tieneHorariosBot() {
  * Verificar si tiene acceso a Google Calendar
  * @return bool
  */
-function tieneGoogleCalendar() {
+function tieneGoogleCalendar()
+{
     $limites = obtenerLimitesPlan();
-    
+
     // Solo Trial (mientras esté activo) y Profesional tienen Google Calendar
     if ($limites['plan_id'] == 1) {
         return $limites['trial_activo'];
     }
-    
+
     return $limites['plan_id'] == 3; // Solo Profesional
 }
 
@@ -161,10 +239,11 @@ function tieneGoogleCalendar() {
  * Obtener límite máximo de MB para catálogo según plan
  * @return int Límite en MB
  */
-function getLimiteCatalogoMB() {
+function getLimiteCatalogoMB()
+{
     $limites = obtenerLimitesPlan();
     $caracteristicas = $limites['caracteristicas'];
-    
+
     // Retornar límite desde características o valor por defecto
     return $caracteristicas['catalogo_mb'] ?? 5;
 }
@@ -173,19 +252,20 @@ function getLimiteCatalogoMB() {
  * Verificar si alcanzó el límite de contactos
  * @return array ['alcanzado' => bool, 'actual' => int, 'limite' => int, 'porcentaje' => float]
  */
-function verificarLimiteContactos() {
+function verificarLimiteContactos()
+{
     global $pdo;
-    
+
     try {
         $empresa_id = getEmpresaActual();
         $limites = obtenerLimitesPlan();
-        
+
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM contactos WHERE empresa_id = ? AND activo = 1");
         $stmt->execute([$empresa_id]);
         $actual = (int)$stmt->fetchColumn();
-        
+
         $limite = $limites['limite_contactos'] ?? 0;
-        
+
         if ($limite === 0 || $limite === null) {
             return [
                 'alcanzado' => false,
@@ -195,9 +275,9 @@ function verificarLimiteContactos() {
                 'ilimitado' => true
             ];
         }
-        
+
         $porcentaje = ($actual / $limite) * 100;
-        
+
         return [
             'alcanzado' => $actual >= $limite,
             'actual' => $actual,
@@ -205,7 +285,6 @@ function verificarLimiteContactos() {
             'porcentaje' => round($porcentaje, 1),
             'ilimitado' => false
         ];
-        
     } catch (Exception $e) {
         error_log("Error en verificarLimiteContactos: " . $e->getMessage());
         return [
@@ -222,13 +301,14 @@ function verificarLimiteContactos() {
  * Verificar si alcanzó el límite de mensajes del mes
  * @return array ['alcanzado' => bool, 'actual' => int, 'limite' => int, 'porcentaje' => float]
  */
-function verificarLimiteMensajes() {
+function verificarLimiteMensajes()
+{
     global $pdo;
-    
+
     try {
         $empresa_id = getEmpresaActual();
         $limites = obtenerLimitesPlan();
-        
+
         $stmt = $pdo->prepare("
             SELECT COUNT(*) 
             FROM historial_mensajes 
@@ -239,9 +319,9 @@ function verificarLimiteMensajes() {
         ");
         $stmt->execute([$empresa_id]);
         $actual = (int)$stmt->fetchColumn();
-        
+
         $limite = $limites['limite_mensajes_mes'] ?? 0;
-        
+
         if ($limite === 0 || $limite === null) {
             return [
                 'alcanzado' => false,
@@ -251,9 +331,9 @@ function verificarLimiteMensajes() {
                 'ilimitado' => true
             ];
         }
-        
+
         $porcentaje = ($actual / $limite) * 100;
-        
+
         return [
             'alcanzado' => $actual >= $limite,
             'actual' => $actual,
@@ -261,7 +341,6 @@ function verificarLimiteMensajes() {
             'porcentaje' => round($porcentaje, 1),
             'ilimitado' => false
         ];
-        
     } catch (Exception $e) {
         error_log("Error en verificarLimiteMensajes: " . $e->getMessage());
         return [
@@ -278,11 +357,12 @@ function verificarLimiteMensajes() {
  * Obtener resumen completo de límites y uso
  * @return array Resumen completo
  */
-function obtenerResumenLimites() {
+function obtenerResumenLimites()
+{
     $limites = obtenerLimitesPlan();
     $contactos = verificarLimiteContactos();
     $mensajes = verificarLimiteMensajes();
-    
+
     return [
         'plan' => [
             'id' => $limites['plan_id'],
@@ -309,9 +389,10 @@ function obtenerResumenLimites() {
  * @param string $tipo Tipo de límite ('contactos' o 'mensajes')
  * @return string HTML de la alerta
  */
-function mostrarAlertaLimite($tipo) {
+function mostrarAlertaLimite($tipo)
+{
     $limites = obtenerLimitesPlan();
-    
+
     if ($tipo === 'contactos') {
         $check = verificarLimiteContactos();
         $nombre_limite = 'contactos';
@@ -319,13 +400,13 @@ function mostrarAlertaLimite($tipo) {
         $check = verificarLimiteMensajes();
         $nombre_limite = 'mensajes del mes';
     }
-    
+
     if (!$check['alcanzado']) {
         return '';
     }
-    
+
     $plan_nombre = $limites['plan_nombre'];
-    
+
     return <<<HTML
     <div class="alert alert-warning alert-dismissible">
         <button type="button" class="close" data-dismiss="alert">&times;</button>
@@ -346,10 +427,11 @@ HTML;
  * @param bool $ajax Si es una petición AJAX
  * @return void
  */
-function verificarAccesoModulo($modulo, $ajax = false) {
+function verificarAccesoModulo($modulo, $ajax = false)
+{
     $tiene_acceso = false;
-    
-    switch($modulo) {
+
+    switch ($modulo) {
         case 'escalados':
             $tiene_acceso = tieneEscalamiento();
             break;
@@ -362,7 +444,7 @@ function verificarAccesoModulo($modulo, $ajax = false) {
         default:
             $tiene_acceso = true;
     }
-    
+
     if (!$tiene_acceso) {
         if ($ajax) {
             header('Content-Type: application/json');

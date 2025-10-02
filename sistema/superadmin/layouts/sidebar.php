@@ -75,6 +75,13 @@
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a href="<?php echo url('superadmin/bot-templates'); ?>" class="nav-link <?php echo ($current_page == 'bot-templates') ? 'active' : ''; ?>">
+                        <i class="nav-icon fas fa-file-code"></i>
+                        <p>Plnatillas Bot</p>
+                    </a>
+                </li>
+
                 <li class="nav-header">SISTEMA</li>
 
                 <li class="nav-item">

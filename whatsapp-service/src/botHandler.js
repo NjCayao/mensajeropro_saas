@@ -1,8 +1,9 @@
 const db = require("./database");
 const axios = require("axios");
 const SalesBot = require("./salesBot");
-const appointmentBot = require("./appointmentBot");
 const AppointmentBot = require("./appointmentBot");
+const ReminderService = require("./reminderService");
+
 
 class BotHandler {
   constructor(whatsappClient = null) {
@@ -13,6 +14,16 @@ class BotHandler {
     this.loadConfig();
     this.salesBot = null;
     this.appointmentBot = null;
+
+    if (whatsappClient) {
+      const ReminderService = require("./reminderService");
+      this.reminderService = new ReminderService(whatsappClient);
+      
+      // Verificar recordatorios cada hora
+      setInterval(() => {
+        this.reminderService.verificarRecordatorios();
+      }, 60 * 60 * 1000); // 1 hora
+    }
 
     // Recargar configuración cada 5 minutos
     setInterval(() => this.loadConfig(), 30 * 1000);

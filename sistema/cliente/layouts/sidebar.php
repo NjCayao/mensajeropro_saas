@@ -141,14 +141,7 @@ $tiene_horarios = tieneHorariosBot();
                         <p>WhatsApp</p>
                     </a>
                 </li>
-
-                <li class="nav-item">
-                    <a href="<?php echo url('cliente/bot-templates'); ?>" class="nav-link <?php echo ($current_page == 'bot-templates') ? 'active' : ''; ?>">
-                        <i class="nav-icon fas fa-file-code"></i>
-                        <p>Templates Bot</p>
-                    </a>
-                </li>
-
+                
                 <li class="nav-item">
                     <a href="<?php echo url('cliente/perfil'); ?>" class="nav-link <?php echo ($current_page == 'perfil') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-user-cog"></i>

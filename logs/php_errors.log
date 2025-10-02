@@ -112,3 +112,32 @@ Stack trace:
 [01-Oct-2025 14:45:55 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\verificar-config.php on line 59
 [01-Oct-2025 14:46:41 America/Lima] PHP Warning:  Undefined array key "notificar_escalamiento" in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\verificar-config.php on line 59
 [01-Oct-2025 16:27:57 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\descargar-catalogo.php on line 3
+[02-Oct-2025 07:05:01 America/Lima] PHP Fatal error:  Uncaught Error: Class "Shuchkin\SimpleXLSXGen" not found in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\exportar-citas.php:87
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\web\app.php(48): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\exportar-citas.php on line 87
+[02-Oct-2025 07:07:55 America/Lima] PHP Fatal error:  Uncaught Error: Call to undefined function obtenerLimite() in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php:8
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\web\app.php(134): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 8
+[02-Oct-2025 07:08:22 America/Lima] PHP Fatal error:  Uncaught Error: Call to undefined function obtenerLimite() in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php:8
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\web\app.php(134): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 8
+[02-Oct-2025 07:10:53 America/Lima] PHP Warning:  Undefined variable $limite_contactos in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 55
+[02-Oct-2025 07:10:53 America/Lima] PHP Warning:  Undefined variable $puede_agregar_contactos in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 58
+[02-Oct-2025 07:10:53 America/Lima] PHP Warning:  Undefined variable $limite_contactos in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 62
+[02-Oct-2025 07:10:53 America/Lima] PHP Deprecated:  number_format(): Passing null to parameter #1 ($num) of type float is deprecated in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 62
+[02-Oct-2025 07:10:53 America/Lima] PHP Warning:  Undefined variable $puede_agregar_contactos in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 63
+[02-Oct-2025 07:10:53 America/Lima] PHP Warning:  Undefined variable $puede_agregar_contactos in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 80
+[02-Oct-2025 07:10:53 America/Lima] PHP Warning:  Undefined variable $puede_agregar_contactos in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 301
+[02-Oct-2025 07:10:53 America/Lima] PHP Warning:  Undefined variable $limite_contactos in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 302
+[02-Oct-2025 07:10:53 America/Lima] PHP Warning:  Undefined variable $limite_contactos in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 302
+[02-Oct-2025 07:10:53 America/Lima] PHP Fatal error:  Uncaught Error: Call to undefined function mostrarMensajeLimite() in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php:311
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\web\app.php(134): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\contactos.php on line 311

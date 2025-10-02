@@ -521,3 +521,5 @@ Migración de datos: Si había datos en las columnas eliminadas, deben migrarse 
 # para agregar mas datos 
 agregar botones al bot para dar a elegir al cliente soporte pagos como lista. como bot.
 poner si un humano esta en conversaion de chat con el cliente el bot no debe de responder colocar un input de espera. 
+- en mi plan poner una advertencia de cuando finaliza mi suscripcion.
+- si vence mi plan se cierra sesion de forma automatica el qr de whatsapp

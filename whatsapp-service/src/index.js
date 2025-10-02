@@ -55,22 +55,27 @@ async function main() {
     // Iniciar servidor en el puerto especificado
     const app = createAPI(whatsappClient);
 
-    const HOST = process.env.NODE_ENV === "production" ? "127.0.0.1" : "0.0.0.0";
+    const HOST =
+      process.env.NODE_ENV === "production" ? "127.0.0.1" : "0.0.0.0";
 
     // AQUÍ USAS LA IMPLEMENTACIÓN SIMPLE (sin startServer)
-    app.listen(parseInt(PUERTO), HOST, () => {
-      console.log(`🌐 API REST corriendo en http://${HOST}:${PUERTO}`);
-      console.log("📱 Iniciando WhatsApp en segundo plano...");
-    }).on("error", (err) => {
-      if (err.code === "EADDRINUSE") {
-        console.error(`❌ Puerto ${PUERTO} ya está en uso`);
-        console.log("💡 Ejecuta el servicio desde el panel web para limpieza automática");
-        process.exit(1);
-      } else {
-        console.error("Error iniciando servidor:", err);
-        process.exit(1);
-      }
-    });
+    app
+      .listen(parseInt(PUERTO), HOST, () => {
+        console.log(`🌐 API REST corriendo en http://${HOST}:${PUERTO}`);
+        console.log("📱 Iniciando WhatsApp en segundo plano...");
+      })
+      .on("error", (err) => {
+        if (err.code === "EADDRINUSE") {
+          console.error(`❌ Puerto ${PUERTO} ya está en uso`);
+          console.log(
+            "💡 Ejecuta el servicio desde el panel web para limpieza automática"
+          );
+          process.exit(1);
+        } else {
+          console.error("Error iniciando servidor:", err);
+          process.exit(1);
+        }
+      });
 
     // Inicializar WhatsApp
     whatsappClient
@@ -81,6 +86,15 @@ async function main() {
         const scheduler = new Scheduler(messageHandler);
         scheduler.start();
         console.log("📅 Scheduler de mensajes programados activado");
+        const ReminderService = require("./reminderService");
+        const reminderService = new ReminderService(whatsappClient);
+
+        // Verificar recordatorios cada hora
+        setInterval(() => {
+          reminderService.verificarRecordatorios();
+        }, 60 * 60 * 1000);
+
+        console.log("⏰ Servicio de recordatorios activado");
       })
       .catch((error) => {
         console.error("❌ Error inicializando WhatsApp:", error);
