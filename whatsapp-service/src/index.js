@@ -6,6 +6,7 @@ const BotHandler = require("./botHandler");
 const Scheduler = require("./scheduler");
 const createAPI = require("./api");
 const db = require("./database");
+const { limpiarComprobantesAntiguos } = require('./cleanupComprobantes');
 
 // OBTENER PARÁMETROS DE LÍNEA DE COMANDO
 const args = process.argv.slice(2);
@@ -110,6 +111,9 @@ async function main() {
     console.error("❌ Error fatal:", error);
     process.exit(1);
   }
+
+
+  console.log("🧹 Iniciando servicio de limpieza de comprobantes");
 }
 
 main();

@@ -68,7 +68,7 @@ class WhatsAppClient {
         ],
         refreshQR: 15000, // Regenerar QR cada 15 segundos
         autoClose: 60000, // Cerrar después de 60 segundos sin escanear
-        disableSpins: true,        
+        disableSpins: true,
         puppeteerOptions: {
           args: ["--disable-logging", "--log-level=3"], // AGREGAR ESTO
         },
@@ -272,31 +272,51 @@ class WhatsAppClient {
       console.log(
         "📩 Mensaje recibido:",
         message.from,
+        message.type,
         message.body?.substring(0, 50) || "[MULTIMEDIA]"
       );
-
-      // DETECTAR IMÁGENES Y MULTIMEDIA - SOLO IGNORAR
-      if (
-        message.type === "image" ||
-        message.type === "document" ||
-        message.type === "video" ||
-        message.type === "audio" ||
-        message.type === "ptt" ||
-        message.type === "sticker"
-      ) {
-        console.log("📷 Mensaje multimedia recibido, ignorando");
-        return; // Simplemente ignorar, no procesar ni escalar
-      }
-
-      // Validar que sea un mensaje de texto
-      if (!message.body || message.body.trim() === "") {
-        console.log("📵 Mensaje vacío, ignorando");
-        return;
-      }
 
       try {
         // Crear BotHandler si no existe
         if (this.messageHandler && this.messageHandler.botHandler) {
+          // MANEJO DE IMÁGENES
+          if (message.type === "image") {
+            console.log("📸 Imagen recibida");
+
+            const botResponse =
+              await this.messageHandler.botHandler.handleIncomingMessage(
+                message.from,
+                message.body || "",
+                false,
+                "image",
+                message // Pasar el objeto completo del mensaje
+              );
+
+            if (botResponse) {
+              await this.client.sendText(message.from, botResponse.respuesta);
+              console.log("🤖 Bot respondió a imagen");
+            }
+            return;
+          }
+
+          // IGNORAR OTROS TIPOS DE MULTIMEDIA
+          if (
+            message.type === "document" ||
+            message.type === "video" ||
+            message.type === "audio" ||
+            message.type === "ptt" ||
+            message.type === "sticker"
+          ) {
+            console.log(`📷 Multimedia tipo ${message.type} ignorado`);
+            return;
+          }
+
+          // MENSAJES DE TEXTO
+          if (!message.body || message.body.trim() === "") {
+            console.log("📵 Mensaje vacío, ignorando");
+            return;
+          }
+
           const botResponse =
             await this.messageHandler.botHandler.handleIncomingMessage(
               message.from,
@@ -305,7 +325,7 @@ class WhatsAppClient {
             );
 
           if (botResponse) {
-            // Primero enviar el mensaje de texto
+            // Enviar respuesta de texto
             await this.client.sendText(message.from, botResponse.respuesta);
             console.log("🤖 Bot respondió automáticamente");
 
@@ -331,7 +351,7 @@ class WhatsAppClient {
           }
         }
 
-        // DESPUÉS: Guardar el mensaje en el historial
+        // Guardar el mensaje en el historial
         const numero = message.from.replace("@c.us", "");
         const [rows] = await db
           .getPool()
@@ -342,7 +362,7 @@ class WhatsAppClient {
         if (rows.length > 0) {
           await db.registrarMensaje(
             rows[0].id,
-            message.body,
+            message.body || "[MULTIMEDIA]",
             "entrante",
             "recibido"
           );

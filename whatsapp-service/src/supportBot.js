@@ -1,28 +1,29 @@
-// whatsapp-service/src/supportBot.js
+// whatsapp-service/src/supportBot.js - VERSIÓN CORREGIDA CON MENÚ INICIAL
 const db = require("./database");
-const AppointmentBot = require("./appointmentBot");
 const axios = require("axios");
+const moment = require("moment");
+const path = require("path");
+const fs = require("fs").promises;
+
+moment.locale("es");
 
 class SupportBot {
   constructor(empresaId, botHandler = null) {
     this.empresaId = empresaId;
     this.botHandler = botHandler;
 
-    // Solo reutiliza appointmentBot para instalaciones/visitas
-    this.appointmentBot = new AppointmentBot(empresaId, botHandler);
-
     // Configuración
     this.infoBot = {};
     this.infoNegocio = {};
     this.planes = [];
     this.servicios = [];
+    this.horarios = [];
     this.moneda = { codigo: "PEN", simbolo: "S/" };
     this.notificaciones = {};
     this.zonasCobertura = [];
 
-    // Estados de flujos activos
-    this.procesosVenta = new Map();
-    this.tickets = new Map();
+    // Estados de procesos activos
+    this.procesosActivos = new Map();
     this.ventasCompletadas = new Map();
 
     // Configuración IA
@@ -46,7 +47,6 @@ class SupportBot {
       if (botConfig[0]) {
         this.infoBot = botConfig[0];
         
-        // Extraer zonas de cobertura desde business_info
         if (botConfig[0].business_info) {
           this.zonasCobertura = this.extraerZonasCobertura(botConfig[0].business_info);
         }
@@ -78,7 +78,7 @@ class SupportBot {
         }
       }
 
-      // 3. Cargar planes/servicios desde catálogo
+      // 3. Planes desde catálogo
       const [catalogoRows] = await db
         .getPool()
         .execute("SELECT * FROM catalogo_bot WHERE empresa_id = ?", [
@@ -90,7 +90,7 @@ class SupportBot {
         this.planes = datos.productos || [];
       }
 
-      // 4. Cargar servicios disponibles (para visitas técnicas)
+      // 4. Servicios técnicos
       const [serviciosRows] = await db
         .getPool()
         .execute(
@@ -99,7 +99,16 @@ class SupportBot {
         );
       this.servicios = serviciosRows;
 
-      // 5. Notificaciones
+      // 5. Horarios de atención
+      const [horariosRows] = await db
+        .getPool()
+        .execute(
+          "SELECT * FROM horarios_atencion WHERE empresa_id = ? AND activo = 1 ORDER BY dia_semana",
+          [this.empresaId]
+        );
+      this.horarios = horariosRows;
+
+      // 6. Notificaciones
       const [notifRows] = await db
         .getPool()
         .execute("SELECT * FROM notificaciones_bot WHERE empresa_id = ?", [
@@ -109,9 +118,6 @@ class SupportBot {
       if (notifRows[0]) {
         this.notificaciones = notifRows[0];
       }
-
-      // 6. Cargar configuración de appointmentBot
-      await this.appointmentBot.loadConfig();
 
       // 7. Configuración de tokens
       const [tokenConfig] = await db
@@ -133,90 +139,200 @@ class SupportBot {
       if (tempConfig[0]?.valor) {
         this.temperature = parseFloat(tempConfig[0].valor);
       }
+
+      console.log("✅ SupportBot configurado correctamente");
     } catch (error) {
       console.error("❌ Error cargando configuración de soporte:", error);
     }
   }
 
   extraerZonasCobertura(businessInfo) {
-    // Buscar la línea que contenga "Zonas de cobertura:"
     const regex = /zonas?\s+de\s+cobertura\s*:\s*([^\n]+)/i;
     const match = businessInfo.match(regex);
     
     if (match && match[1]) {
-      // Extraer zonas separadas por comas
       return match[1]
         .split(',')
-        .map(z => z.trim())
+        .map(z => z.trim().toLowerCase())
         .filter(z => z.length > 0);
     }
     
     return [];
   }
 
-  verificarCobertura(direccion) {
-    if (this.zonasCobertura.length === 0) {
-      // Si no hay zonas definidas, asumir que hay cobertura
-      return true;
-    }
-
-    const direccionLower = direccion.toLowerCase();
+  construirMenuInicial() {
+    const nombreNegocio = this.infoNegocio.nombre_negocio || 'nuestro negocio';
     
-    // Buscar si alguna zona está mencionada en la dirección
-    return this.zonasCobertura.some(zona => 
-      direccionLower.includes(zona.toLowerCase())
-    );
+    let menu = `Hola, soy el asistente virtual de ${nombreNegocio}\n\n`;
+    menu += `¿En qué puedo ayudarte?\n\n`;
+    
+    // Opción 1: Si hay planes o servicios
+    if (this.planes.length > 0 || this.servicios.length > 0) {
+      menu += `1️⃣ Planes y servicios\n`;
+    }
+    
+    // Opción 2: Soporte técnico (siempre)
+    menu += `2️⃣ Soporte técnico\n`;
+    
+    // Opción 3: Solo si hay métodos de pago
+    if (this.infoNegocio.metodos_pago_array && this.infoNegocio.metodos_pago_array.length > 0) {
+      menu += `3️⃣ Consultar pagos\n`;
+    }
+    
+    menu += `\nEscribe el número de la opción.`;
+    
+    return menu;
   }
 
   getFunctions() {
     return [
-      // === VENTAS ===
       {
         name: "mostrar_planes",
-        description: "Muestra planes/servicios disponibles cuando el cliente pregunta por precios o quiere contratar"
+        description: "Muestra planes disponibles"
+      },
+      {
+        name: "verificar_cobertura",
+        description: "Verifica cobertura en una zona",
+        parameters: {
+          type: "object",
+          properties: {
+            zona: {
+              type: "string",
+              description: "Zona mencionada"
+            }
+          },
+          required: ["zona"]
+        }
       },
       {
         name: "iniciar_contratacion",
-        description: "Inicia proceso de contratación. SOLO úsalo cuando el cliente diga explícitamente que quiere contratar/comprar"
+        description: "Inicia contratación de servicio",
+        parameters: {
+          type: "object",
+          properties: {
+            plan: {
+              type: "string",
+              description: "Plan seleccionado"
+            }
+          }
+        }
       },
-      
-      // === SOPORTE TÉCNICO ===
+      {
+        name: "mostrar_metodos_pago",
+        description: "Muestra métodos de pago"
+      },
       {
         name: "diagnosticar_problema",
-        description: "Cliente reporta un problema con su servicio actual. Úsalo para ayudar a diagnosticar"
-      },
-      {
-        name: "crear_ticket",
-        description: "Crea ticket de soporte cuando el problema no se puede resolver por chat"
-      },
-      {
-        name: "agendar_visita",
-        description: "Agenda visita técnica presencial"
-      },
-      
-      // === PAGOS ===
-      {
-        name: "confirmar_pago",
-        description: "Cliente dice que ya realizó un pago y quiere confirmarlo"
+        description: "Cliente reporta problema técnico"
       }
     ];
   }
 
   async procesarMensajeSoporte(mensaje, numero) {
-    // Verificar despedidas post-venta
+    console.log(`🤖 SupportBot procesando: "${mensaje.substring(0, 50)}..."`);
+
+    const contexto = await this.botHandler.getContexto(numero);
+    
+    // 1. PRIMERA INTERACCIÓN → MOSTRAR MENÚ
+    if (contexto.length === 0) {
+      const menu = this.construirMenuInicial();
+      
+      await this.botHandler.saveConversation(numero, mensaje, {
+        content: menu,
+        tokens: 0,
+        tiempo: 0,
+      });
+      
+      return { respuesta: menu, tipo: "menu_inicial" };
+    }
+
+    // 2. DETECTAR SELECCIÓN DE MENÚ (solo primeros 2 mensajes)
+    const msgTrim = mensaje.trim();
+    const proceso = this.procesosActivos.get(numero);
+    
+    if (contexto.length <= 2 && !proceso) {
+      if (msgTrim === "1") {
+        return await this.iniciarFlujoVentas(numero);
+      }
+      
+      if (msgTrim === "2") {
+        return await this.iniciarFlujoSoporte(numero);
+      }
+      
+      if (msgTrim === "3") {
+        return await this.iniciarFlujoPagos(numero);
+      }
+    }
+
+    // 3. DETECTAR SELECCIÓN DE PLAN DIRECTA (si acaba de ver lista de planes)
+    if (proceso?.flujo === "ventas" && !proceso.plan) {
+      const ultimoMensajeBot = contexto.length > 0 ? contexto[contexto.length - 1].respuesta_bot : "";
+      
+      // Si el último mensaje del bot mostró planes
+      if (ultimoMensajeBot.includes("PLANES DISPONIBLES")) {
+        const msgLower = mensaje.toLowerCase();
+        
+        // Detectar por número (1, 2)
+        if (msgTrim === "1" || msgTrim === "2") {
+          const numeroPlan = parseInt(msgTrim);
+          if (numeroPlan > 0 && numeroPlan <= this.planes.length) {
+            proceso.plan = this.planes[numeroPlan - 1];
+            this.procesosActivos.set(numero, proceso);
+            
+            console.log(`✅ Plan seleccionado por número: ${proceso.plan.producto}`);
+            
+            return {
+              respuesta: "¿En qué zona estás?",
+              tipo: "solicitar_zona"
+            };
+          }
+        }
+        
+        // Detectar por velocidad ("50 mbps", "el de 50", "plan de 50")
+        const matchVelocidad = msgLower.match(/(\d+)\s*mbps/);
+        if (matchVelocidad) {
+          const velocidad = matchVelocidad[1];
+          const plan = this.planes.find(p => p.producto.toLowerCase().includes(velocidad));
+          if (plan) {
+            proceso.plan = plan;
+            this.procesosActivos.set(numero, proceso);
+            
+            console.log(`✅ Plan seleccionado por velocidad: ${plan.producto}`);
+            
+            return {
+              respuesta: "¿En qué zona estás?",
+              tipo: "solicitar_zona"
+            };
+          }
+        }
+        
+        // Detectar "el 1", "el 2", "el plan 1", etc
+        const matchOpcion = msgLower.match(/el\s+(?:plan\s+)?([12])/);
+        if (matchOpcion) {
+          const numeroPlan = parseInt(matchOpcion[1]);
+          if (numeroPlan > 0 && numeroPlan <= this.planes.length) {
+            proceso.plan = this.planes[numeroPlan - 1];
+            this.procesosActivos.set(numero, proceso);
+            
+            console.log(`✅ Plan seleccionado: ${proceso.plan.producto}`);
+            
+            return {
+              respuesta: "¿En qué zona estás?",
+              tipo: "solicitar_zona"
+            };
+          }
+        }
+      }
+    }
+
+    // 4. Verificar despedidas post-venta
     if (this.ventasCompletadas.has(numero)) {
       const ventaInfo = this.ventasCompletadas.get(numero);
       const tiempoTranscurrido = Date.now() - ventaInfo.timestamp;
 
       if (tiempoTranscurrido < 3 * 60 * 1000) {
-        const respuestas = [
-          "¡Nos vemos! 😊",
-          "¡Hasta pronto! 😊",
-          "¡Gracias a ti! 😊",
-          "Tu cita ya está agendada 😊",
-        ];
-        const respuesta =
-          respuestas[Math.floor(Math.random() * respuestas.length)];
+        const respuestas = ["Nos vemos", "Hasta pronto", "Gracias a ti"];
+        const respuesta = respuestas[Math.floor(Math.random() * respuestas.length)];
 
         await this.botHandler.saveConversation(numero, mensaje, {
           content: respuesta,
@@ -230,46 +346,232 @@ class SupportBot {
       }
     }
 
-    // Verificar flujos técnicos activos
-    const procesoVenta = this.procesosVenta.get(numero);
+    // 4. Verificar instalación pendiente
+    const instalacionPendiente = await this.verificarInstalacionPendiente(numero);
     
-    if (procesoVenta) {
-      procesoVenta.ultimaActividad = Date.now();
-
-      switch (procesoVenta.estado) {
-        case "esperando_zona":
-          return await this.procesarZona(mensaje, numero, procesoVenta);
-
-        case "seleccionar_plan":
-          return await this.procesarSeleccionPlan(mensaje, numero, procesoVenta);
-
-        case "esperando_direccion":
-          return await this.procesarDireccion(mensaje, numero, procesoVenta);
-
-        case "esperando_datos_personales":
-          return await this.procesarDatosPersonales(mensaje, numero, procesoVenta);
-
-        case "confirmar_datos":
-          return await this.confirmarDatosVenta(mensaje, numero, procesoVenta);
+    if (instalacionPendiente && proceso?.flujo === "ventas") {
+      const intencion = await this.detectarIntencionSoporte(mensaje, numero);
+      
+      if (intencion === "QUIERE_CONTRATAR") {
+        return await this.recordarInstalacionPendiente(numero, instalacionPendiente);
       }
     }
 
-    const ticket = this.tickets.get(numero);
-    
-    if (ticket) {
-      ticket.ultimaActividad = Date.now();
+    // 5. Manejo de estados técnicos
+    if (proceso) {
+      proceso.ultimaActividad = Date.now();
+      
+      // Estado: Esperando comprobante
+      if (proceso.estado === "esperando_comprobante_imagen") {
+        return {
+          respuesta: "Esperando que envíes la imagen del comprobante...",
+          tipo: "esperando_imagen"
+        };
+      }
+      
+      // Estado: Esperando datos de pago
+      if (proceso.estado === "esperando_datos_pago") {
+        return await this.procesarDatosPago(mensaje, numero, proceso);
+      }
+      
+      // Estado: Esperando selección de día
+      if (proceso.esperando_seleccion_dia) {
+        return await this.procesarSeleccionDia(mensaje, numero, proceso);
+      }
+      
+      // Estado: Esperando selección de hora
+      if (proceso.esperando_seleccion_hora) {
+        return await this.procesarSeleccionHora(mensaje, numero, proceso);
+      }
 
-      switch (ticket.estado) {
-        case "esperando_descripcion":
-          return await this.procesarDescripcionProblema(mensaje, numero, ticket);
-
-        case "ofrecer_visita":
-          return await this.procesarRespuestaVisita(mensaje, numero, ticket);
+      // Estado: Confirmación final
+      if (proceso.esperando_confirmacion_final) {
+        return await this.manejarConfirmacionFinal(mensaje, numero, proceso);
       }
     }
 
-    // TODO LO DEMÁS usa Function Calling con GPT
+    // 6. Procesamiento con GPT y Function Calling
     return await this.respuestaConFunctionCalling(mensaje, numero);
+  }
+
+  async iniciarFlujoVentas(numero) {
+    this.procesosActivos.set(numero, {
+      flujo: "ventas",
+      ultimaActividad: Date.now()
+    });
+    
+    return await this.funcionMostrarPlanes();
+  }
+
+  async iniciarFlujoSoporte(numero) {
+    this.procesosActivos.set(numero, {
+      flujo: "soporte",
+      ultimaActividad: Date.now()
+    });
+    
+    return {
+      respuesta: "¿Qué problema técnico tienes con tu servicio?",
+      tipo: "iniciar_soporte"
+    };
+  }
+
+  async iniciarFlujoPagos(numero) {
+    this.procesosActivos.set(numero, {
+      flujo: "pagos",
+      ultimaActividad: Date.now()
+    });
+    
+    return await this.funcionMostrarMetodosPago(numero);
+  }
+
+  async manejarComprobanteRecibido(numero, mediaPath) {
+    console.log(`📸 Comprobante recibido de ${numero}`);
+    
+    const proceso = this.procesosActivos.get(numero);
+    
+    if (!proceso || proceso.estado !== "esperando_comprobante_imagen") {
+      return {
+        respuesta: "No estaba esperando un comprobante. ¿En qué puedo ayudarte?",
+        tipo: "comprobante_inesperado"
+      };
+    }
+
+    proceso.comprobante_path = mediaPath;
+    proceso.estado = "esperando_datos_pago";
+    this.procesosActivos.set(numero, proceso);
+
+    return {
+      respuesta: "Para validar tu pago, necesito:\n\n• Tu nombre completo\n• Tu DNI o Cédula\n\nEjemplo: Juan Pérez Torres, DNI 12345678",
+      tipo: "solicitar_datos_pago"
+    };
+  }
+
+  async procesarDatosPago(mensaje, numero, proceso) {
+    const datosExtraidos = await this.extraerDatosPersonales(mensaje);
+
+    if (!datosExtraidos.nombre || !datosExtraidos.dni) {
+      return {
+        respuesta: "No pude identificar tu nombre o documento. Intenta así:\n\nJuan Pérez Torres, DNI 12345678",
+        tipo: "datos_invalidos"
+      };
+    }
+
+    proceso.nombre_pago = datosExtraidos.nombre;
+    proceso.dni_pago = datosExtraidos.dni;
+    proceso.tipo_documento = datosExtraidos.tipo_documento || "DNI";
+
+    await this.escalarYNotificarPago(numero, proceso);
+
+    this.procesosActivos.delete(numero);
+
+    return {
+      respuesta: "Comprobante recibido. Validaremos tu pago y te confirmaremos pronto.",
+      tipo: "pago_escalado"
+    };
+  }
+
+  async escalarYNotificarPago(numero, proceso) {
+    const numeroLimpio = numero.replace("@c.us", "");
+
+    const notasEscalamiento = `Nombre: ${proceso.nombre_pago} | ${proceso.tipo_documento}: ${proceso.dni_pago} | Comprobante: ${proceso.comprobante_path}`;
+    
+    await db.getPool().execute(
+      `INSERT INTO estados_conversacion 
+       (empresa_id, numero_cliente, estado, fecha_escalado, motivo_escalado, notas)
+       VALUES (?, ?, 'escalado_humano', NOW(), 'Validación de pago', ?)
+       ON DUPLICATE KEY UPDATE 
+         estado = 'escalado_humano',
+         fecha_escalado = NOW(),
+         motivo_escalado = 'Validación de pago',
+         notas = ?`,
+      [this.empresaId, numero, notasEscalamiento, notasEscalamiento]
+    );
+
+    console.log(`✅ Escalamiento creado para validación de pago: ${numero}`);
+
+    if (!this.notificaciones.notificar_escalamiento) {
+      return;
+    }
+
+    let numeros;
+    try {
+      numeros = JSON.parse(this.notificaciones.numeros_notificacion || "[]");
+    } catch (e) {
+      return;
+    }
+
+    if (!Array.isArray(numeros) || numeros.length === 0) {
+      return;
+    }
+
+    let mensajeTexto = `🔔 VALIDACIÓN DE PAGO\n\n`;
+    mensajeTexto += `Nombre: ${proceso.nombre_pago}\n`;
+    mensajeTexto += `${proceso.tipo_documento}: ${proceso.dni_pago}\n`;
+    mensajeTexto += `Teléfono: ${numeroLimpio}\n`;
+    mensajeTexto += `Fecha: ${new Date().toLocaleString("es-PE")}\n\n`;
+    mensajeTexto += `Valida desde el panel de Escalados`;
+
+    for (const num of numeros) {
+      try {
+        let numeroNotificar = num.replace(/[^\d]/g, "");
+        if (!numeroNotificar.includes("@")) {
+          numeroNotificar = `${numeroNotificar}@c.us`;
+        }
+
+        if (this.botHandler.whatsappClient?.client?.client?.sendText) {
+          await this.botHandler.whatsappClient.client.client.sendText(numeroNotificar, mensajeTexto);
+        } else if (this.botHandler.whatsappClient?.client?.sendText) {
+          await this.botHandler.whatsappClient.client.sendText(numeroNotificar, mensajeTexto);
+        }
+
+        if (proceso.comprobante_path) {
+          if (this.botHandler.whatsappClient?.client?.client?.sendImage) {
+            await this.botHandler.whatsappClient.client.client.sendImage(
+              numeroNotificar, 
+              proceso.comprobante_path,
+              'comprobante',
+              'Comprobante de pago'
+            );
+          }
+        }
+
+        console.log(`✅ Notificación enviada a ${num}`);
+      } catch (error) {
+        console.error(`❌ Error notificando a ${num}:`, error.message);
+      }
+    }
+  }
+
+  async verificarInstalacionPendiente(numero) {
+    try {
+      const [rows] = await db.getPool().execute(
+        `SELECT * FROM citas_bot 
+         WHERE numero_cliente = ? 
+         AND empresa_id = ?
+         AND estado IN ('agendada', 'confirmada')
+         AND fecha_cita >= CURDATE()
+         ORDER BY fecha_cita ASC
+         LIMIT 1`,
+        [numero, this.empresaId]
+      );
+
+      return rows[0] || null;
+    } catch (error) {
+      console.error("Error verificando instalación:", error);
+      return null;
+    }
+  }
+
+  async recordarInstalacionPendiente(numero, cita) {
+    const fechaCita = moment(cita.fecha_cita).format("dddd D [de] MMMM");
+
+    let respuesta = `Ya tienes una instalación agendada:\n\n`;
+    respuesta += `• Servicio: ${cita.tipo_servicio}\n`;
+    respuesta += `• Fecha: ${fechaCita}\n`;
+    respuesta += `• Hora: ${cita.hora_cita.substring(0, 5)}\n\n`;
+    respuesta += `Si necesitas cambiarla, escribe "cancelar instalación"`;
+
+    return { respuesta, tipo: "instalacion_pendiente" };
   }
 
   async respuestaConFunctionCalling(mensaje, numero) {
@@ -279,39 +581,13 @@ class SupportBot {
 
     try {
       const contexto = await this.botHandler.getContexto(numero);
+      const proceso = this.procesosActivos.get(numero);
 
-      const ultimoMensaje =
-        contexto.length > 0 ? contexto[contexto.length - 1].respuesta_bot : "";
-      const acabaDeAgendar =
-        ultimoMensaje.includes("Cita #") ||
-        ultimoMensaje.includes("agendada exitosamente") ||
-        ultimoMensaje.includes("instalación agendada");
-
-      if (acabaDeAgendar) {
-        const respuestas = [
-          "¡Nos vemos! 😊",
-          "¡Hasta pronto! 😊",
-          "¡Gracias a ti! 😊",
-          "Tu cita ya está confirmada 😊",
-        ];
-
-        const respuesta =
-          respuestas[Math.floor(Math.random() * respuestas.length)];
-
-        await this.botHandler.saveConversation(numero, mensaje, {
-          content: respuesta,
-          tokens: 0,
-          tiempo: 0,
-        });
-
-        return { respuesta, tipo: "despedida_post_cita" };
-      }
-
-      const systemPrompt = this.construirPromptGenerico();
+      const systemPrompt = this.construirPromptGenerico(numero, proceso);
 
       const messages = [{ role: "system", content: systemPrompt }];
 
-      contexto.slice(-4).forEach((c) => {
+      contexto.slice(-5).forEach((c) => {
         messages.push({ role: "user", content: c.mensaje_cliente });
         if (c.respuesta_bot) {
           messages.push({ role: "assistant", content: c.respuesta_bot });
@@ -326,7 +602,8 @@ class SupportBot {
         const result = await this.ejecutarFuncion(
           response.function_call.name,
           JSON.parse(response.function_call.arguments || "{}"),
-          numero
+          numero,
+          mensaje
         );
 
         await this.botHandler.saveConversation(numero, mensaje, {
@@ -357,24 +634,29 @@ class SupportBot {
     }
   }
 
-  construirPromptGenerico() {
+  construirPromptGenerico(numero, proceso) {
     let prompt = "";
 
     if (this.infoBot.system_prompt) {
       prompt += `${this.infoBot.system_prompt}\n\n`;
     }
 
-    if (this.infoBot.prompt_ventas) {
-      prompt += `${this.infoBot.prompt_ventas}\n\n`;
+    // Agregar prompt específico según flujo
+    if (proceso?.flujo === "ventas" && this.infoBot.prompt_ventas) {
+      prompt += `CONTEXTO DE VENTAS:\n${this.infoBot.prompt_ventas}\n\n`;
+    }
+    
+    if (proceso?.flujo === "soporte" && this.infoBot.prompt_citas) {
+      prompt += `CONTEXTO DE SOPORTE:\n${this.infoBot.prompt_citas}\n\n`;
     }
 
     if (this.infoBot.business_info) {
       prompt += `INFORMACIÓN DEL NEGOCIO:\n${this.infoBot.business_info}\n\n`;
     }
 
-    prompt += `📍 DATOS DE CONTACTO:\n`;
+    prompt += `📍 CONTACTO:\n`;
     if (this.infoNegocio.nombre_negocio) {
-      prompt += `• Nombre: ${this.infoNegocio.nombre_negocio}\n`;
+      prompt += `• Negocio: ${this.infoNegocio.nombre_negocio}\n`;
     }
     if (this.infoNegocio.telefono) {
       prompt += `• Teléfono: ${this.infoNegocio.telefono}\n`;
@@ -384,52 +666,81 @@ class SupportBot {
     }
     prompt += "\n";
 
-    prompt += `📦 PLANES/SERVICIOS DISPONIBLES:\n`;
-    if (this.planes.length > 0) {
-      this.planes.forEach((plan, index) => {
-        prompt += `${index + 1}. ${plan.producto} - ${this.moneda.simbolo}${plan.precio}\n`;
-        if (plan.descripcion) prompt += `   ${plan.descripcion}\n`;
-      });
-    } else {
-      prompt += "No hay planes configurados\n";
-    }
-    prompt += "\n";
+    if (proceso?.flujo === "ventas") {
+      prompt += `📦 PLANES DISPONIBLES:\n`;
+      if (this.planes.length > 0) {
+        this.planes.forEach((plan, index) => {
+          prompt += `${index + 1}. ${plan.producto} - ${this.moneda.simbolo}${plan.precio}\n`;
+          if (plan.descripcion) prompt += `   ${plan.descripcion}\n`;
+        });
+      }
+      prompt += "\n";
 
-    if (this.servicios.length > 0) {
-      prompt += `🔧 SERVICIOS TÉCNICOS:\n`;
-      this.servicios.forEach((s) => {
-        prompt += `• ${s.nombre_servicio} (${s.duracion_minutos} min)\n`;
-      });
+      if (this.zonasCobertura.length > 0) {
+        prompt += `📍 ZONAS CON COBERTURA:\n`;
+        this.zonasCobertura.forEach(z => {
+          prompt += `• ${z}\n`;
+        });
+        prompt += "\n";
+      }
+    }
+
+    if (proceso?.flujo === "pagos") {
+      if (this.infoNegocio.metodos_pago_array && this.infoNegocio.metodos_pago_array.length > 0) {
+        prompt += `💳 MÉTODOS DE PAGO:\n`;
+        this.infoNegocio.metodos_pago_array.forEach(m => {
+          prompt += `• ${m.tipo}: ${m.dato}\n`;
+        });
+        prompt += "\n";
+      }
+    }
+
+    if (proceso) {
+      prompt += `🔄 DATOS RECOPILADOS:\n`;
+      if (proceso.zona) prompt += `• Zona: ${proceso.zona}\n`;
+      if (proceso.plan) prompt += `• Plan: ${proceso.plan.producto}\n`;
+      if (proceso.direccion) prompt += `• Dirección: ${proceso.direccion}\n`;
+      if (proceso.nombre) prompt += `• Nombre: ${proceso.nombre}\n`;
+      if (proceso.dni) prompt += `• DNI: ${proceso.dni}\n`;
       prompt += "\n";
     }
 
-    if (
-      this.infoNegocio.metodos_pago_array &&
-      this.infoNegocio.metodos_pago_array.length > 0
-    ) {
-      const metodos = this.infoNegocio.metodos_pago_array
-        .map((m) => m.tipo)
-        .join(", ");
-      prompt += `💳 Métodos de pago: ${metodos}\n\n`;
+    prompt += `🎯 INSTRUCCIONES CRÍTICAS:\n\n`;
+    
+    prompt += `⚠️ LENGUAJE NATURAL Y HUMANO:\n`;
+    prompt += `- Habla como un vendedor relajado y amigable\n`;
+    prompt += `- USA contracciones: "estás" en vez de "te encuentras"\n`;
+    prompt += `- NO uses: "Excelente", "Perfecto", "¡Genial!", "¡Fantástico!"\n`;
+    prompt += `- NO repitas información que ya diste\n`;
+    prompt += `- NO hagas preguntas que el cliente ya respondió\n\n`;
+    
+    prompt += `⚠️ DETECCIÓN AUTOMÁTICA:\n`;
+    prompt += `- Si cliente dice "1" después de ver planes → YA eligió plan 1, NO preguntes de nuevo\n`;
+    prompt += `- Si dice "20 Mbps" o "el de 20" → YA eligió ese plan\n`;
+    prompt += `- Si menciona zona → Guarda y verifica cobertura INMEDIATAMENTE\n`;
+    prompt += `- "Jr comercio 304 Nilson Jhonny 47468849" → Extrae TODO de una vez\n\n`;
+    
+    prompt += `⚠️ FLUJO DIRECTO SIN RODEOS:\n`;
+    if (proceso?.flujo === "ventas") {
+      prompt += `- Cliente elige plan → Ir directo a: "¿En qué zona estás?"\n`;
+      prompt += `- Cliente da zona → Verificar cobertura y continuar\n`;
+      prompt += `- NO preguntes "¿eres cliente actual o nuevo?"\n`;
+      prompt += `- NO preguntes "¿qué velocidad buscas?" si ya eligió\n`;
     }
-
-    prompt += `🎯 REGLAS PARA USO DE FUNCIONES:\n\n`;
-    prompt += `⚠️ CRÍTICO: Cuando uses una función, NO generes texto conversacional adicional.\n\n`;
-    prompt += `1. **mostrar_planes**: Solo cuando pregunte por precios o servicios disponibles\n`;
-    prompt += `2. **iniciar_contratacion**: SOLO cuando diga "quiero contratar/comprar"\n`;
-    prompt += `3. **diagnosticar_problema**: Cuando reporte un problema técnico\n`;
-    prompt += `4. **crear_ticket**: Si el problema no se puede resolver por chat\n`;
-    prompt += `5. **agendar_visita**: Para agendar visita técnica presencial\n`;
-    prompt += `6. **confirmar_pago**: Cuando diga que ya realizó un pago\n\n`;
-    prompt += `❌ NO HAGAS:\n`;
-    prompt += `- Usar funciones sin que el cliente lo solicite\n`;
-    prompt += `- Generar texto cuando llamas funciones\n`;
-    prompt += `- Dar soluciones técnicas específicas (router, software, etc) sin contexto del negocio\n\n`;
-    prompt += `✅ HAZ:\n`;
-    prompt += `- Mantén una conversación natural, responde preguntas antes de pedir datos\n`;
-    prompt += `- Si preguntan algo (como métodos de pago), responde eso primero\n`;
-    prompt += `- Máximo ${this.maxTokens} caracteres en respuestas sin funciones\n`;
-    prompt += `- Adapta tus respuestas al tipo de negocio del cliente\n`;
+    prompt += `\n`;
+    
+    prompt += `⚠️ USA FUNCIONES, NO GENERES TEXTO:\n`;
+    prompt += `- Cuando detectes intención clara, llama la función DIRECTAMENTE\n`;
+    prompt += `- NO generes respuestas conversacionales innecesarias\n`;
+    prompt += `- Las funciones ya tienen mensajes apropiados\n\n`;
+    
+    if (proceso?.flujo === "ventas") {
+      prompt += `FUNCIONES DISPONIBLES:\n`;
+      prompt += `- verificar_cobertura: Cuando mencione zona\n`;
+      prompt += `- iniciar_contratacion: Cuando quiera contratar o ya eligió plan\n\n`;
+    }
+    
+    prompt += `Máximo ${this.maxTokens} caracteres en respuestas SIN funciones.`;
 
     return prompt;
   }
@@ -462,257 +773,279 @@ class SupportBot {
     };
   }
 
-  async ejecutarFuncion(nombre, args, numero) {
-    console.log(`🔧 Ejecutando función: ${nombre}`, args);
+  async detectarIntencionSoporte(mensaje, numero) {
+    try {
+      const contexto = await this.botHandler.getContexto(numero);
+      const ultimoMensajeBot = contexto.length > 0 ? contexto[contexto.length - 1].respuesta_bot : "";
+
+      const prompt = `Detecta intención.
+
+ÚLTIMO BOT: "${ultimoMensajeBot}"
+CLIENTE: "${mensaje}"
+
+Opciones:
+- QUIERE_CONTRATAR
+- PROBLEMA_TECNICO
+- CONSULTA_PAGO
+- CONVERSACION
+
+Responde UNA palabra.`;
+
+      const response = await axios.post(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          model: "gpt-3.5-turbo",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.0,
+          max_tokens: 20,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.botHandler.globalConfig.openai_api_key}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      return response.data.choices[0].message.content.trim().toUpperCase();
+    } catch (error) {
+      return "CONVERSACION";
+    }
+  }
+
+  async ejecutarFuncion(nombre, args, numero, mensajeOriginal) {
+    console.log(`🔧 Ejecutando: ${nombre}`, args);
 
     switch (nombre) {
       case "mostrar_planes":
         return await this.funcionMostrarPlanes();
 
+      case "verificar_cobertura":
+        return await this.funcionVerificarCobertura(args.zona, numero, mensajeOriginal);
+
       case "iniciar_contratacion":
-        return await this.funcionIniciarContratacion(numero);
+        return await this.funcionIniciarContratacion(numero, args.plan, null, mensajeOriginal);
+
+      case "mostrar_metodos_pago":
+        return await this.funcionMostrarMetodosPago(numero);
 
       case "diagnosticar_problema":
-        return await this.funcionDiagnosticarProblema(numero);
-
-      case "crear_ticket":
-        return await this.funcionCrearTicket(numero);
-
-      case "agendar_visita":
-        return await this.funcionAgendarVisita(numero);
-
-      case "confirmar_pago":
-        return await this.funcionConfirmarPago(numero);
+        return await this.escalarConsulta(numero, `Problema técnico: ${mensajeOriginal}`);
 
       default:
         return { respuesta: "¿En qué puedo ayudarte?", tipo: "error" };
     }
   }
 
-  // ===========================================
-  // FUNCIONES DEL BOT
-  // ===========================================
-
   async funcionMostrarPlanes() {
     if (this.planes.length === 0) {
       return {
-        respuesta:
-          "Lo siento, no hay planes disponibles en este momento. Contacta directamente.",
+        respuesta: "No hay planes disponibles. Contáctanos directamente.",
         tipo: "sin_planes",
       };
     }
 
-    let msg = "📦 PLANES/SERVICIOS DISPONIBLES:\n\n";
+    let msg = "📦 PLANES DISPONIBLES:\n\n";
     this.planes.forEach((plan, index) => {
-      msg += `${index + 1}. *${plan.producto}*\n`;
+      msg += `${index + 1}️⃣ ${plan.producto}\n`;
       msg += `   ${this.moneda.simbolo}${plan.precio}/mes\n`;
       if (plan.descripcion) msg += `   ${plan.descripcion}\n`;
       msg += "\n";
     });
+    
     msg += "Escribe el *número* del plan que te interesa.";
 
     return { respuesta: msg, tipo: "lista_planes" };
   }
 
-  async funcionIniciarContratacion(numero) {
-    if (this.planes.length === 0) {
+  async funcionVerificarCobertura(zona, numero, mensajeOriginal) {
+    // Solo verificar si realmente hay una zona en el mensaje
+    if (!zona && !mensajeOriginal) {
       return {
-        respuesta:
-          "Lo siento, no hay planes disponibles. Contacta directamente.",
-        tipo: "sin_planes",
+        respuesta: "¿En qué zona estás?",
+        tipo: "solicitar_zona"
       };
     }
 
-    // Primero verificar cobertura
-    this.procesosVenta.set(numero, {
-      estado: "esperando_zona",
-      datos: {},
-      ultimaActividad: Date.now(),
-    });
+    const zonaExtraida = await this.extraerZonaDelMensaje(zona || mensajeOriginal);
+    
+    // Validar que se extrajo una zona válida
+    if (!zonaExtraida || zonaExtraida === "desconocido" || zonaExtraida === "null") {
+      return {
+        respuesta: "¿En qué zona o distrito te encuentras?",
+        tipo: "solicitar_zona"
+      };
+    }
 
-    return {
-      respuesta: "Para verificar disponibilidad, ¿en qué zona o distrito te encuentras?",
-      tipo: "solicitar_zona",
+    const hayCobertura = this.verificarCobertura(zonaExtraida);
+
+    let proceso = this.procesosActivos.get(numero) || {
+      flujo: "ventas",
+      ultimaActividad: Date.now()
     };
-  }
-
-  async funcionDiagnosticarProblema(numero) {
-    let msg = "Voy a ayudarte a resolver el problema.\n\n";
-    msg += "Por favor, descríbeme con detalle:\n";
-    msg += "• ¿Qué problema tienes?\n";
-    msg += "• ¿Desde cuándo ocurre?\n";
-    msg += "• ¿Has intentado algo?";
-
-    this.tickets.set(numero, {
-      estado: "esperando_descripcion",
-      datos: {},
-      ultimaActividad: Date.now(),
-    });
-
-    return { respuesta: msg, tipo: "diagnosticar_problema" };
-  }
-
-  async funcionCrearTicket(numero) {
-    const ticketId = await this.crearTicketEnBD(numero, {
-      descripcion: "Problema reportado vía chat",
-    });
-
-    let msg = `✅ Ticket #${ticketId} creado\n`;
-    msg += `Prioridad: Alta\n\n`;
-    msg += "¿Necesitas *visita técnica*?\n";
-    msg += "Responde SÍ o NO";
-
-    this.tickets.set(numero, {
-      estado: "ofrecer_visita",
-      ticket_id: ticketId,
-      ultimaActividad: Date.now(),
-    });
-
-    return { respuesta: msg, tipo: "ticket_creado", ticketId };
-  }
-
-  async funcionAgendarVisita(numero) {
-    return await this.appointmentBot.procesarMensajeCita("", numero);
-  }
-
-  async funcionConfirmarPago(numero) {
-    return {
-      respuesta:
-        "📷 Por favor, envía tu *comprobante de pago*\n(Foto o captura de pantalla)",
-      tipo: "solicitar_comprobante",
-    };
-  }
-
-  // ===========================================
-  // FLUJOS TÉCNICOS
-  // ===========================================
-
-  async procesarZona(mensaje, numero, proceso) {
-    const zona = mensaje.trim();
-    const hayCobertura = this.verificarCobertura(zona);
+    
+    proceso.zona = zonaExtraida;
+    this.procesosActivos.set(numero, proceso);
 
     if (!hayCobertura) {
-      this.procesosVenta.delete(numero);
-      
-      let msg = `Lo siento, aún no tenemos cobertura en ${zona}. 😔\n\n`;
+      let msg = `Lo siento, aún no tenemos cobertura en ${zonaExtraida}.\n\n`;
       
       if (this.zonasCobertura.length > 0) {
-        msg += `Actualmente atendemos en:\n`;
+        msg += `Atendemos en:\n`;
         this.zonasCobertura.forEach(z => {
           msg += `• ${z}\n`;
         });
       }
       
-      msg += `\n¡Pronto llegaremos a más zonas!`;
+      return { respuesta: msg, tipo: "sin_cobertura" };
+    }
+
+    let msg = `Tenemos cobertura en ${zonaExtraida}\n\n`;
+    
+    if (this.planes.length > 0 && !proceso.plan) {
+      msg += "📦 PLANES:\n\n";
+      this.planes.forEach((plan, index) => {
+        msg += `${index + 1}️⃣ ${plan.producto}\n`;
+        msg += `   ${this.moneda.simbolo}${plan.precio}/mes\n`;
+        if (plan.descripcion) msg += `   ${plan.descripcion}\n`;
+        msg += "\n";
+      });
+      msg += "Escribe el *número* del plan.";
+    } else if (proceso.plan) {
+      // Si ya tiene plan, continuar con el flujo
+      return await this.funcionIniciarContratacion(numero, null, null, mensajeOriginal);
+    }
+
+    return { respuesta: msg, tipo: "cobertura_disponible" };
+  }
+
+  async funcionIniciarContratacion(numero, planSeleccionado, zona, mensajeOriginal) {
+    let proceso = this.procesosActivos.get(numero) || {
+      flujo: "ventas",
+      ultimaActividad: Date.now()
+    };
+
+    // DETECTAR plan automáticamente del mensaje
+    const mensajeLower = mensajeOriginal.toLowerCase().trim();
+    
+    // Si dice "1" o "2" después de ver planes
+    if (!proceso.plan && (mensajeLower === "1" || mensajeLower === "2")) {
+      const numeroPlan = parseInt(mensajeLower);
+      if (numeroPlan > 0 && numeroPlan <= this.planes.length) {
+        proceso.plan = this.planes[numeroPlan - 1];
+        console.log(`✅ Plan detectado automáticamente: ${proceso.plan.producto}`);
+      }
+    }
+    
+    // Si menciona velocidad (20 mbps, 50 mbps, etc)
+    if (!proceso.plan) {
+      const match = mensajeLower.match(/(\d+)\s*mbps/);
+      if (match) {
+        const velocidad = match[1];
+        proceso.plan = this.planes.find(p => p.producto.toLowerCase().includes(velocidad));
+        if (proceso.plan) {
+          console.log(`✅ Plan detectado por velocidad: ${proceso.plan.producto}`);
+        }
+      }
+    }
+
+    if (planSeleccionado && !proceso.plan) {
+      const plan = await this.identificarPlan(planSeleccionado);
+      if (plan) {
+        proceso.plan = plan;
+      }
+    }
+
+    const datosExtraidos = await this.extraerDatosCompletosContratacion(mensajeOriginal);
+    
+    if (datosExtraidos.nombre) proceso.nombre = datosExtraidos.nombre;
+    if (datosExtraidos.dni) proceso.dni = datosExtraidos.dni;
+    if (datosExtraidos.direccion) proceso.direccion = datosExtraidos.direccion;
+    if (datosExtraidos.zona && !proceso.zona) proceso.zona = datosExtraidos.zona;
+
+    this.procesosActivos.set(numero, proceso);
+
+    // Si ya tiene plan, ir directo a solicitar zona
+    if (proceso.plan && !proceso.zona) {
+      return {
+        respuesta: "¿En qué zona estás?",
+        tipo: "solicitar_zona"
+      };
+    }
+
+    if (!proceso.zona) {
+      return {
+        respuesta: "¿En qué zona estás?",
+        tipo: "solicitar_zona"
+      };
+    }
+
+    if (!this.verificarCobertura(proceso.zona)) {
+      this.procesosActivos.delete(numero);
+      let msg = `No tenemos cobertura en ${proceso.zona}`;
+      if (this.zonasCobertura.length > 0) {
+        msg += `\n\nAtendemos en: ${this.zonasCobertura.join(", ")}`;
+      }
+      return { respuesta: msg, tipo: "sin_cobertura" };
+    }
+
+    if (!proceso.plan) {
+      return {
+        respuesta: "¿Cuál plan te interesa? Escribe el número.",
+        tipo: "solicitar_plan"
+      };
+    }
+
+    if (!proceso.direccion || !proceso.nombre || !proceso.dni) {
+      let msg = "Para continuar necesito:\n\n";
+      if (!proceso.direccion) msg += "• Tu dirección completa\n";
+      if (!proceso.nombre) msg += "• Tu nombre completo\n";
+      if (!proceso.dni) msg += "• Tu DNI o Cédula\n";
+      msg += "\nPuedes enviarlo todo junto.";
       
-      return {
-        respuesta: msg,
-        tipo: "sin_cobertura",
-      };
+      return { respuesta: msg, tipo: "solicitar_datos" };
     }
 
-    // Hay cobertura, mostrar planes
-    proceso.datos.zona = zona;
-    proceso.estado = "seleccionar_plan";
-    this.procesosVenta.set(numero, proceso);
-
-    let msg = `¡Excelente! Tenemos cobertura en ${zona} 🎉\n\n`;
-    msg += "📦 PLANES DISPONIBLES:\n\n";
-    this.planes.forEach((plan, index) => {
-      msg += `${index + 1}. *${plan.producto}*\n`;
-      msg += `   ${this.moneda.simbolo}${plan.precio}/mes\n`;
-      if (plan.descripcion) msg += `   ${plan.descripcion}\n`;
-      msg += "\n";
-    });
-    msg += "Escribe el *número* del plan que deseas contratar.";
-
-    return { respuesta: msg, tipo: "mostrar_planes_con_cobertura" };
+    return await this.mostrarResumenContratacion(numero, proceso);
   }
 
-  async procesarSeleccionPlan(mensaje, numero, proceso) {
-    const numeroSeleccionado = parseInt(mensaje.trim());
-
-    if (isNaN(numeroSeleccionado) || numeroSeleccionado < 1 || numeroSeleccionado > this.planes.length) {
-      return {
-        respuesta: `Por favor, escribe el *número* del plan (1 al ${this.planes.length})`,
-        tipo: "seleccion_invalida",
-      };
+  async mostrarResumenContratacion(numero, proceso) {
+    let msg = "📋 RESUMEN:\n\n";
+    msg += `Plan: ${proceso.plan.producto}\n`;
+    msg += `Precio: ${this.moneda.simbolo}${proceso.plan.precio}/mes\n`;
+    
+    if (proceso.plan.descripcion && proceso.plan.descripcion.includes("Instalación")) {
+      const match = proceso.plan.descripcion.match(/S\/(\d+)/);
+      if (match) {
+        const costoInstalacion = parseFloat(match[1]);
+        const costoMensual = parseFloat(proceso.plan.precio);
+        msg += `\n💰 TOTAL:\n`;
+        msg += `• Instalación: ${this.moneda.simbolo}${costoInstalacion}\n`;
+        msg += `• Mensualidad: ${this.moneda.simbolo}${costoMensual}\n`;
+        msg += `• TOTAL: ${this.moneda.simbolo}${(costoInstalacion + costoMensual).toFixed(2)}\n\n`;
+      }
     }
+    
+    msg += `Nombre: ${proceso.nombre}\n`;
+    msg += `Documento: ${proceso.dni}\n`;
+    msg += `Dirección: ${proceso.direccion}\n\n`;
+    msg += "¿Todo correcto? Responde SÍ para agendar instalación.";
 
-    const planSeleccionado = this.planes[numeroSeleccionado - 1];
-    proceso.datos.plan_seleccionado = planSeleccionado;
-    proceso.estado = "esperando_direccion";
-    this.procesosVenta.set(numero, proceso);
+    proceso.esperando_confirmacion_final = true;
+    this.procesosActivos.set(numero, proceso);
 
-    return {
-      respuesta: `✅ Perfecto, elegiste *${planSeleccionado.producto}*\n\n¿Cuál es tu dirección completa para la instalación?`,
-      tipo: "solicitar_direccion",
-    };
+    return { respuesta: msg, tipo: "confirmar_datos" };
   }
 
-  async procesarDireccion(mensaje, numero, proceso) {
-    proceso.datos.direccion = mensaje;
-    proceso.datos.numero_celular = numero.replace("@c.us", "");
-    proceso.estado = "esperando_datos_personales";
-    this.procesosVenta.set(numero, proceso);
-
-    return {
-      respuesta: `✅ Dirección registrada\n\nPara continuar, necesito:\n• Tu *nombre completo*\n• Tu *DNI o Cédula*\n\nEjemplo: Juan Pérez Torres, DNI 12345678`,
-      tipo: "solicitar_datos",
-    };
-  }
-
-  async procesarDatosPersonales(mensaje, numero, proceso) {
-    const datos = await this.extraerDatosPersonales(mensaje);
-
-    if (!datos.nombre || !datos.dni) {
-      return {
-        respuesta:
-          "No pude identificar tu nombre o documento. Intenta así:\nJuan Pérez Torres, DNI 12345678",
-        tipo: "datos_invalidos",
-      };
-    }
-
-    proceso.datos.nombre_completo = datos.nombre;
-    proceso.datos.dni_cedula = datos.dni;
-    proceso.estado = "confirmar_datos";
-    this.procesosVenta.set(numero, proceso);
-
-    let resumen = "📋 *RESUMEN DE TU SOLICITUD*\n\n";
-    resumen += `Plan: ${proceso.datos.plan_seleccionado.producto}\n`;
-    resumen += `Precio: ${this.moneda.simbolo}${proceso.datos.plan_seleccionado.precio}/mes\n`;
-    resumen += `Nombre: ${proceso.datos.nombre_completo}\n`;
-    resumen += `Documento: ${proceso.datos.dni_cedula}\n`;
-    resumen += `Dirección: ${proceso.datos.direccion}\n\n`;
-    resumen += "¿Todo correcto? Responde *SÍ* para agendar instalación.";
-
-    return { respuesta: resumen, tipo: "confirmar_datos" };
-  }
-
-  async confirmarDatosVenta(mensaje, numero, proceso) {
+  async manejarConfirmacionFinal(mensaje, numero, proceso) {
     const msgLower = mensaje.toLowerCase().trim();
 
-    if (msgLower.match(/^(si|sí|yes|ok|confirmo|correcto|dale)$/)) {
-      const resultado =
-        await this.appointmentBot.iniciarAgendamientoConDatos({
-          numero: numero,
-          nombre: proceso.datos.nombre_completo,
-          dni_cedula: proceso.datos.dni_cedula,
-          direccion: proceso.datos.direccion,
-          servicio: `Instalación ${proceso.datos.plan_seleccionado.producto}`,
-        });
-
-      this.ventasCompletadas.set(numero, {
-        timestamp: Date.now(),
-        plan: proceso.datos.plan_seleccionado,
-      });
-
-      this.procesosVenta.delete(numero);
-      return resultado;
+    if (msgLower.match(/^(si|sí|yes|ok|confirmo|correcto|dale|listo)$/)) {
+      return await this.iniciarAgendamientoDias(numero, proceso);
     }
 
     if (msgLower.match(/^(no|cancelar)$/)) {
-      this.procesosVenta.delete(numero);
+      this.procesosActivos.delete(numero);
       return {
         respuesta: "Solicitud cancelada. ¿Te ayudo con algo más?",
         tipo: "cancelado",
@@ -720,62 +1053,299 @@ class SupportBot {
     }
 
     return {
-      respuesta: "Por favor responde *SÍ* para confirmar o *NO* para cancelar.",
+      respuesta: "Responde SÍ para confirmar o NO para cancelar.",
       tipo: "respuesta_invalida",
     };
   }
 
-  async procesarDescripcionProblema(mensaje, numero, ticket) {
-    ticket.datos.descripcion_completa = mensaje;
-
-    const ticketId = await this.crearTicketEnBD(numero, ticket.datos);
-
-    let msg = `✅ Ticket #${ticketId} creado\n`;
-    msg += `Tu problema ha sido registrado\n\n`;
-    msg += "¿Necesitas *visita técnica*?\n";
-    msg += "Responde SÍ o NO";
-
-    ticket.estado = "ofrecer_visita";
-    ticket.ticket_id = ticketId;
-    this.tickets.set(numero, ticket);
-
-    await this.notificarEscalamiento(ticketId, numero, ticket.datos);
-
-    return { respuesta: msg, tipo: "ticket_creado", ticketId };
-  }
-
-  async procesarRespuestaVisita(mensaje, numero, ticket) {
-    const msgLower = mensaje.toLowerCase().trim();
-
-    if (msgLower.match(/^(si|sí|yes|ok)$/)) {
-      this.tickets.delete(numero);
-      return await this.appointmentBot.procesarMensajeCita(mensaje, numero);
+  async iniciarAgendamientoDias(numero, proceso) {
+    const diasDisponibles = await this.obtenerDiasDisponibles();
+    
+    if (diasDisponibles.length === 0) {
+      return {
+        respuesta: "No hay disponibilidad. Contáctanos directamente.",
+        tipo: "sin_disponibilidad",
+      };
     }
 
-    this.tickets.delete(numero);
-    return {
-      respuesta: `Entendido. Te contactaremos pronto para resolver tu problema.\n\nTicket #${ticket.ticket_id}`,
-      tipo: "sin_visita",
+    let msg = "📅 DÍAS DISPONIBLES:\n\n";
+    diasDisponibles.forEach((dia, index) => {
+      msg += `${index + 1}. ${dia.display}\n`;
+    });
+    msg += "\nEscribe el número del día.";
+
+    proceso.diasDisponibles = diasDisponibles;
+    proceso.esperando_seleccion_dia = true;
+    proceso.esperando_confirmacion_final = false;
+    this.procesosActivos.set(numero, proceso);
+
+    return { respuesta: msg, tipo: "seleccion_fecha" };
+  }
+
+  async obtenerDiasDisponibles() {
+    const dias = [];
+    for (let i = 1; i <= 30; i++) {
+      const fecha = moment().add(i, "days");
+      const diaSemana = fecha.isoWeekday();
+
+      const horarioDelDia = this.horarios.find(h => h.dia_semana === diaSemana);
+
+      if (horarioDelDia) {
+        dias.push({
+          fecha: fecha.format("YYYY-MM-DD"),
+          display: fecha.format("dddd D [de] MMMM"),
+          diaSemana: diaSemana,
+        });
+      }
+
+      if (dias.length >= 7) break;
+    }
+
+    return dias;
+  }
+
+  async procesarSeleccionDia(mensaje, numero, proceso) {
+    const opcion = parseInt(mensaje.trim());
+
+    if (isNaN(opcion) || opcion < 1 || opcion > proceso.diasDisponibles.length) {
+      return {
+        respuesta: `Escribe el número (1 al ${proceso.diasDisponibles.length})`,
+        tipo: "seleccion_invalida",
+      };
+    }
+
+    const diaSeleccionado = proceso.diasDisponibles[opcion - 1];
+    proceso.fecha = diaSeleccionado.fecha;
+    proceso.diaSemana = diaSeleccionado.diaSemana;
+    proceso.esperando_seleccion_dia = false;
+    proceso.esperando_seleccion_hora = true;
+    
+    this.procesosActivos.set(numero, proceso);
+
+    return await this.mostrarHorariosDisponibles(numero, proceso);
+  }
+
+  async mostrarHorariosDisponibles(numero, proceso) {
+    const horarioDelDia = this.horarios.find(h => h.dia_semana === proceso.diaSemana);
+
+    if (!horarioDelDia) {
+      return {
+        respuesta: "No hay horario para este día.",
+        tipo: "error_horario",
+      };
+    }
+
+    const slotsDisponibles = await this.generarSlotsDisponibles(
+      proceso.fecha,
+      horarioDelDia,
+      30
+    );
+
+    if (slotsDisponibles.length === 0) {
+      return {
+        respuesta: `No hay horarios disponibles`,
+        tipo: "sin_horarios",
+      };
+    }
+
+    let msg = `🕐 HORARIOS - ${moment(proceso.fecha).format("dddd D [de] MMMM")}\n\n`;
+    slotsDisponibles.forEach((slot, index) => {
+      msg += `${index + 1}. ${slot}\n`;
+    });
+    msg += "\nEscribe el número del horario.";
+
+    proceso.slotsDisponibles = slotsDisponibles;
+    this.procesosActivos.set(numero, proceso);
+
+    return { respuesta: msg, tipo: "seleccion_hora" };
+  }
+
+  async procesarSeleccionHora(mensaje, numero, proceso) {
+    const opcion = parseInt(mensaje.trim());
+
+    if (isNaN(opcion) || opcion < 1 || opcion > proceso.slotsDisponibles.length) {
+      return {
+        respuesta: `Escribe el número (1 al ${proceso.slotsDisponibles.length})`,
+        tipo: "hora_invalida",
+      };
+    }
+
+    proceso.hora = proceso.slotsDisponibles[opcion - 1];
+    
+    const citaId = await this.guardarCitaBD(numero, proceso);
+    
+    await this.notificarInstalacion(citaId, proceso, numero);
+
+    this.ventasCompletadas.set(numero, {
+      timestamp: Date.now(),
+      citaId: citaId,
+    });
+
+    this.procesosActivos.delete(numero);
+
+    let msg = `INSTALACIÓN AGENDADA\n\n`;
+    msg += `Cita #${citaId}\n`;
+    msg += `• Plan: ${proceso.plan.producto}\n`;
+    msg += `• Fecha: ${moment(proceso.fecha).format("dddd D [de] MMMM")}\n`;
+    msg += `• Hora: ${proceso.hora}\n\n`;
+    msg += `Te esperamos`;
+
+    return { respuesta: msg, tipo: "cita_confirmada", citaId };
+  }
+
+  async funcionMostrarMetodosPago(numero) {
+    if (!this.infoNegocio.metodos_pago_array || this.infoNegocio.metodos_pago_array.length === 0) {
+      return await this.escalarConsulta(numero, "Solicita métodos de pago");
+    }
+
+    let msg = "💳 MÉTODOS DE PAGO:\n\n";
+    this.infoNegocio.metodos_pago_array.forEach(metodo => {
+      msg += `📱 ${metodo.tipo}\n`;
+      msg += `   ${metodo.dato}\n`;
+      if (metodo.instruccion) {
+        msg += `   ${metodo.instruccion}\n`;
+      }
+      msg += "\n";
+    });
+    
+    msg += "Una vez que pagues, escribe 'ya pagué' y envíame tu comprobante.";
+    
+    return { 
+      respuesta: msg, 
+      tipo: "metodos_pago"
     };
   }
 
-  // ===========================================
-  // MÉTODOS AUXILIARES
-  // ===========================================
+  async escalarConsulta(numero, motivo) {
+    const numeroLimpio = numero.replace("@c.us", "");
+
+    await db.getPool().execute(
+      `INSERT INTO estados_conversacion 
+       (empresa_id, numero_cliente, estado, fecha_escalado, motivo_escalado)
+       VALUES (?, ?, 'escalado_humano', NOW(), ?)
+       ON DUPLICATE KEY UPDATE 
+         estado = 'escalado_humano',
+         fecha_escalado = NOW(),
+         motivo_escalado = ?`,
+      [this.empresaId, numero, motivo, motivo]
+    );
+
+    await this.notificarEscalamiento(numeroLimpio, motivo);
+
+    return {
+      respuesta: "Un asesor te atenderá en breve.",
+      tipo: "escalado"
+    };
+  }
+
+  async notificarEscalamiento(numeroCliente, motivo) {
+    if (!this.notificaciones.notificar_escalamiento) return;
+
+    let numeros = JSON.parse(this.notificaciones.numeros_notificacion || "[]");
+    if (!Array.isArray(numeros) || numeros.length === 0) return;
+
+    let msg = `🔔 CONSULTA ESCALADA\n\n`;
+    msg += `Cliente: ${numeroCliente}\n`;
+    msg += `Motivo: ${motivo}\n`;
+    msg += `Hora: ${new Date().toLocaleString("es-PE")}\n\n`;
+    msg += `Atiende desde Escalados`;
+
+    for (const num of numeros) {
+      try {
+        let numeroNotificar = num.replace(/[^\d]/g, "");
+        if (!numeroNotificar.includes("@")) {
+          numeroNotificar = `${numeroNotificar}@c.us`;
+        }
+
+        if (this.botHandler.whatsappClient?.client?.client?.sendText) {
+          await this.botHandler.whatsappClient.client.client.sendText(numeroNotificar, msg);
+        } else if (this.botHandler.whatsappClient?.client?.sendText) {
+          await this.botHandler.whatsappClient.client.sendText(numeroNotificar, msg);
+        }
+
+        console.log(`✅ Notificación enviada a ${num}`);
+      } catch (error) {
+        console.error(`❌ Error notificando a ${num}:`, error.message);
+      }
+    }
+  }
+
+  async extraerZonaDelMensaje(mensaje) {
+    try {
+      const mensajeLower = mensaje.toLowerCase();
+      
+      for (const zona of this.zonasCobertura) {
+        if (mensajeLower.includes(zona)) {
+          return zona;
+        }
+      }
+
+      const prompt = `Extrae SOLO el distrito o zona. Si no encuentras, responde "desconocido".
+
+Mensaje: "${mensaje}"
+
+Responde SOLO la zona en minúsculas, una palabra.`;
+
+      const response = await axios.post(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          model: "gpt-3.5-turbo",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.0,
+          max_tokens: 10,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.botHandler.globalConfig.openai_api_key}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      return response.data.choices[0].message.content.trim().toLowerCase();
+    } catch (error) {
+      console.error("Error extrayendo zona:", error);
+      return mensaje.toLowerCase();
+    }
+  }
+
+  verificarCobertura(zona) {
+    if (this.zonasCobertura.length === 0) {
+      return true;
+    }
+
+    const zonaLower = zona.toLowerCase();
+    return this.zonasCobertura.some(z => zonaLower.includes(z) || z.includes(zonaLower));
+  }
+
+  async identificarPlan(planTexto) {
+    const numero = parseInt(planTexto);
+    
+    if (!isNaN(numero) && numero > 0 && numero <= this.planes.length) {
+      return this.planes[numero - 1];
+    }
+
+    const planTextoLower = planTexto.toLowerCase();
+    return this.planes.find(p => 
+      p.producto.toLowerCase().includes(planTextoLower) ||
+      planTextoLower.includes(p.producto.toLowerCase())
+    );
+  }
 
   async extraerDatosPersonales(mensaje) {
     try {
-      const prompt = `Extrae el nombre completo y documento de identidad (DNI, Cédula, CI, etc) del siguiente mensaje:
-    
-"${mensaje}"
+      const prompt = `Extrae nombre y documento.
 
-Responde SOLO en formato JSON:
+Mensaje: "${mensaje}"
+
+JSON:
 {
-  "nombre": "Nombre Completo Apellido",
-  "dni": "12345678"
+  "nombre": "string o null",
+  "dni": "string o null",
+  "tipo_documento": "DNI|Cédula|Pasaporte"
 }
 
-Si no encuentras alguno, usa null.`;
+Responde SOLO JSON válido.`;
 
       const response = await axios.post(
         "https://api.openai.com/v1/chat/completions",
@@ -797,62 +1367,132 @@ Si no encuentras alguno, usa null.`;
       return JSON.parse(contenido);
     } catch (error) {
       console.error("Error extrayendo datos:", error);
-      return { nombre: null, dni: null };
+      return { nombre: null, dni: null, tipo_documento: null };
     }
   }
 
-  async crearTicketEnBD(numero, datos) {
+  async extraerDatosCompletosContratacion(mensaje) {
     try {
-      const [result] = await db.getPool().execute(
-        `INSERT INTO tickets_soporte 
-         (empresa_id, numero_cliente, tipo_problema, descripcion, prioridad, estado)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-          this.empresaId,
-          numero,
-          "Problema técnico",
-          datos.descripcion_completa || datos.descripcion || "Sin descripción",
-          "alta",
-          "abierto",
-        ]
+      const prompt = `Extrae datos del mensaje. Responde SOLO JSON válido.
+
+Mensaje: "${mensaje}"
+
+JSON:
+{
+  "nombre": "string o null",
+  "dni": "string o null",
+  "direccion": "string o null",
+  "zona": "string o null"
+}
+
+REGLAS:
+- Dirección tiene "Jr", "Av", "Calle" o números de calle
+- DNI son 8 dígitos consecutivos
+- Zona es distrito mencionado (ventanilla, mi perú, etc)
+- Nombre es texto sin números ni direcciones
+
+Ejemplo:
+"Jr comercio 304 Nilson Jhonny 47468849"
+→ {"nombre": "Nilson Jhonny", "dni": "47468849", "direccion": "Jr comercio 304", "zona": null}
+
+Responde SOLO JSON.`;
+
+      const response = await axios.post(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          model: "gpt-3.5-turbo",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.0,
+          max_tokens: 150,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.botHandler.globalConfig.openai_api_key}`,
+            "Content-Type": "application/json",
+          },
+        }
       );
 
-      return result.insertId;
+      const contenido = response.data.choices[0].message.content.trim();
+      console.log("🔍 GPT extrajo:", contenido);
+      
+      return JSON.parse(contenido);
     } catch (error) {
-      console.error("Error creando ticket:", error);
-      return 0;
+      console.error("Error extrayendo datos:", error);
+      return { nombre: null, dni: null, direccion: null, zona: null };
     }
   }
 
-  async notificarEscalamiento(ticketId, numero, datos) {
+  async generarSlotsDisponibles(fecha, horario, duracionServicio) {
+    const slots = [];
+    const horaInicio = moment(fecha + " " + horario.hora_inicio);
+    const horaFin = moment(fecha + " " + horario.hora_fin);
+    const duracionSlot = horario.duracion_cita;
+
+    const [citasExistentes] = await db.getPool().execute(
+      `SELECT hora_cita FROM citas_bot 
+       WHERE empresa_id = ? AND fecha_cita = ? 
+       AND estado IN ('agendada', 'confirmada')
+       ORDER BY hora_cita`,
+      [this.empresaId, fecha]
+    );
+
+    const horasOcupadas = citasExistentes.map(c => c.hora_cita.substring(0, 5));
+
+    let horaActual = horaInicio.clone();
+
+    while (horaActual.isBefore(horaFin)) {
+      const horaFormato = horaActual.format("HH:mm");
+
+      if (!horasOcupadas.includes(horaFormato)) {
+        const tiempoRestante = horaFin.diff(horaActual, "minutes");
+        if (tiempoRestante >= duracionServicio) {
+          slots.push(horaFormato);
+        }
+      }
+
+      horaActual.add(duracionSlot, "minutes");
+    }
+
+    return slots;
+  }
+
+  async guardarCitaBD(numero, proceso) {
+    const [result] = await db.getPool().execute(
+      `INSERT INTO citas_bot 
+       (empresa_id, numero_cliente, nombre_cliente, dni_cedula, fecha_cita, hora_cita, 
+        tipo_servicio, estado, direccion_completa)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'agendada', ?)`,
+      [
+        this.empresaId,
+        numero,
+        proceso.nombre,
+        proceso.dni,
+        proceso.fecha,
+        proceso.hora + ":00",
+        `Instalación ${proceso.plan.producto}`,
+        proceso.direccion,
+      ]
+    );
+
+    return result.insertId;
+  }
+
+  async notificarInstalacion(citaId, proceso, numero) {
     try {
-      if (!this.notificaciones.notificar_escalamiento) {
-        return;
-      }
+      if (!this.notificaciones.notificar_citas) return;
 
-      let numeros;
-      try {
-        numeros = JSON.parse(this.notificaciones.numeros_notificacion || "[]");
-      } catch (e) {
-        return;
-      }
+      let numeros = JSON.parse(this.notificaciones.numeros_notificacion || "[]");
+      if (!Array.isArray(numeros) || numeros.length === 0) return;
 
-      if (!Array.isArray(numeros) || numeros.length === 0) {
-        return;
-      }
-
-      let msg =
-        this.notificaciones.mensaje_escalamiento ||
-        `🚨 Ticket #${ticketId} - Problema reportado`;
+      let msg = this.notificaciones.mensaje_citas || `Nueva instalación #${citaId}`;
 
       msg = msg
-        .replace("{nombre_cliente}", numero.replace("@c.us", ""))
-        .replace("{numero_cliente}", numero.replace("@c.us", ""))
-        .replace(
-          "{motivo_escalamiento}",
-          datos.descripcion_completa || "Sin descripción"
-        )
-        .replace("{fecha_hora}", new Date().toLocaleString("es-PE"));
+        .replace("{nombre_cliente}", proceso.nombre)
+        .replace("{servicio}", proceso.plan.producto)
+        .replace("{fecha_cita}", moment(proceso.fecha).format("DD/MM/YYYY"))
+        .replace("{hora_cita}", proceso.hora)
+        .replace("{telefono}", numero.replace("@c.us", ""));
 
       for (const num of numeros) {
         try {
@@ -862,22 +1502,16 @@ Si no encuentras alguno, usa null.`;
           }
 
           if (this.botHandler.whatsappClient?.client?.client?.sendText) {
-            await this.botHandler.whatsappClient.client.client.sendText(
-              numeroLimpio,
-              msg
-            );
+            await this.botHandler.whatsappClient.client.client.sendText(numeroLimpio, msg);
           } else if (this.botHandler.whatsappClient?.client?.sendText) {
-            await this.botHandler.whatsappClient.client.sendText(
-              numeroLimpio,
-              msg
-            );
+            await this.botHandler.whatsappClient.client.sendText(numeroLimpio, msg);
           }
         } catch (error) {
-          console.error(`Error enviando notificación a ${num}:`, error.message);
+          console.error(`Error notificando a ${num}:`, error.message);
         }
       }
     } catch (error) {
-      console.error("Error en notificarEscalamiento:", error);
+      console.error("Error en notificarInstalacion:", error);
     }
   }
 
@@ -885,17 +1519,9 @@ Si no encuentras alguno, usa null.`;
     const ahora = Date.now();
     const timeout = 10 * 60 * 1000;
 
-    for (const [numero, proceso] of this.procesosVenta.entries()) {
+    for (const [numero, proceso] of this.procesosActivos.entries()) {
       if (ahora - proceso.ultimaActividad > timeout) {
-        this.procesosVenta.delete(numero);
-        console.log(`🧹 Proceso de venta limpiado: ${numero}`);
-      }
-    }
-
-    for (const [numero, ticket] of this.tickets.entries()) {
-      if (ahora - ticket.ultimaActividad > timeout) {
-        this.tickets.delete(numero);
-        console.log(`🧹 Ticket limpiado: ${numero}`);
+        this.procesosActivos.delete(numero);
       }
     }
   }
@@ -907,7 +1533,6 @@ Si no encuentras alguno, usa null.`;
     for (const [numero, ventaInfo] of this.ventasCompletadas.entries()) {
       if (ahora - ventaInfo.timestamp > timeout) {
         this.ventasCompletadas.delete(numero);
-        console.log(`🧹 Venta completada limpiada: ${numero}`);
       }
     }
   }

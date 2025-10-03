@@ -707,12 +707,98 @@ class BotHandler {
   }
 
   // Método para manejar mensajes entrantes
-  async handleIncomingMessage(from, body, isGroup = false) {
+  async handleIncomingMessage(
+    from,
+    body,
+    isGroup = false,
+    messageType = "chat",
+    messageObj = null
+  ) {
     const numero = from;
     const mensaje = body || "";
 
-    console.log(`🤖 Bot evaluando mensaje de ${numero}: "${mensaje}"`);
+    console.log(
+      `🤖 Bot evaluando mensaje de ${numero}: "${mensaje.substring(0, 50)}..."`
+    );
+    console.log(`   Tipo: ${messageType}`);
 
+    // MANEJO DE IMÁGENES (COMPROBANTES DE PAGO)
+    if (
+      messageType === "image" &&
+      this.config.tipo_bot === "soporte" &&
+      this.supportBot
+    ) {
+      const proceso = this.supportBot.procesosActivos.get(numero);
+
+      if (proceso?.estado === "esperando_comprobante_imagen") {
+        console.log("📸 Imagen de comprobante detectada");
+
+        try {
+          const path = require("path");
+          const fs = require("fs").promises;
+
+          // Crear directorio si no existe
+          const directorioComprobantes = path.join(
+            __dirname,
+            "../uploads/comprobantes"
+          );
+          await fs.mkdir(directorioComprobantes, { recursive: true });
+
+          // Nombre del archivo
+          const timestamp = Date.now();
+          const numeroLimpio = numero.replace("@c.us", "");
+          const nombreArchivo = `comprobante_${numeroLimpio}_${timestamp}.jpg`;
+          const rutaArchivo = path.join(directorioComprobantes, nombreArchivo);
+
+          // Descargar imagen usando WPPConnect
+          if (messageObj) {
+            const buffer = await this.whatsappClient.client.client.decryptFile(
+              messageObj
+            );
+            await fs.writeFile(rutaArchivo, buffer);
+
+            console.log(`✅ Comprobante guardado: ${rutaArchivo}`);
+          }
+
+          // Procesar comprobante
+          const respuesta = await this.supportBot.manejarComprobanteRecibido(
+            numero,
+            rutaArchivo
+          );
+
+          // PROGRAMAR ELIMINACIÓN AUTOMÁTICA EN 48 HORAS
+          setTimeout(async () => {
+            try {
+              await fs.unlink(rutaArchivo);
+              console.log(
+                `🗑️ Comprobante eliminado automáticamente: ${rutaArchivo}`
+              );
+            } catch (error) {
+              console.error(`Error eliminando comprobante: ${error.message}`);
+            }
+          }, 48 * 60 * 60 * 1000); // 48 horas
+
+          if (respuesta) {
+            console.log(
+              `🤖 Bot respondiendo: "${respuesta.respuesta.substring(
+                0,
+                50
+              )}..."`
+            );
+            return respuesta;
+          }
+        } catch (error) {
+          console.error("❌ Error procesando comprobante:", error);
+          return {
+            respuesta:
+              "Hubo un problema al procesar tu comprobante. Intenta de nuevo.",
+            tipo: "error_comprobante",
+          };
+        }
+      }
+    }
+
+    // MENSAJES DE TEXTO
     if (!mensaje || mensaje.trim() === "") {
       console.log("🤖 Mensaje vacío, ignorando");
       return null;
@@ -722,7 +808,7 @@ class BotHandler {
 
     if (respuesta) {
       console.log(
-        `🤖 Bot respondiendo con: "${respuesta.respuesta.substring(0, 50)}..."`
+        `🤖 Bot respondiendo: "${respuesta.respuesta.substring(0, 50)}..."`
       );
       return respuesta;
     }
