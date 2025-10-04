@@ -74,7 +74,8 @@ if (strpos($path, 'superadmin/') === 0) {
         'pagos' => '/modulos/pagos.php',
         'configuracion' => '/modulos/configuracion.php',
         'emails' => '/modulos/emails.php',
-        'bot-templates' => '/modulos/bot-templates.php',  
+        'bot-templates' => '/modulos/bot-templates.php',
+        'emails' => '/modulos/emails.php',    
         'logs' => '/modulos/logs.php',           
     ];
 

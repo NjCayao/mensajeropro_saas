@@ -16,7 +16,7 @@ try {
         WHERE cm.estado = 'pendiente'
         AND cm.intentos < 3
         AND e.activo = 1
-        ORDER BY cm.prioridad DESC, cm.fecha_creacion ASC
+        ORDER BY cm.fecha_creacion ASC
         LIMIT 10
     ");
     

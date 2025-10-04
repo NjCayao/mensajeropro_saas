@@ -17,6 +17,21 @@ poner dominio ejemplo https://devcayao.com - no incluir carpetas
 bash Verificar pagos cada hora (consola)
 0 * * * * php /ruta/a/tu/proyecto/cron/check-payments.php >> /ruta/a/logs/cron-payments.log 2>&1
 
+# # Verificar pagos cada hora
+0 * * * * php /var/www/mensajeropro/cron/check-payments.php >> /var/www/mensajeropro/logs/cron.log 2>&1
+
+# Enviar recordatorios diario 9 AM
+0 9 * * * php /var/www/mensajeropro/cron/send-reminders.php >> /var/www/mensajeropro/logs/cron.log 2>&1
+
+# Limpiar sesiones diario 3 AM
+0 3 * * * php /var/www/mensajeropro/cron/clean-sessions.php >> /var/www/mensajeropro/logs/cron.log 2>&1
+
+# Procesar cola cada 2 minutos
+*/2 * * * * php /var/www/mensajeropro/cron/procesar_cola.php >> /var/www/mensajeropro/logs/cron.log 2>&1
+
+# Procesar programados cada minuto
+* * * * * php /var/www/mensajeropro/cron/procesar_programados.php >> /var/www/mensajeropro/logs/cron.log 2>&1
+
 # instalar dependencias en local primera vez
 cd whatsapp-service
 npm install 

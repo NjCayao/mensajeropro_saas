@@ -7,17 +7,28 @@ define('APP_NAME', 'MensajeroPro');
 define('APP_VERSION', '2.0.0'); // Versión SaaS
 
 // Detección de entorno
-define('IS_LOCALHOST', strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || $_SERVER['SERVER_ADDR'] === '127.0.0.1');
+define('IS_LOCALHOST', (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !== false) || (isset($_SERVER['SERVER_ADDR']) && $_SERVER['SERVER_ADDR'] === '127.0.0.1'));
+// define('IS_LOCALHOST', strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || $_SERVER['SERVER_ADDR'] === '127.0.0.1');
 define('ENVIRONMENT', IS_LOCALHOST ? 'development' : 'production');
 
 // URLs dinámicas según el entorno
+// if (IS_LOCALHOST) {
+//     define('APP_URL', 'http://localhost/mensajeroprov2');
+//     define('WHATSAPP_API_URL', 'http://localhost:3001');
+// } else {
+//     // En producción usar HTTPS
+//     define('APP_URL', 'https://' . $_SERVER['HTTP_HOST']);
+//     define('WHATSAPP_API_URL', 'https://' . $_SERVER['HTTP_HOST'] . ':3001');
+// }
+
 if (IS_LOCALHOST) {
     define('APP_URL', 'http://localhost/mensajeroprov2');
     define('WHATSAPP_API_URL', 'http://localhost:3001');
 } else {
-    // En producción usar HTTPS
-    define('APP_URL', 'https://' . $_SERVER['HTTP_HOST']);
-    define('WHATSAPP_API_URL', 'https://' . $_SERVER['HTTP_HOST'] . ':3001');
+    // En producción
+    $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'tudominio.com'; // ← CAMBIAR
+    define('APP_URL', 'https://' . $host);
+    define('WHATSAPP_API_URL', 'https://' . $host . ':3001');
 }
 
 // Cargar funciones globales
