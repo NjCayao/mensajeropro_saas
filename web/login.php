@@ -1,17 +1,12 @@
 <?php
-// public/login.php - Login unificado
 session_start();
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/security.php';
 
-// Procesar logout
-if (isset($_POST['logout'])) {
-    cerrarSesion();
-    header('Location: ' . url('login.php'));
-    exit;
-}
-// Si ya está logueado, redirigir al dashboard
+$security = new SecurityManager($pdo);
+
 if (estaLogueado()) {
     header('Location: ' . url('cliente/dashboard'));
     exit;
@@ -19,31 +14,44 @@ if (estaLogueado()) {
 
 $error = '';
 
-// Procesar login
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'] ?? '';
-
-    if (empty($email) || empty($password)) {
+    $csrf_token = $_POST['csrf_token'] ?? '';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    
+    if (!$security->validarCSRF($csrf_token)) {
+        $error = 'Token de seguridad inválido';
+    } elseif (empty($email) || empty($password)) {
         $error = 'Por favor complete todos los campos';
     } else {
-        $resultado = verificarLogin($email, $password);
-
-        if ($resultado['success']) {
-            crearSesion($resultado['usuario']);
-
-            // Redirigir según el rol
-            if (isset($_SESSION['user_rol']) && $_SESSION['user_rol'] === 'superadmin') {
-                header('Location: ' . url('superadmin/dashboard'));
+        $check = $security->verificarIntentosLogin($email, $ip);
+        
+        if ($check['bloqueado']) {
+            $error = $check['mensaje'];
+        } else {
+            $resultado = verificarLogin($email, $password);
+            
+            if ($resultado['success']) {
+                $security->registrarIntentoLogin($email, $ip, true);
+                crearSesion($resultado['usuario']);
+                
+                if (isset($_SESSION['user_rol']) && $_SESSION['user_rol'] === 'superadmin') {
+                    header('Location: ' . url('superadmin/dashboard'));
+                } else {
+                    header('Location: ' . url('cliente/dashboard'));
+                }
+                exit;
             } else {
-                header('Location: ' . url('cliente/dashboard'));
+                $security->registrarIntentoLogin($email, $ip, false);
+                $error = 'Email o contraseña incorrectos';
             }
-            exit;
         }
     }
 }
 
-// Verificar si Google OAuth está activo
+$csrf = $security->generarCSRF();
+
 $google_activo = false;
 try {
     $stmt = $pdo->query("SELECT valor FROM configuracion_plataforma WHERE clave = 'google_oauth_activo'");
@@ -55,143 +63,108 @@ try {
 ?>
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?php echo APP_NAME; ?> - Iniciar Sesión</title>
+    <title>Iniciar Sesión - <?php echo APP_NAME; ?></title>
 
-    <!-- Google Font: Source Sans Pro -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="<?php echo asset('plugins/fontawesome-free/css/all.min.css'); ?>">
-    <!-- icheck bootstrap -->
-    <link rel="stylesheet" href="<?php echo asset('plugins/icheck-bootstrap/icheck-bootstrap.min.css'); ?>">
-    <!-- Theme style -->
-    <link rel="stylesheet" href="<?php echo asset('dist/css/adminlte.min.css'); ?>">
+    <link rel="stylesheet" href="assets/css/login.css">
 
-    <style>
-        .login-page {
-            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-        }
+    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo asset('img/favicon.png'); ?>">
+    <link rel="icon" type="image/png" sizes="16x16" href="<?php echo asset('img/favicon.png'); ?>">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?php echo asset('img/favicon.png'); ?>">
+    <link rel="manifest" href="<?php echo asset('img/site.webmanifest'); ?>">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-        .login-logo a {
-            color: #fff !important;
-        }
-
-        .card {
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .btn-primary {
-            background-color: #25D366;
-            border-color: #25D366;
-        }
-
-        .btn-primary:hover {
-            background-color: #128C7E;
-            border-color: #128C7E;
-        }
-    </style>
 </head>
-
-<body class="hold-transition login-page">
-    <div class="login-box">
-        <div class="login-logo">
-            <a href="<?php echo url(); ?>">
-                <i class="fab fa-whatsapp"></i> <b><?php echo APP_NAME; ?></b>
-            </a>
+<body>
+    <div class="login-container">
+        <!-- Panel Izquierdo -->
+        <div class="login-left">
+            <h1><img src="<?php echo asset('img/logo1.png'); ?>" width="50px"> <?php echo APP_NAME; ?></h1>
+            <p>Sistema de automatización de mensajería empresarial</p>
+            
+            <ul class="feature-list">
+                <li><i class="fas fa-check-circle"></i> Bot de ventas con IA</li>
+                <li><i class="fas fa-check-circle"></i> Mensajes masivos programados</li>
+                <li><i class="fas fa-check-circle"></i> Agendamiento automático</li>
+                <li><i class="fas fa-check-circle"></i> Integración con catálogos</li>
+                <li><i class="fas fa-check-circle"></i> Soporte 24/7</li>
+            </ul>
         </div>
-
-        <div class="card">
-            <div class="card-body login-card-body">
-                <p class="login-box-msg">Inicia sesión para comenzar</p>
-
-                <?php if ($error): ?>
-                    <div class="alert alert-danger alert-dismissible">
-                        <button type="button" class="close" data-dismiss="alert">&times;</button>
-                        <?php echo htmlspecialchars($error); ?>
-                    </div>
-                <?php endif; ?>
-
-                <form method="post" action="">
-                    <input type="hidden" name="csrf_token" value="<?php echo generarCSRFToken(); ?>">
-
-                    <div class="input-group mb-3">
-                        <input type="email"
-                            name="email"
-                            class="form-control"
-                            placeholder="Email"
-                            value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>"
-                            required>
-                        <div class="input-group-append">
-                            <div class="input-group-text">
-                                <span class="fas fa-envelope"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="input-group mb-3">
-                        <input type="password"
-                            name="password"
-                            class="form-control"
-                            placeholder="Contraseña"
-                            required>
-                        <div class="input-group-append">
-                            <div class="input-group-text">
-                                <span class="fas fa-lock"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-8">
-                            <div class="icheck-primary">
-                                <input type="checkbox" id="remember" name="remember">
-                                <label for="remember">
-                                    Recordarme
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <button type="submit" class="btn btn-primary btn-block">
-                                Ingresar
-                            </button>
-                        </div>
-                    </div>
-                </form>
-
-                <?php if ($google_activo): ?>
-                    <div class="social-auth-links text-center mb-3">
-                        <p>- O -</p>
-                        <a href="<?php echo url('api/v1/auth/google-oauth.php'); ?>" class="btn btn-block btn-danger">
-                            <i class="fab fa-google mr-2"></i> Ingresar con Google
-                        </a>
-                    </div>
-                <?php endif; ?>
-
-                <p class="mb-1">
-                    <a href="recuperar-password.php">Olvidé mi contraseña</a>
-                </p>
-                <div class="text-center mt-3">
-                    <p class="mb-0">
-                        ¿No tienes una cuenta?
-                        <a href="<?php echo url('registro.php'); ?>" class="text-primary">
-                            Regístrate aquí
-                        </a>
-                    </p>
+        
+        <!-- Panel Derecho - Formulario -->
+        <div class="login-right">
+            <div class="login-header">
+                <h2>Iniciar Sesión</h2>
+                <p>Accede a tu cuenta empresarial</p>
+            </div>
+            
+            <?php if ($error): ?>
+                <div class="alert">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span><?php echo htmlspecialchars($error); ?></span>
                 </div>
+            <?php endif; ?>
+            
+            <form method="post" action="">
+                <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" name="email" class="form-control" 
+                               placeholder="tu@empresa.com"
+                               value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" 
+                               required autofocus>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Contraseña</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" name="password" class="form-control" 
+                               placeholder="Ingresa tu contraseña" required>
+                    </div>
+                </div>
+                
+                <div class="form-check">
+                    <input type="checkbox" id="remember" name="remember">
+                    <label for="remember">Recordarme en este dispositivo</label>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                </button>
+                
+                <?php if ($google_activo): ?>
+                    <div class="divider">
+                        <span>o continúa con</span>
+                    </div>
+                    
+                    <a href="<?php echo url('api/v1/auth/google-oauth.php'); ?>" class="btn btn-google">
+                        <i class="fab fa-google"></i>
+                        <span>Continuar con Google</span>
+                    </a>
+                <?php endif; ?>
+            </form>
+            
+            <div class="links">
+                <a href="<?php echo url('recuperar-password.php'); ?>">
+                    <i class="fas fa-key"></i> ¿Olvidaste tu contraseña?
+                </a>
+            </div>
+            
+            <div class="register-link">
+                <p>¿No tienes una cuenta? 
+                    <a href="<?php echo url('registro.php'); ?>">Regístrate gratis</a>
+                </p>
             </div>
         </div>
     </div>
-
-    <!-- jQuery -->
-    <script src="<?php echo asset('plugins/jquery/jquery.min.js'); ?>"></script>
-    <!-- Bootstrap 4 -->
-    <script src="<?php echo asset('plugins/bootstrap/js/bootstrap.bundle.min.js'); ?>"></script>
-    <!-- AdminLTE App -->
-    <script src="<?php echo asset('dist/js/adminlte.min.js'); ?>"></script>
 </body>
-
 </html>

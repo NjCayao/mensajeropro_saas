@@ -40,6 +40,15 @@ $config = [
     'paypal_client_id' => getConfig('paypal_client_id'),
     'paypal_secret' => getConfig('paypal_secret'),
     'paypal_mode' => getConfig('paypal_mode', 'sandbox'),
+
+    // Seguridad
+    'recaptcha_site_key' => getConfig('recaptcha_site_key'),
+    'recaptcha_secret_key' => getConfig('recaptcha_secret_key'),
+    'recaptcha_activo' => getConfig('recaptcha_activo', '0'),
+    'honeypot_activo' => getConfig('honeypot_activo', '1'),
+    'bloquear_emails_temporales' => getConfig('bloquear_emails_temporales', '1'),
+    'dominios_temporales' => getConfig('dominios_temporales', '10minutemail.com,tempmail.com,guerrillamail.com,mailinator.com'),
+    'verificacion_email_obligatoria' => getConfig('verificacion_email_obligatoria', '1'),
 ];
 ?>
 
@@ -96,6 +105,11 @@ $config = [
                         <li class="nav-item">
                             <a class="nav-link" data-toggle="pill" href="#sistema" role="tab">
                                 <i class="fas fa-cog"></i> Sistema
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-toggle="pill" href="#seguridad" role="tab">
+                                <i class="fas fa-shield-alt"></i> Seguridad
                             </a>
                         </li>
                     </ul>
@@ -378,6 +392,142 @@ $config = [
                             </form>
                         </div>
 
+                        <!-- Tab Seguridad -->
+                        <div class="tab-pane fade" id="seguridad" role="tabpanel">
+                            <form id="formSeguridad">
+                                <h4><i class="fas fa-shield-alt"></i> Seguridad y Anti-Spam</h4>
+                                <p class="text-muted">Protección contra bots y registros falsos</p>
+
+                                <!-- reCAPTCHA v3 -->
+                                <div class="card card-outline card-warning mb-3">
+                                    <div class="card-header">
+                                        <h5 class="card-title"><i class="fas fa-robot"></i> Google reCAPTCHA v3</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label>Site Key:</label>
+                                                    <input type="text" class="form-control"
+                                                        name="recaptcha_site_key"
+                                                        value="<?= htmlspecialchars($config['recaptcha_site_key']) ?>"
+                                                        placeholder="6Lc...">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label>Secret Key:</label>
+                                                    <div class="input-group">
+                                                        <input type="password" class="form-control"
+                                                            id="recaptcha_secret"
+                                                            name="recaptcha_secret_key"
+                                                            value="<?= htmlspecialchars($config['recaptcha_secret_key']) ?>"
+                                                            placeholder="6Lc...">
+                                                        <div class="input-group-append">
+                                                            <button class="btn btn-outline-secondary" type="button"
+                                                                onclick="togglePassword('recaptcha_secret')">
+                                                                <i class="fas fa-eye"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="alert alert-info">
+                                            <h6><i class="fas fa-info-circle"></i> Obtener keys:</h6>
+                                            <ol class="mb-0">
+                                                <li>Ve a <a href="https://www.google.com/recaptcha/admin" target="_blank">Google reCAPTCHA Admin</a></li>
+                                                <li>Registra un nuevo sitio</li>
+                                                <li>Selecciona "reCAPTCHA v3"</li>
+                                                <li>Agrega tu dominio: <code><?= $_SERVER['HTTP_HOST'] ?></code></li>
+                                                <li>Copia las keys aquí</li>
+                                            </ol>
+                                        </div>
+
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input"
+                                                id="recaptcha_activo" name="recaptcha_activo" value="1"
+                                                <?= $config['recaptcha_activo'] == '1' ? 'checked' : '' ?>>
+                                            <label class="custom-control-label" for="recaptcha_activo">
+                                                <strong>Activar reCAPTCHA en Registro</strong>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Honeypot -->
+                                <div class="card card-outline card-success mb-3">
+                                    <div class="card-header">
+                                        <h5 class="card-title"><i class="fas fa-bug"></i> Honeypot (Campo Trampa)</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="text-muted">Campo invisible que solo los bots llenan</p>
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input"
+                                                id="honeypot_activo" name="honeypot_activo" value="1"
+                                                <?= $config['honeypot_activo'] == '1' ? 'checked' : '' ?>>
+                                            <label class="custom-control-label" for="honeypot_activo">
+                                                <strong>Activar Honeypot en Registro</strong>
+                                            </label>
+                                        </div>
+                                        <small class="text-muted">Recomendado: Siempre activo (protección invisible)</small>
+                                    </div>
+                                </div>
+
+                                <!-- Emails Temporales -->
+                                <div class="card card-outline card-danger mb-3">
+                                    <div class="card-header">
+                                        <h5 class="card-title"><i class="fas fa-envelope-open-text"></i> Bloquear Emails Temporales</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="custom-control custom-switch mb-3">
+                                            <input type="checkbox" class="custom-control-input"
+                                                id="bloquear_emails_temporales" name="bloquear_emails_temporales" value="1"
+                                                <?= $config['bloquear_emails_temporales'] == '1' ? 'checked' : '' ?>>
+                                            <label class="custom-control-label" for="bloquear_emails_temporales">
+                                                <strong>Bloquear dominios de emails temporales</strong>
+                                            </label>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label>Dominios bloqueados (uno por línea):</label>
+                                            <textarea class="form-control" name="dominios_temporales" rows="6"
+                                                placeholder="10minutemail.com&#10;tempmail.com&#10;guerrillamail.com"><?= htmlspecialchars(str_replace(',', "\n", $config['dominios_temporales'])) ?></textarea>
+                                            <small class="text-muted">
+                                                Lista de dominios conocidos de emails temporales/desechables
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Verificación Obligatoria -->
+                                <div class="card card-outline card-primary mb-3">
+                                    <div class="card-header">
+                                        <h5 class="card-title"><i class="fas fa-envelope-circle-check"></i> Verificación de Email</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input"
+                                                id="verificacion_email_obligatoria" name="verificacion_email_obligatoria" value="1"
+                                                <?= $config['verificacion_email_obligatoria'] == '1' ? 'checked' : '' ?>>
+                                            <label class="custom-control-label" for="verificacion_email_obligatoria">
+                                                <strong>Requerir verificación de email antes de activar cuenta</strong>
+                                            </label>
+                                        </div>
+                                        <small class="text-muted d-block mt-2">
+                                            Si está activo: Las cuentas se crean inactivas hasta que verifiquen su email.
+                                            <br>Si está desactivado: Las cuentas se activan inmediatamente.
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Guardar Configuración de Seguridad
+                                </button>
+                            </form>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -478,4 +628,9 @@ $config = [
             }
         });
     }
+
+    $('#formSeguridad').on('submit', function(e) {
+        e.preventDefault();
+        guardarConfiguracion('seguridad', $(this).serialize());
+    });
 </script>

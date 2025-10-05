@@ -453,14 +453,21 @@ function getCaracteristicas($plan)
                             </ul>
 
                             <?php if (strtolower($plan['nombre']) === 'empresarial'): ?>
-                                <a href="mailto:ventas@mensajeropro.com?subject=Consulta Plan Empresarial"
+                                <a href="mailto:nilson.jhonny@gmail.com?subject=Consulta Plan Empresarial"
                                     class="btn btn-primary">
                                     <i class="fas fa-envelope"></i> Contactar Ventas
                                 </a>
-                            <?php else: ?>
-                                <a href="<?php echo url('registro.php'); ?>"
+                            <?php elseif ($plan['precio_mensual'] > 0): ?>
+                                <!-- Compra directa de plan pago -->
+                                <a href="<?php echo url('registro.php?plan=' . $plan['id']); ?>"
                                     class="btn <?php echo $is_featured ? 'btn-primary' : 'btn-outline-dark'; ?>">
-                                    <?php echo $plan['precio_mensual'] > 0 ? 'Empezar Ahora' : 'Probar Gratis'; ?>
+                                    <i class="fas fa-shopping-cart"></i> Comprar Plan
+                                </a>
+                            <?php else: ?>
+                                <!-- Trial gratuito -->
+                                <a href="<?php echo url('registro.php'); ?>"
+                                    class="btn btn-outline-dark">
+                                    Probar Gratis
                                 </a>
                             <?php endif; ?>
                         </div>

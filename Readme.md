@@ -67,3 +67,17 @@ cd whatsapp-service
 - Si PowerShell te da error de permisos, ejecuta esto UNA VEZ:
 
 powershellSet-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+
+_____________________________
+
+# en produccion probar que :
+
+Flujo de compra directa (cuando alguien hace clic en "Comprar Plan" sin usar el trial)
+Actualmente:
+
+✅ Registro funciona
+✅ Login funciona
+✅ Google OAuth funciona
+✅ Seguridad implementada (CSRF, rate limit, fuerza bruta)
+✅ Control de suscripciones vencidas
