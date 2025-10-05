@@ -1,3 +1,7 @@
+# para configurar 
+- config/app
+- web/robots.txt
+
 # Ejecutar cada minuto para procesar mensajes programados
 * * * * * /usr/bin/php /ruta/a/mensajeroprov2/cron/procesar_programados.php >> /var/log/mensajero_programados.log 2>&1
 
@@ -31,6 +35,9 @@ bash Verificar pagos cada hora (consola)
 
 # Procesar programados cada minuto
 * * * * * php /var/www/mensajeropro/cron/procesar_programados.php >> /var/www/mensajeropro/logs/cron.log 2>&1
+
+# cerrar-sesiones-vencidas en QR.php
+0 * * * * /usr/bin/php /ruta/a/mensajeroprov2/cron/cerrar-sesiones-vencidas.php
 
 # instalar dependencias en local primera vez
 cd whatsapp-service

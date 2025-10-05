@@ -42,6 +42,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+// Verificar si Google OAuth está activo
+$google_activo = false;
+try {
+    $stmt = $pdo->query("SELECT valor FROM configuracion_plataforma WHERE clave = 'google_oauth_activo'");
+    $config = $stmt->fetch();
+    $google_activo = ($config && $config['valor'] == '1');
+} catch (Exception $e) {
+    error_log("Error verificando Google OAuth: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -152,12 +162,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </form>
 
-                <div class="social-auth-links text-center mb-3">
-                    <p>- O -</p>
-                    <a href="#" class="btn btn-block btn-danger">
-                        <i class="fab fa-google mr-2"></i> Ingresar con Google
-                    </a>
-                </div>
+                <?php if ($google_activo): ?>
+                    <div class="social-auth-links text-center mb-3">
+                        <p>- O -</p>
+                        <a href="<?php echo url('api/v1/auth/google-oauth.php'); ?>" class="btn btn-block btn-danger">
+                            <i class="fab fa-google mr-2"></i> Ingresar con Google
+                        </a>
+                    </div>
+                <?php endif; ?>
 
                 <p class="mb-1">
                     <a href="recuperar-password.php">Olvidé mi contraseña</a>

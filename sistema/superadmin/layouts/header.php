@@ -18,6 +18,8 @@ if (session_status() === PHP_SESSION_NONE) {
     <link rel="stylesheet" href="<?php echo asset('dist/css/adminlte.min.css'); ?>">
     <!-- SweetAlert2 -->
     <link rel="stylesheet" href="<?php echo asset('plugins/sweetalert2/sweetalert2.min.css'); ?>">
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
         .main-header {

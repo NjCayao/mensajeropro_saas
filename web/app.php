@@ -1,36 +1,37 @@
 <?php
-// web/app.php - Router principal con SuperAdmin
+// web/app.php - Router dinámico
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 require_once __DIR__ . '/../config/app.php';
 
-// Obtener la ruta solicitada
-$request = $_SERVER['REQUEST_URI'];
-$base_path = '/mensajeroprov2/';
+// Obtener la ruta desde REQUEST_URI
+$request = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// Detectar base_path automáticamente
+$scriptDir = dirname($_SERVER['SCRIPT_NAME']);
+$base_path = ($scriptDir === '/' || $scriptDir === '\\') ? '' : $scriptDir;
 
 // Limpiar la ruta
 $path = str_replace($base_path, '', $request);
-$path = explode('?', $path)[0];
 $path = trim($path, '/');
 
-// Si no hay path o es 'app.php', redirigir según rol
+// Si no hay path, redirigir según sesión
 if (empty($path) || $path === 'app.php') {
     if (isset($_SESSION['user_id']) || isset($_SESSION['empresa_id'])) {
-        // Redirigir según el rol
         if (isset($_SESSION['user_rol']) && $_SESSION['user_rol'] === 'superadmin') {
-            header('Location: ' . APP_URL . '/superadmin/dashboard');
+            header('Location: ' . url('superadmin/dashboard'));
         } else {
-            header('Location: ' . APP_URL . '/cliente/dashboard');
+            header('Location: ' . url('cliente/dashboard'));
         }
     } else {
-        header('Location: ' . APP_URL . '/index.php');
+        header('Location: ' . url('index.php'));
     }
     exit;
 }
 
-// Verificar si es archivo estático
+// Archivos estáticos
 $static_extensions = ['css', 'js', 'jpg', 'png', 'gif', 'ico', 'woff', 'woff2', 'ttf'];
 $path_extension = pathinfo($path, PATHINFO_EXTENSION);
 
@@ -42,7 +43,7 @@ if (in_array($path_extension, $static_extensions)) {
 // Rutas de API
 if (strpos($path, 'api/') === 0) {
     $api_path = str_replace('api/', '', $path);
-    $api_file = __DIR__ . '/../sistema/api/' . $api_path;
+    $api_file = __DIR__ . '/../sistema/api/' . $api_path . '.php';
 
     if (file_exists($api_file)) {
         require_once $api_file;
@@ -50,23 +51,17 @@ if (strpos($path, 'api/') === 0) {
     } else {
         header('HTTP/1.1 404 Not Found');
         header('Content-Type: application/json');
-        echo json_encode([
-            'success' => false,
-            'error' => 'API endpoint not found'
-        ]);
+        echo json_encode(['success' => false, 'error' => 'API endpoint not found']);
         exit;
     }
 }
 
-// Rutas del SuperAdmin
+// Rutas SuperAdmin
 if (strpos($path, 'superadmin/') === 0) {
-    // Verificar sesión de SuperAdmin
     require_once __DIR__ . '/../includes/superadmin_session_check.php';
-
-    // Quitar 'superadmin/' del path
+    
     $module_path = substr($path, 11);
-
-    // MAPEO DE RUTAS SUPERADMIN
+    
     $route_mapping = [
         'dashboard' => '/dashboard.php',
         'empresas' => '/modulos/empresas.php',
@@ -75,15 +70,12 @@ if (strpos($path, 'superadmin/') === 0) {
         'configuracion' => '/modulos/configuracion.php',
         'emails' => '/modulos/emails.php',
         'bot-templates' => '/modulos/bot-templates.php',
-        'emails' => '/modulos/emails.php',    
-        'logs' => '/modulos/logs.php',           
+        'logs' => '/modulos/logs.php',
     ];
 
-    // Buscar en el mapeo
     if (isset($route_mapping[$module_path])) {
         $module_file = __DIR__ . '/../sistema/superadmin' . $route_mapping[$module_path];
     } else {
-        // Si no está en el mapeo, intentar ruta directa
         $module_file = __DIR__ . '/../sistema/superadmin/' . $module_path . '.php';
     }
 
@@ -93,15 +85,12 @@ if (strpos($path, 'superadmin/') === 0) {
     }
 }
 
-// Rutas del cliente
+// Rutas Cliente
 if (strpos($path, 'cliente/') === 0) {
-    // Verificar sesión
     require_once __DIR__ . '/../includes/session_check.php';
-
-    // Quitar 'cliente/' del path
+    
     $module_path = substr($path, 8);
-
-    // MAPEO DE RUTAS CLIENTE
+    
     $route_mapping = [
         'dashboard' => '/dashboard.php',
         'contactos' => '/modulos/contactos.php',
@@ -113,21 +102,13 @@ if (strpos($path, 'cliente/') === 0) {
         'negocio-config' => '/modulos/negocio-config.php',
         'perfil' => '/modulos/perfil.php',
         'bot-config' => '/modulos/bot-config.php',
-        'escalados' => '/modulos/escalados.php',
-        'catalogo-bot' => '/modulos/catalogo-bot.php',        
-        'horarios-bot' => '/modulos/horarios-bot.php',
         'mi-plan' => '/modulos/mi-plan.php',
-        'pago-exitoso' => '/pago-exitoso.php',
-        'pago-fallido' => '/pago-fallido.php',
-        'pago-pendiente' => '/pago-pendiente.php',
         'logout' => '/logout.php'
     ];
 
-    // Buscar en el mapeo
     if (isset($route_mapping[$module_path])) {
         $module_file = __DIR__ . '/../sistema/cliente' . $route_mapping[$module_path];
     } else {
-        // Si no está en el mapeo, intentar ruta directa
         $module_file = __DIR__ . '/../sistema/cliente/' . $module_path . '.php';
     }
 
@@ -137,25 +118,6 @@ if (strpos($path, 'cliente/') === 0) {
     }
 }
 
-// Si llegamos aquí, la ruta no existe
+// 404
 header('HTTP/1.1 404 Not Found');
-?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - Página no encontrada</title>
-    <link rel="stylesheet" href="<?php echo asset('dist/css/adminlte.min.css'); ?>">
-</head>
-<body class="hold-transition">
-    <div class="error-page">
-        <h2 class="headline text-warning">404</h2>
-        <div class="error-content">
-            <h3><i class="fas fa-exclamation-triangle text-warning"></i> Página no encontrada</h3>
-            <p>La página que buscas no existe.</p>
-            <a href="<?php echo APP_URL; ?>">Volver al inicio</a>
-        </div>
-    </div>
-</body>
-</html>
+require_once __DIR__ . '/404.php';

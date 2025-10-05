@@ -1,5 +1,4 @@
 <?php
-// sistema/api/v1/superadmin/guardar-configuracion.php
 require_once __DIR__ . '/../../../../config/app.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../includes/superadmin_session_check.php';
@@ -14,9 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $seccion = $_POST['seccion'] ?? '';
 
-/**
- * Guardar o actualizar configuración
- */
 function guardarConfig($clave, $valor, $tipo = 'texto', $descripcion = '') {
     global $pdo;
     
@@ -36,16 +32,16 @@ try {
         case 'openai':
             guardarConfig('openai_api_key', $_POST['openai_api_key'] ?? '', 'texto', 'API Key de OpenAI');
             guardarConfig('openai_modelo', $_POST['openai_modelo'] ?? 'gpt-3.5-turbo', 'texto', 'Modelo de IA');
-            guardarConfig('openai_temperatura', $_POST['openai_temperatura'] ?? '0.7', 'numero', 'Temperatura del modelo');
+            guardarConfig('openai_temperatura', $_POST['openai_temperatura'] ?? '0.7', 'numero', 'Temperatura');
             guardarConfig('openai_max_tokens', $_POST['openai_max_tokens'] ?? '150', 'numero', 'Tokens máximos');
             break;
             
         case 'pagos':
-            guardarConfig('mercadopago_access_token', $_POST['mercadopago_access_token'] ?? '', 'texto', 'Access Token MercadoPago');
-            guardarConfig('mercadopago_public_key', $_POST['mercadopago_public_key'] ?? '', 'texto', 'Public Key MercadoPago');
+            guardarConfig('mercadopago_access_token', $_POST['mercadopago_access_token'] ?? '', 'texto', 'MercadoPago Token');
+            guardarConfig('mercadopago_public_key', $_POST['mercadopago_public_key'] ?? '', 'texto', 'MercadoPago Public Key');
             guardarConfig('paypal_client_id', $_POST['paypal_client_id'] ?? '', 'texto', 'PayPal Client ID');
             guardarConfig('paypal_secret', $_POST['paypal_secret'] ?? '', 'texto', 'PayPal Secret');
-            guardarConfig('paypal_mode', $_POST['paypal_mode'] ?? 'sandbox', 'texto', 'Modo PayPal');
+            guardarConfig('paypal_mode', $_POST['paypal_mode'] ?? 'sandbox', 'texto', 'PayPal Mode');
             break;
             
         case 'email':
@@ -53,9 +49,15 @@ try {
             guardarConfig('email_nombre', $_POST['email_nombre'] ?? 'MensajeroPro', 'texto', 'Nombre remitente');
             break;
             
+        case 'google':
+            guardarConfig('google_client_id', $_POST['google_client_id'] ?? '', 'texto', 'Google Client ID');
+            guardarConfig('google_client_secret', $_POST['google_client_secret'] ?? '', 'texto', 'Google Client Secret');
+            guardarConfig('google_oauth_activo', isset($_POST['google_oauth_activo']) ? '1' : '0', 'boolean', 'Google OAuth Activo');
+            break;
+            
         case 'sistema':
-            guardarConfig('trial_dias', $_POST['trial_dias'] ?? '2', 'numero', 'Días de trial');
-            guardarConfig('whatsapp_soporte', $_POST['whatsapp_soporte'] ?? '', 'texto', 'WhatsApp de soporte');
+            guardarConfig('trial_dias', $_POST['trial_dias'] ?? '30', 'numero', 'Días de trial');
+            guardarConfig('whatsapp_soporte', $_POST['whatsapp_soporte'] ?? '', 'texto', 'WhatsApp soporte');
             break;
             
         default:

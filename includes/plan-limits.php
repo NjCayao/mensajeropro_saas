@@ -17,14 +17,19 @@ function obtenerLimitesPlan()
             SELECT 
                 e.id as empresa_id,
                 e.plan_id,
-                e.fecha_expiracion_trial,
                 p.nombre as plan_nombre,
                 p.limite_contactos,
                 p.limite_mensajes_mes,
-                p.caracteristicas_json
+                p.caracteristicas_json,
+                s.tipo as tipo_suscripcion,
+                s.fecha_fin,
+                DATEDIFF(s.fecha_fin, NOW()) as dias_restantes
             FROM empresas e
             LEFT JOIN planes p ON e.plan_id = p.id
+            LEFT JOIN suscripciones s ON e.id = s.empresa_id AND s.estado = 'activa'
             WHERE e.id = ?
+            ORDER BY s.fecha_fin DESC
+            LIMIT 1
         ");
         $stmt->execute([$empresa_id]);
         $data = $stmt->fetch();
@@ -37,11 +42,11 @@ function obtenerLimitesPlan()
         $caracteristicas = json_decode($data['caracteristicas_json'] ?? '{}', true);
 
         // Determinar si es trial
-        $es_trial = ($data['plan_id'] == 1);
+        $es_trial = ($data['tipo_suscripcion'] === 'trial');
         $trial_activo = false;
 
-        if ($es_trial && $data['fecha_expiracion_trial']) {
-            $fecha_exp = new DateTime($data['fecha_expiracion_trial']);
+        if ($es_trial && $data['fecha_fin']) {
+            $fecha_exp = new DateTime($data['fecha_fin']);
             $hoy = new DateTime();
             $trial_activo = ($hoy < $fecha_exp);
         }
@@ -51,6 +56,7 @@ function obtenerLimitesPlan()
             'plan_nombre' => $data['plan_nombre'],
             'es_trial' => $es_trial,
             'trial_activo' => $trial_activo,
+            'dias_restantes' => max(0, $data['dias_restantes'] ?? 0),
             'limite_contactos' => $data['limite_contactos'],
             'limite_mensajes_mes' => $data['limite_mensajes_mes'],
             'caracteristicas' => $caracteristicas
@@ -62,6 +68,7 @@ function obtenerLimitesPlan()
             'plan_nombre' => 'Trial',
             'es_trial' => true,
             'trial_activo' => false,
+            'dias_restantes' => 0,
             'limite_contactos' => 50,
             'limite_mensajes_mes' => 100,
             'caracteristicas' => []

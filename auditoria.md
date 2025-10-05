@@ -21,7 +21,7 @@ Lista de tablas a limpiar
 SQL para ejecutar correcciones
 
 
-FASE 2: Web Pública - Landing y Autenticación
+# FASE 2: Web Pública - Landing y Autenticación
 Archivos a presentar:
 public/index.php
 public/login.php
@@ -47,7 +47,7 @@ Código corregido
 Flujo documentado
 
 
-FASE 3: Panel Cliente - Dashboard y Navegación
+# FASE 3: Panel Cliente - Dashboard y Navegación
 Archivos a presentar:
 sistema/cliente/dashboard.php
 sistema/cliente/layouts/header.php
@@ -210,3 +210,103 @@ NO rehaceremos desde cero
 Solo CORREGIMOS lo existente
 Avanzamos fase por fase, no saltamos
 
+_______________________
+
+# CHANGELOGS
+
+📝 CHANGELOG - FASE 1: AUDITORÍA DE BASE DE DATOS
+Cambios ejecutados el 04-10-2025
+
+✅ PASO 1: Eliminación de columna duplicada
+sqlALTER TABLE `empresas` DROP COLUMN `fecha_expiracion_trial`;
+Razón: Duplicaba funcionalidad de suscripciones.fecha_fin. Control de fechas centralizado en tabla suscripciones.
+
+✅ PASO 2: Eliminación de tablas duplicadas/obsoletas
+A) Tabla de suscripciones duplicada:
+sqlDROP TABLE `suscripciones_pago`;
+Razón: Duplicaba suscripciones. Funcionalidad consolidada en una sola tabla.
+B) Columna agregada para IDs externos:
+sqlALTER TABLE `suscripciones` 
+ADD COLUMN `referencia_externa` VARCHAR(100) AFTER `metodo_pago`,
+ADD INDEX `idx_referencia_externa` (`referencia_externa`);
+Razón: Para almacenar IDs de MercadoPago/PayPal sin necesidad de tabla separada.
+C) Tabla obsoleta de sistema mono-empresa:
+sqlDROP TABLE `whatsapp_sesion`;
+Razón: Sistema viejo mono-empresa. Ahora se usa whatsapp_sesiones_empresa.
+
+✅ PASO 3: Eliminación de tabla sin uso
+sqlDROP TABLE `conocimiento_bot`;
+Razón: Nunca se implementó. Funcionalidad cubierta por configuracion_bot.
+
+✅ PASO 4: Foreign Keys agregadas (Integridad Referencial)
+sqlALTER TABLE `categorias`
+  ADD CONSTRAINT `fk_categorias_empresa` 
+  FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `configuracion_bot`
+  ADD CONSTRAINT `fk_config_bot_empresa` 
+  FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `conversaciones_bot`
+  ADD CONSTRAINT `fk_conversaciones_empresa` 
+  FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `estados_conversacion`
+  ADD CONSTRAINT `fk_estados_empresa` 
+  FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `cola_mensajes`
+  ADD CONSTRAINT `fk_cola_empresa` 
+  FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `historial_mensajes`
+  ADD CONSTRAINT `fk_historial_empresa` 
+  FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `mensajes_programados`
+  ADD CONSTRAINT `fk_programados_empresa` 
+  FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `plantillas_mensajes`
+  ADD CONSTRAINT `fk_plantillas_empresa` 
+  FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`id`) ON DELETE CASCADE;
+Razón: Asegurar integridad referencial. Si se elimina una empresa, todos sus datos se eliminan automáticamente.
+
+✅ PASO 5: Corrección de UNIQUE Keys
+sql-- Antes: nombre único globalmente
+-- Después: nombre único por empresa
+ALTER TABLE `categorias`
+  DROP KEY `nombre_unique`,
+  ADD UNIQUE KEY `nombre_empresa_unique` (`empresa_id`, `nombre`);
+
+ALTER TABLE `contactos`
+  DROP KEY `numero_unique`,
+  ADD UNIQUE KEY `numero_empresa_unique` (`empresa_id`, `numero`);
+Razón: Permitir que diferentes empresas usen los mismos nombres de categorías o números de contacto.
+
+✅ PASO 6: Columna faltante
+sqlALTER TABLE `cola_mensajes` 
+ADD COLUMN `prioridad` TINYINT(1) DEFAULT 1 
+COMMENT '1=Normal, 2=Alta, 3=Urgente' 
+AFTER `estado`;
+Razón: Corregir error en cron/procesar_cola.php que intentaba ordenar por columna inexistente.
+
+📊 Resumen de impacto
+
+Tablas eliminadas: 3 (suscripciones_pago, whatsapp_sesion, conocimiento_bot)
+Columnas eliminadas: 1 (empresas.fecha_expiracion_trial)
+Columnas agregadas: 2 (suscripciones.referencia_externa, cola_mensajes.prioridad)
+Foreign keys agregadas: 8
+UNIQUE keys corregidas: 2
+Total de tablas en BD: 42 (antes: 45)
+
+
+⚠️ Archivos PHP que necesitan actualización
+Debido a la eliminación de empresas.fecha_expiracion_trial, estos archivos deben modificarse:
+
+cron/check-payments.php (reemplazar referencias a fecha_expiracion_trial)
+cron/send-reminders.php (idem)
+sistema/superadmin/modulos/empresas.php (cambiar query con JOIN a suscripciones)
+Cualquier API que lea fecha_expiracion_trial
+
+Estado: Pendiente de corrección en FASE 2+

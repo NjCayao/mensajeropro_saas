@@ -11,6 +11,51 @@ if (!isset($_SESSION['empresa_id'])) {
 
 $empresa_id = $_SESSION['empresa_id'];
 
+// NUEVO: Verificar que la suscripción esté activa
+try {
+    $stmt = $pdo->prepare("
+        SELECT s.estado, s.fecha_fin, s.tipo
+        FROM suscripciones s
+        WHERE s.empresa_id = ? AND s.estado = 'activa'
+        ORDER BY s.fecha_fin DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$empresa_id]);
+    $suscripcion = $stmt->fetch();
+    
+    if (!$suscripcion) {
+        echo '<div class="content-wrapper">
+            <div class="alert alert-danger">
+                <h4><i class="fas fa-exclamation-triangle"></i> Suscripción Inactiva</h4>
+                <p>Tu suscripción ha expirado. Para usar WhatsApp, debes renovar tu plan.</p>
+                <a href="'.url('cliente/mi-plan').'" class="btn btn-warning">
+                    <i class="fas fa-credit-card"></i> Renovar Suscripción
+                </a>
+            </div>
+        </div>';
+        require_once __DIR__ . '/../layouts/footer.php';
+        exit;
+    }
+    
+    // Verificar si ya expiró
+    if (strtotime($suscripcion['fecha_fin']) < time()) {
+        echo '<div class="content-wrapper">
+            <div class="alert alert-warning">
+                <h4><i class="fas fa-clock"></i> Suscripción Expirada</h4>
+                <p>Tu '.($suscripcion['tipo'] === 'trial' ? 'periodo de prueba' : 'suscripción').' expiró el '.date('d/m/Y', strtotime($suscripcion['fecha_fin'])).'</p>
+                <a href="'.url('cliente/mi-plan').'" class="btn btn-success">
+                    <i class="fas fa-arrow-up"></i> Mejorar Plan
+                </a>
+            </div>
+        </div>';
+        require_once __DIR__ . '/../layouts/footer.php';
+        exit;
+    }
+    
+} catch (Exception $e) {
+    error_log("Error verificando suscripción: " . $e->getMessage());
+}
+
 // Si no existe, crear registro
 try {
     $stmt = $pdo->prepare("SELECT * FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
@@ -274,8 +319,9 @@ $puerto = $whatsapp['puerto'] ?? 3001;
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>    
-    const WHATSAPP_API_URL = '<?php echo getWhatsAppServiceUrl($empresa_id); ?>';
+<script> 
+    const WHATSAPP_API_URL = '<?php echo WHATSAPP_API_URL; ?>';   
+    const EMPRESA_ID = <?php echo $_SESSION['empresa_id'] ?? 0; ?>;
     const IS_PRODUCTION = <?php echo IS_LOCALHOST ? 'false' : 'true'; ?>;
     console.log('WhatsApp Service URL:', WHATSAPP_API_URL);
     console.log('Entorno:', IS_PRODUCTION ? 'PRODUCCIÓN' : 'LOCAL');
