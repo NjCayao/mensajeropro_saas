@@ -130,37 +130,38 @@ $categorias = $stmt->fetchAll();
             </div>
             <form id="formCategoria">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                     <input type="hidden" id="categoria_id" name="id">
-                    
+
                     <div class="form-group">
                         <label>Nombre *</label>
                         <input type="text" class="form-control" id="nombre" name="nombre" required maxlength="50">
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Descripción</label>
                         <textarea class="form-control" id="descripcion" name="descripcion" rows="3"></textarea>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Color</label>
                         <input type="color" class="form-control" id="color" name="color" value="#17a2b8">
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Precio (Opcional)</label>
                         <div class="input-group">
                             <div class="input-group-prepend">
                                 <span class="input-group-text">S/.</span>
                             </div>
-                            <input type="number" class="form-control" id="precio" name="precio" 
-                                   step="0.01" min="0" value="0">
+                            <input type="number" class="form-control" id="precio" name="precio"
+                                step="0.01" min="0" value="0">
                         </div>
                         <small class="text-muted">
                             Útil si usas la variable {{precio}} en tus plantillas
                         </small>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Estado</label>
                         <select class="form-control" id="activo" name="activo">
@@ -181,93 +182,99 @@ $categorias = $stmt->fetchAll();
 <?php require_once __DIR__ . '/../layouts/footer.php'; ?>
 
 <script>
-$(document).ready(function() {
-    // DataTable
-    $('#tablaCategorias').DataTable({
-        "responsive": true,
-        "lengthChange": false,
-        "autoWidth": false,
-        "order": [[0, "asc"]]
-    });
-    
-    // Form submit
-    $('#formCategoria').on('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = $(this).serialize();
-        const id = $('#categoria_id').val();
-        const url = id ? 
-            API_URL + '/categorias/editar.php' : 
-            API_URL + '/categorias/crear.php';
-        
-        $.ajax({
-            url: url,
-            method: 'POST',
-            data: formData,
-            success: function(response) {
-                if (response.success) {
-                    $('#modalCategoria').modal('hide');
-                    Swal.fire('Éxito', response.message, 'success');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    Swal.fire('Error', response.message, 'error');
-                }
-            },
-            error: function() {
-                Swal.fire('Error', 'Error al procesar la solicitud', 'error');
-            }
+    $(document).ready(function() {
+        // DataTable
+        $('#tablaCategorias').DataTable({
+            "responsive": true,
+            "lengthChange": false,
+            "autoWidth": false,
+            "order": [
+                [0, "asc"]
+            ]
         });
-    });
-});
 
-function nuevaCategoria() {
-    $('#modalTitle').text('Nueva Categoría');
-    $('#formCategoria')[0].reset();
-    $('#categoria_id').val('');
-    $('#color').val('#17a2b8');
-    $('#modalCategoria').modal('show');
-}
+        // Form submit
+        $('#formCategoria').on('submit', function(e) {
+            e.preventDefault();
 
-function editarCategoria(id) {
-    $('#modalTitle').text('Editar Categoría');
-    
-    $.get(API_URL + '/categorias/obtener.php', { id: id }, function(response) {
-        if (response.success) {
-            const cat = response.data;
-            $('#categoria_id').val(cat.id);
-            $('#nombre').val(cat.nombre);
-            $('#descripcion').val(cat.descripcion);
-            $('#color').val(cat.color);
-            $('#precio').val(cat.precio);
-            $('#activo').val(cat.activo);
-            $('#modalCategoria').modal('show');
-        } else {
-            Swal.fire('Error', response.message, 'error');
-        }
-    });
-}
+            const formData = $(this).serialize();
+            const id = $('#categoria_id').val();
+            const url = id ?
+                API_URL + '/categorias/editar.php' :
+                API_URL + '/categorias/crear.php';
 
-function eliminarCategoria(id) {
-    Swal.fire({
-        title: '¿Eliminar categoría?',
-        text: 'Esta acción no se puede deshacer',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.post(API_URL + '/categorias/eliminar.php', { id: id }, function(response) {
-                if (response.success) {
-                    Swal.fire('Eliminada', response.message, 'success');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    Swal.fire('Error', response.message, 'error');
+            $.ajax({
+                url: url,
+                method: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        $('#modalCategoria').modal('hide');
+                        Swal.fire('Éxito', response.message, 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        Swal.fire('Error', response.message, 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Error', 'Error al procesar la solicitud', 'error');
                 }
             });
-        }
+        });
     });
-}
+
+    function nuevaCategoria() {
+        $('#modalTitle').text('Nueva Categoría');
+        $('#formCategoria')[0].reset();
+        $('#categoria_id').val('');
+        $('#color').val('#17a2b8');
+        $('#modalCategoria').modal('show');
+    }
+
+    function editarCategoria(id) {
+        $('#modalTitle').text('Editar Categoría');
+
+        $.get(API_URL + '/categorias/obtener.php', {
+            id: id
+        }, function(response) {
+            if (response.success) {
+                const cat = response.data;
+                $('#categoria_id').val(cat.id);
+                $('#nombre').val(cat.nombre);
+                $('#descripcion').val(cat.descripcion);
+                $('#color').val(cat.color);
+                $('#precio').val(cat.precio);
+                $('#activo').val(cat.activo);
+                $('#modalCategoria').modal('show');
+            } else {
+                Swal.fire('Error', response.message, 'error');
+            }
+        });
+    }
+
+    function eliminarCategoria(id) {
+        Swal.fire({
+            title: '¿Eliminar categoría?',
+            text: 'Esta acción no se puede deshacer',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post(API_URL + '/categorias/eliminar.php', {
+                    id: id
+                }, function(response) {
+                    if (response.success) {
+                        Swal.fire('Eliminada', response.message, 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        Swal.fire('Error', response.message, 'error');
+                    }
+                });
+            }
+        });
+    }
 </script>

@@ -19,6 +19,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonResponse(false, 'Método no permitido');
 }
 
+// Verificar CSRF token
+if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+    jsonResponse(false, 'Token de seguridad inválido');
+}
+
 $id = intval($_POST['id'] ?? 0);
 
 // Validaciones
@@ -26,19 +31,19 @@ if ($id <= 0) {
     jsonResponse(false, 'ID inválido');
 }
 
-// No permitir eliminar la categoría "General" (ID = 1)
-if ($id == 1) {
-    jsonResponse(false, 'No se puede eliminar la categoría General');
-}
-
 try {
-    // Verificar que existe
+    // Verificar que existe y obtener datos
     $stmt = $pdo->prepare("SELECT nombre FROM categorias WHERE id = ? AND empresa_id = ?");
     $stmt->execute([$id, getEmpresaActual()]);
     $categoria = $stmt->fetch();
 
     if (!$categoria) {
         jsonResponse(false, 'Categoría no encontrada');
+    }
+
+    // ✅ CORREGIDO: Proteger categoría "General" por nombre, no por ID
+    if (strtolower($categoria['nombre']) === 'general') {
+        jsonResponse(false, 'No se puede eliminar la categoría General');
     }
 
     // Verificar que no tenga contactos asignados

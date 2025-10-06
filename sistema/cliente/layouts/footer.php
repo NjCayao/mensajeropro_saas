@@ -56,19 +56,8 @@ function logout() {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Crear un formulario temporal para hacer logout
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '<?php echo url('login.php'); ?>';
-            
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'logout';
-            input.value = '1';
-            
-            form.appendChild(input);
-            document.body.appendChild(form);
-            form.submit();
+            // ✅ CORREGIDO: Redirigir directamente a logout.php
+            window.location.href = '<?php echo url('cliente/logout'); ?>';
         }
     });
 }

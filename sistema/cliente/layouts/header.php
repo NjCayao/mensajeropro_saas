@@ -3,6 +3,10 @@ require_once __DIR__ . '/../../../config/app.php';
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/session_check.php';
 require_once __DIR__ . '/../../../includes/multi_tenant.php';
+// Generar token CSRF si no existe
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -11,6 +15,10 @@ require_once __DIR__ . '/../../../includes/multi_tenant.php';
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= APP_NAME ?> | <?= $page_title ?? 'Dashboard' ?></title>
+    
+    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo asset('img/favicon.png'); ?>">
+    <link rel="icon" type="image/png" sizes="16x16" href="<?php echo asset('img/favicon.png'); ?>">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?php echo asset('img/favicon.png'); ?>">    
 
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
@@ -28,7 +36,7 @@ require_once __DIR__ . '/../../../includes/multi_tenant.php';
 
     <script>
         const APP_URL = '<?php echo APP_URL; ?>';
-        const API_URL = '<?php echo APP_URL; ?>/api/v1';        
+        const API_URL = '<?php echo APP_URL; ?>/api/v1';
     </script>
 </head>
 
@@ -48,7 +56,7 @@ require_once __DIR__ . '/../../../includes/multi_tenant.php';
                     <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
                 </li>
                 <li class="nav-item d-none d-sm-inline-block">
-                    <a href="app.php" class="nav-link">Inicio</a>
+                    <a href="<?php echo url('cliente/dashboard'); ?>" class="nav-link">Inicio</a>
                 </li>
             </ul>
 
@@ -65,25 +73,17 @@ require_once __DIR__ . '/../../../includes/multi_tenant.php';
                 <!-- User Menu -->
                 <li class="nav-item dropdown">
                     <a class="nav-link" data-toggle="dropdown" href="#">
-                        <i class="far fa-user"></i> <?= $_SESSION['user_name'] ?>
+                        <i class="far fa-user"></i> <?= $_SESSION['user_name'] ?? 'Usuario' ?>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right">
-                        <a href="#" class="dropdown-item">
+                        <a href="<?php echo url('cliente/perfil'); ?>" class="dropdown-item">
                             <i class="fas fa-user mr-2"></i> Mi Perfil
                         </a>
                         <div class="dropdown-divider"></div>
-                        <a href="#" class="dropdown-item" onclick="logout()">
+                        <a href="#" class="dropdown-item" onclick="logout(); return false;">
                             <i class="fas fa-sign-out-alt mr-2"></i> Cerrar Sesión
                         </a>
                     </div>
                 </li>
             </ul>
         </nav>
-
-        <script>
-            function logout() {
-                if (confirm('¿Está seguro que desea cerrar sesión?')) {
-                    window.location.href = '<?php echo url('sistema/cliente/logout.php'); ?>';
-                }
-            }
-        </script>

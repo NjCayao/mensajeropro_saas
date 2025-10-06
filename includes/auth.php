@@ -116,3 +116,23 @@ function generarCSRFToken() {
 function verificarCSRFToken($token) {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
+
+/**
+ * Obtener ID del usuario actual
+ */
+function getUsuarioId(): ?int
+{
+    return $_SESSION['user_id'] ?? null;
+}
+
+
+/**
+ * Verificar y forzar autenticación
+ */
+function verificarSesion(): void
+{
+    if (!estaLogueado()) {
+        header('Location: ' . url('login.php'));
+        exit;
+    }
+}

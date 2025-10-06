@@ -20,33 +20,25 @@ $stmt = $pdo->prepare("SELECT * FROM planes WHERE id = ?");
 $stmt->execute([$empresa['plan_id']]);
 $plan_actual = $stmt->fetch();
 
-// Obtener suscripción activa si existe
+// Obtener suscripción activa
 $stmt = $pdo->prepare("
-    SELECT sp.*, s.fecha_inicio, s.fecha_fin 
-    FROM suscripciones_pago sp
-    LEFT JOIN suscripciones s ON s.empresa_id = sp.empresa_id AND s.estado = 'activa'
-    WHERE sp.empresa_id = ? AND sp.estado = 'activa'
+    SELECT * FROM suscripciones 
+    WHERE empresa_id = ? AND estado = 'activa'
+    ORDER BY fecha_fin DESC
     LIMIT 1
 ");
 $stmt->execute([$empresa['id']]);
 $suscripcion = $stmt->fetch();
 
-// Obtener todos los planes disponibles
-$stmt = $pdo->prepare("SELECT * FROM planes WHERE activo = 1 ORDER BY precio_mensual");
+// Obtener todos los planes disponibles (ordenados por ID como en index.php)
+$stmt = $pdo->prepare("SELECT * FROM planes WHERE activo = 1 ORDER BY id ASC");
 $stmt->execute();
 $planes = $stmt->fetchAll();
 
 // Verificar si está en trial
 $en_trial = $resumen['plan']['es_trial'];
 $trial_activo = $resumen['plan']['trial_activo'];
-$dias_restantes_trial = 0;
-
-if ($en_trial && $empresa['fecha_expiracion_trial']) {
-    $fecha_expiracion = new DateTime($empresa['fecha_expiracion_trial']);
-    $hoy = new DateTime();
-    $diff = $hoy->diff($fecha_expiracion);
-    $dias_restantes_trial = $diff->invert ? 0 : $diff->days;
-}
+$dias_restantes_trial = $resumen['plan']['dias_restantes'] ?? 0;
 
 // Obtener historial de pagos
 $stmt = $pdo->prepare("
@@ -110,7 +102,11 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                             <?php elseif ($suscripcion): ?>
                                 <div class="alert alert-success">
                                     <i class="fas fa-check-circle"></i> <strong>Suscripción Activa</strong><br>
-                                    Próximo pago: <strong><?php echo date('d/m/Y', strtotime($suscripcion['fecha_proximo_pago'])); ?></strong>
+                                    <?php if ($suscripcion['tipo'] == 'mensual'): ?>
+                                        Próxima renovación: <strong><?php echo date('d/m/Y', strtotime($suscripcion['fecha_fin'])); ?></strong>
+                                    <?php else: ?>
+                                        Válido hasta: <strong><?php echo date('d/m/Y', strtotime($suscripcion['fecha_fin'])); ?></strong>
+                                    <?php endif; ?>
                                 </div>
                             <?php endif; ?>
 
@@ -248,7 +244,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                 </div>
                             </div>
 
-                            <?php if ($suscripcion): ?>
+                            <?php if ($suscripcion && $suscripcion['tipo'] != 'trial'): ?>
                                 <hr>
                                 <div class="row mt-3">
                                     <div class="col-md-12">
@@ -271,19 +267,22 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                 </div>
             </div>
             
+            <!-- ✅ COLUMNAS DE 4 (col-lg-3) -->
             <div class="row mt-3">
                 <?php foreach ($planes as $plan): 
                     $plan_caract = json_decode($plan['caracteristicas_json'] ?? '{}', true);
                     $es_plan_actual = ($plan['id'] == $plan_actual['id']);
                 ?>
-                    <div class="col-md-4">
-                        <div class="card <?php echo $es_plan_actual ? 'card-primary' : 'card-outline'; ?>">
+                    <div class="col-lg-3 col-md-6 mb-4">
+                        <div class="card <?php echo $es_plan_actual ? 'card-primary' : 'card-outline'; ?> h-100">
                             <div class="card-header">
                                 <h3 class="card-title">
                                     <?php if ($plan['id'] == 1): ?>
                                         <i class="fas fa-gift"></i>
                                     <?php elseif ($plan['id'] == 2): ?>
                                         <i class="fas fa-box"></i>
+                                    <?php elseif ($plan['id'] == 5): ?>
+                                        <i class="fas fa-building"></i>
                                     <?php else: ?>
                                         <i class="fas fa-crown"></i>
                                     <?php endif; ?>
@@ -295,19 +294,25 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                             </div>
                             <div class="card-body">
                                 <div class="text-center mb-3">
-                                    <?php if ($plan['precio_mensual'] > 0): ?>
+                                    <?php if ($plan['id'] == 5): ?>
+                                        <!-- Plan Empresarial -->
+                                        <h2 class="text-primary">Consultar</h2>
+                                        <small class="text-muted">Precio personalizado</small>
+                                    <?php elseif ($plan['precio_mensual'] > 0): ?>
                                         <h2 class="text-primary">
                                             $<?php echo number_format($plan['precio_mensual'], 2); ?>
                                         </h2>
                                         <small class="text-muted">por mes</small>
-                                        <br>
-                                        <small class="text-success">
-                                            <i class="fas fa-piggy-bank"></i> 
-                                            Ahorra $<?php echo number_format(($plan['precio_mensual'] * 12) - $plan['precio_anual'], 2); ?> al año
-                                        </small>
+                                        <?php if ($plan['precio_anual'] > 0): ?>
+                                            <br>
+                                            <small class="text-success">
+                                                <i class="fas fa-piggy-bank"></i> 
+                                                Ahorra $<?php echo number_format(($plan['precio_mensual'] * 12) - $plan['precio_anual'], 2); ?> al año
+                                            </small>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <h2 class="text-success">GRATIS</h2>
-                                        <small class="text-muted">por 48 horas</small>
+                                        <small class="text-muted">por tiempo limitado</small>
                                     <?php endif; ?>
                                 </div>
                                 
@@ -318,11 +323,27 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                 <ul class="list-unstyled">
                                     <li class="mb-2">
                                         <i class="fas fa-check text-success"></i> 
-                                        <strong><?php echo number_format($plan['limite_contactos']); ?></strong> contactos
+                                        <strong>
+                                            <?php 
+                                            if ($plan['limite_contactos'] === null || $plan['limite_contactos'] == 0) {
+                                                echo 'Ilimitados';
+                                            } else {
+                                                echo number_format($plan['limite_contactos']);
+                                            }
+                                            ?>
+                                        </strong> contactos
                                     </li>
                                     <li class="mb-2">
                                         <i class="fas fa-check text-success"></i> 
-                                        <strong><?php echo number_format($plan['limite_mensajes_mes']); ?></strong> mensajes/mes
+                                        <strong>
+                                            <?php 
+                                            if ($plan['limite_mensajes_mes'] === null || $plan['limite_mensajes_mes'] == 0) {
+                                                echo 'Ilimitados';
+                                            } else {
+                                                echo number_format($plan['limite_mensajes_mes']);
+                                            }
+                                            ?>
+                                        </strong> mensajes/mes
                                     </li>
                                     <li class="mb-2">
                                         <i class="fas fa-<?php echo ($plan_caract['escalamiento'] ?? false) ? 'check text-success' : 'times text-danger'; ?>"></i> 
@@ -345,7 +366,25 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                     </li>
                                 </ul>
 
-                                <?php if (!$es_plan_actual && $plan['id'] != 1): ?>
+                                <!-- ✅ BOTONES SEGÚN TIPO DE PLAN -->
+                                <?php if ($es_plan_actual): ?>
+                                    <!-- Es el plan actual, no mostrar botón -->
+                                    <div class="text-center mt-3">
+                                        <span class="badge badge-success badge-pill" style="width: 150px; height: 40px; padding-top: 10px; font-size: 15px;">Tu plan actual</span>
+                                    </div>
+                                <?php elseif ($plan['id'] == 5): ?>
+                                    <!-- ✅ Plan Empresarial: Botón de WhatsApp -->
+                                    <div class="text-center mt-3">
+                                        <a href="https://wa.me/51982226835?text=Hola, necesito una cotización del Plan Empresarial para mi negocio" 
+                                           target="_blank"
+                                           class="btn btn-success btn-block">
+                                            <i class="fab fa-whatsapp"></i> Contactar por WhatsApp
+                                        </a>
+                                    </div>
+                                <?php elseif ($plan['id'] == 1): ?>
+                                    <!-- Plan Trial: No mostrar botón de compra -->
+                                <?php else: ?>
+                                    <!-- Planes de pago normales -->
                                     <div class="text-center mt-3">
                                         <button class="btn btn-primary btn-block" 
                                                 onclick="seleccionarPlan(<?php echo $plan['id']; ?>)">
@@ -407,7 +446,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                                         <?php echo ucfirst($pago['estado']); ?>
                                                     </span>
                                                 </td>
-                                                <td><small class="text-muted"><?php echo $pago['referencia_externa']; ?></small></td>
+                                                <td><small class="text-muted"><?php echo $pago['referencia_externa'] ?? 'N/A'; ?></small></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>
@@ -523,7 +562,7 @@ function procesarPago(metodo) {
 function cancelarSuscripcion() {
     Swal.fire({
         title: '¿Cancelar suscripción?',
-        html: 'Tu suscripción se cancelará al final del periodo actual.<br>Mantendrás acceso hasta <strong><?php echo date('d/m/Y', strtotime($suscripcion['fecha_proximo_pago'] ?? 'now')); ?></strong>',
+        html: 'Tu suscripción se cancelará al final del periodo actual.<br>Mantendrás acceso hasta el final del periodo pagado.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',

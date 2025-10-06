@@ -5,15 +5,12 @@ require_once __DIR__ . '/../../includes/session_check.php';
 require_once __DIR__ . '/../../includes/multi_tenant.php';
 
 $page_title = 'Dashboard';
-$current_page = 'dashboard'; 
+$current_page = 'dashboard';
 
 require_once __DIR__ . '/layouts/header.php';
 require_once __DIR__ . '/layouts/sidebar.php';
 
-// Obtener empresa actual
 $empresa_id = getEmpresaActual();
-
-// Obtener estadísticas generales con filtro de empresa
 $stats = [];
 
 // Total contactos
@@ -56,7 +53,7 @@ $stmt = $pdo->prepare("SELECT COUNT(*) FROM estados_conversacion WHERE estado = 
 $stmt->execute([$empresa_id]);
 $stats['escalados_pendientes'] = $stmt->fetchColumn();
 
-// Estado de WhatsApp - esto podría ser por empresa en el futuro
+// Estado WhatsApp
 $stmt = $pdo->prepare("SELECT * FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
 $stmt->execute([$empresa_id]);
 $whatsapp = $stmt->fetch();
@@ -124,9 +121,7 @@ $stmt->execute([$empresa_id, $empresa_id, $empresa_id]);
 $actividad_reciente = $stmt->fetchAll();
 ?>
 
-<!-- Content Wrapper -->
 <div class="content-wrapper">
-    <!-- Content Header -->
     <div class="content-header">
         <div class="container-fluid">
             <div class="row mb-2">
@@ -143,11 +138,9 @@ $actividad_reciente = $stmt->fetchAll();
         </div>
     </div>
 
-    <!-- Main content -->
     <section class="content">
         <div class="container-fluid">
 
-            <!-- WhatsApp Status -->
             <div class="row">
                 <div class="col-12">
                     <div class="alert <?php echo $whatsapp_conectado ? 'alert-success' : 'alert-warning'; ?>">
@@ -156,21 +149,14 @@ $actividad_reciente = $stmt->fetchAll();
                             Estado WhatsApp
                         </h5>
                         <?php if ($whatsapp_conectado): ?>
-                            <p>
-                                <strong>Conectado:</strong>
-                                <?php
-                                // Usar el campo correcto de la tabla
-                                echo $whatsapp['numero_conectado'] ?? 'No identificado';
-                                ?>
-                            </p>
+                            <p><strong>Conectado:</strong> <?php echo $whatsapp['numero_conectado'] ?? 'No identificado'; ?></p>
                         <?php else: ?>
-                            <p>Servicio desconectado. <a href="modulos/whatsapp.php">Conectar ahora</a></p>
+                            <p>Servicio desconectado. <a href="<?php echo url('cliente/whatsapp'); ?>">Conectar ahora</a></p>
                         <?php endif; ?>
                     </div>
                 </div>
             </div>
 
-            <!-- Small boxes - Primera fila -->
             <div class="row">
                 <div class="col-lg-3 col-6">
                     <div class="small-box bg-info">
@@ -178,12 +164,8 @@ $actividad_reciente = $stmt->fetchAll();
                             <h3><?php echo number_format($stats['total_contactos']); ?></h3>
                             <p>Total Contactos</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <a href="modulos/contactos.php" class="small-box-footer">
-                            Ver más <i class="fas fa-arrow-circle-right"></i>
-                        </a>
+                        <div class="icon"><i class="fas fa-users"></i></div>
+                        <a href="<?php echo url('cliente/contactos'); ?>" class="small-box-footer">Ver más <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
 
@@ -193,12 +175,8 @@ $actividad_reciente = $stmt->fetchAll();
                             <h3><?php echo number_format($stats['mensajes_hoy']); ?></h3>
                             <p>Mensajes Hoy</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-paper-plane"></i>
-                        </div>
-                        <a href="modulos/historial.php" class="small-box-footer">
-                            Ver más <i class="fas fa-arrow-circle-right"></i>
-                        </a>
+                        <div class="icon"><i class="fas fa-paper-plane"></i></div>
+                        <a href="<?php echo url('cliente/mensajes'); ?>" class="small-box-footer">Ver más <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
 
@@ -208,12 +186,8 @@ $actividad_reciente = $stmt->fetchAll();
                             <h3><?php echo $stats['programados_pendientes']; ?></h3>
                             <p>Programados Pendientes</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <a href="modulos/programados.php" class="small-box-footer">
-                            Ver más <i class="fas fa-arrow-circle-right"></i>
-                        </a>
+                        <div class="icon"><i class="fas fa-clock"></i></div>
+                        <a href="<?php echo url('cliente/programados'); ?>" class="small-box-footer">Ver más <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
 
@@ -223,17 +197,12 @@ $actividad_reciente = $stmt->fetchAll();
                             <h3><?php echo $stats['escalados_pendientes']; ?></h3>
                             <p>Escalados Pendientes</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <a href="modulos/escalados.php" class="small-box-footer">
-                            Ver más <i class="fas fa-arrow-circle-right"></i>
-                        </a>
+                        <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <a href="<?php echo url('cliente/escalados'); ?>" class="small-box-footer">Ver más <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
             </div>
 
-            <!-- Segunda fila de estadísticas -->
             <div class="row">
                 <div class="col-lg-3 col-6">
                     <div class="small-box bg-purple">
@@ -241,12 +210,8 @@ $actividad_reciente = $stmt->fetchAll();
                             <h3><?php echo number_format($stats['mensajes_mes']); ?></h3>
                             <p>Mensajes Este Mes</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-chart-bar"></i>
-                        </div>
-                        <a href="modulos/historial.php" class="small-box-footer">
-                            Ver más <i class="fas fa-arrow-circle-right"></i>
-                        </a>
+                        <div class="icon"><i class="fas fa-chart-bar"></i></div>
+                        <a href="<?php echo url('cliente/mensajes'); ?>" class="small-box-footer">Ver más <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
 
@@ -256,12 +221,8 @@ $actividad_reciente = $stmt->fetchAll();
                             <h3><?php echo $stats['bot_conversaciones']; ?></h3>
                             <p>Conversaciones Bot Hoy</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-robot"></i>
-                        </div>
-                        <a href="modulos/bot-historial.php" class="small-box-footer">
-                            Ver más <i class="fas fa-arrow-circle-right"></i>
-                        </a>
+                        <div class="icon"><i class="fas fa-robot"></i></div>
+                        <a href="<?php echo url('cliente/bot-config'); ?>" class="small-box-footer">Ver más <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
 
@@ -271,12 +232,8 @@ $actividad_reciente = $stmt->fetchAll();
                             <h3><?php echo $stats['contactos_hoy']; ?></h3>
                             <p>Contactos Nuevos Hoy</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-user-plus"></i>
-                        </div>
-                        <a href="modulos/contactos.php" class="small-box-footer">
-                            Ver más <i class="fas fa-arrow-circle-right"></i>
-                        </a>
+                        <div class="icon"><i class="fas fa-user-plus"></i></div>
+                        <a href="<?php echo url('cliente/contactos'); ?>" class="small-box-footer">Ver más <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
 
@@ -286,25 +243,17 @@ $actividad_reciente = $stmt->fetchAll();
                             <h3><?php echo $stats['total_categorias']; ?></h3>
                             <p>Categorías Activas</p>
                         </div>
-                        <div class="icon">
-                            <i class="fas fa-tags"></i>
-                        </div>
-                        <a href="modulos/categorias.php" class="small-box-footer">
-                            Ver más <i class="fas fa-arrow-circle-right"></i>
-                        </a>
+                        <div class="icon"><i class="fas fa-tags"></i></div>
+                        <a href="<?php echo url('cliente/categorias'); ?>" class="small-box-footer">Ver más <i class="fas fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
             </div>
 
-            <!-- Gráficos y estadísticas -->
             <div class="row">
-                <!-- Contactos por categoría -->
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">
-                                <i class="fas fa-chart-pie"></i> Distribución de Contactos
-                            </h3>
+                            <h3 class="card-title"><i class="fas fa-chart-pie"></i> Distribución de Contactos</h3>
                         </div>
                         <div class="card-body">
                             <canvas id="pieChart" height="200"></canvas>
@@ -312,13 +261,10 @@ $actividad_reciente = $stmt->fetchAll();
                     </div>
                 </div>
 
-                <!-- Mensajes últimos 7 días -->
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">
-                                <i class="fas fa-chart-line"></i> Mensajes Últimos 7 Días
-                            </h3>
+                            <h3 class="card-title"><i class="fas fa-chart-line"></i> Mensajes Últimos 7 Días</h3>
                         </div>
                         <div class="card-body">
                             <canvas id="lineChart" height="200"></canvas>
@@ -327,15 +273,11 @@ $actividad_reciente = $stmt->fetchAll();
                 </div>
             </div>
 
-            <!-- Actividad reciente y categorías -->
             <div class="row">
-                <!-- Actividad reciente -->
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">
-                                <i class="fas fa-history"></i> Actividad Reciente (24h)
-                            </h3>
+                            <h3 class="card-title"><i class="fas fa-history"></i> Actividad Reciente (24h)</h3>
                         </div>
                         <div class="card-body p-0">
                             <ul class="products-list product-list-in-card pl-2 pr-2">
@@ -357,33 +299,24 @@ $actividad_reciente = $stmt->fetchAll();
                                             }
                                             ?>
                                             <i class="fas fa-<?php echo $icono; ?> text-<?php echo $color; ?>"></i>
-                                            <span class="product-title ml-2">
-                                                <?php echo htmlspecialchars($actividad['descripcion']); ?>
-                                            </span>
-                                            <span class="badge badge-secondary float-right">
-                                                <?php echo date('H:i', strtotime($actividad['fecha'])); ?>
-                                            </span>
+                                            <span class="product-title ml-2"><?php echo htmlspecialchars($actividad['descripcion']); ?></span>
+                                            <span class="badge badge-secondary float-right"><?php echo date('H:i', strtotime($actividad['fecha'])); ?></span>
                                         </div>
                                     </li>
                                 <?php endforeach; ?>
 
                                 <?php if (empty($actividad_reciente)): ?>
-                                    <li class="item text-center text-muted p-3">
-                                        No hay actividad reciente
-                                    </li>
+                                    <li class="item text-center text-muted p-3">No hay actividad reciente</li>
                                 <?php endif; ?>
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                <!-- Detalles por categoría -->
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">
-                                <i class="fas fa-tags"></i> Contactos por Categoría
-                            </h3>
+                            <h3 class="card-title"><i class="fas fa-tags"></i> Contactos por Categoría</h3>
                         </div>
                         <div class="card-body">
                             <?php
@@ -399,14 +332,9 @@ $actividad_reciente = $stmt->fetchAll();
                                             <?php echo htmlspecialchars($cat['nombre']); ?>
                                         </span>
                                     </span>
-                                    <span class="float-right">
-                                        <b><?php echo $cat['total']; ?></b>/<?php echo $stats['total_contactos']; ?>
-                                    </span>
+                                    <span class="float-right"><b><?php echo $cat['total']; ?></b>/<?php echo $stats['total_contactos']; ?></span>
                                     <div class="progress progress-sm">
-                                        <div class="progress-bar"
-                                            style="background-color: <?php echo $cat['color']; ?>; 
-                                                    width: <?php echo ($stats['total_contactos'] > 0) ? ($cat['total'] / $stats['total_contactos'] * 100) : 0; ?>%">
-                                        </div>
+                                        <div class="progress-bar" style="background-color: <?php echo $cat['color']; ?>; width: <?php echo ($stats['total_contactos'] > 0) ? ($cat['total'] / $stats['total_contactos'] * 100) : 0; ?>%"></div>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -414,13 +342,9 @@ $actividad_reciente = $stmt->fetchAll();
                             <?php if ($sin_categoria > 0): ?>
                                 <div class="progress-group">
                                     <span class="progress-text text-muted">Sin categoría</span>
-                                    <span class="float-right text-muted">
-                                        <b><?php echo $sin_categoria; ?></b>/<?php echo $stats['total_contactos']; ?>
-                                    </span>
+                                    <span class="float-right text-muted"><b><?php echo $sin_categoria; ?></b>/<?php echo $stats['total_contactos']; ?></span>
                                     <div class="progress progress-sm">
-                                        <div class="progress-bar bg-gray"
-                                            style="width: <?php echo ($stats['total_contactos'] > 0) ? ($sin_categoria / $stats['total_contactos'] * 100) : 0; ?>%">
-                                        </div>
+                                        <div class="progress-bar bg-gray" style="width: <?php echo ($stats['total_contactos'] > 0) ? ($sin_categoria / $stats['total_contactos'] * 100) : 0; ?>%"></div>
                                     </div>
                                 </div>
                             <?php endif; ?>
@@ -435,109 +359,98 @@ $actividad_reciente = $stmt->fetchAll();
 
 <?php require_once 'layouts/footer.php'; ?>
 
-<!-- ChartJS -->
 <script src="<?php echo asset('plugins/chart.js/Chart.min.js'); ?>"></script>
-
 <script>
-    // Gráfico de pie - Contactos por categoría
-    var pieData = {
-        labels: [
+var pieData = {
+    labels: [
+        <?php
+        foreach ($categorias_stats as $cat) {
+            echo "'" . addslashes($cat['nombre']) . "',";
+        }
+        if ($sin_categoria > 0) echo "'Sin categoría'";
+        ?>
+    ],
+    datasets: [{
+        data: [
             <?php
             foreach ($categorias_stats as $cat) {
-                echo "'" . $cat['nombre'] . "',";
+                echo $cat['total'] . ",";
             }
-            if ($sin_categoria > 0) echo "'Sin categoría'";
+            if ($sin_categoria > 0) echo $sin_categoria;
             ?>
         ],
-        datasets: [{
-            data: [
-                <?php
-                foreach ($categorias_stats as $cat) {
-                    echo $cat['total'] . ",";
-                }
-                if ($sin_categoria > 0) echo $sin_categoria;
-                ?>
-            ],
-            backgroundColor: [
-                <?php
-                foreach ($categorias_stats as $cat) {
-                    echo "'" . $cat['color'] . "',";
-                }
-                if ($sin_categoria > 0) echo "'#6c757d'";
-                ?>
-            ]
-        }]
-    };
-
-    var pieChartCanvas = $('#pieChart').get(0).getContext('2d');
-    var pieChart = new Chart(pieChartCanvas, {
-        type: 'pie',
-        data: pieData,
-        options: {
-            maintainAspectRatio: false,
-            responsive: true,
-            legend: {
-                position: 'bottom'
-            }
-        }
-    });
-
-    // Gráfico de línea - Mensajes últimos 7 días
-    var lineData = {
-        labels: [
+        backgroundColor: [
             <?php
-            // Crear array con todos los días
-            $dias = [];
+            foreach ($categorias_stats as $cat) {
+                echo "'" . $cat['color'] . "',";
+            }
+            if ($sin_categoria > 0) echo "'#6c757d'";
+            ?>
+        ]
+    }]
+};
+
+var pieChartCanvas = $('#pieChart').get(0).getContext('2d');
+new Chart(pieChartCanvas, {
+    type: 'pie',
+    data: pieData,
+    options: {
+        maintainAspectRatio: false,
+        responsive: true,
+        legend: { position: 'bottom' }
+    }
+});
+
+var dias = {};
+<?php
+for ($i = 6; $i >= 0; $i--) {
+    $fecha = date('Y-m-d', strtotime("-$i days"));
+    echo "dias['" . $fecha . "'] = 0;\n";
+}
+foreach ($mensajes_semana as $dia) {
+    echo "dias['" . $dia['dia'] . "'] = " . $dia['total'] . ";\n";
+}
+?>
+
+var lineData = {
+    labels: [<?php 
+        $labels = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $labels[] = "'" . date('d/m', strtotime("-$i days")) . "'";
+        }
+        echo implode(',', $labels);
+    ?>],
+    datasets: [{
+        label: 'Mensajes enviados',
+        data: [<?php 
+            $valores = [];
             for ($i = 6; $i >= 0; $i--) {
                 $fecha = date('Y-m-d', strtotime("-$i days"));
-                $dias[$fecha] = 0;
+                $valores[] = isset($dias[$fecha]) ? $dias[$fecha] : 0;
             }
+            echo implode(',', $valores);
+        ?>],
+        borderColor: 'rgb(60,141,188)',
+        backgroundColor: 'rgba(60,141,188,0.1)',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.1
+    }]
+};
 
-            // Llenar con datos reales
-            foreach ($mensajes_semana as $dia) {
-                $dias[$dia['dia']] = $dia['total'];
-            }
-
-            // Mostrar labels
-            foreach (array_keys($dias) as $fecha) {
-                echo "'" . date('d/m', strtotime($fecha)) . "',";
-            }
-            ?>
-        ],
-        datasets: [{
-            label: 'Mensajes enviados',
-            data: [<?php echo implode(',', array_values($dias)); ?>],
-            borderColor: 'rgb(60,141,188)',
-            backgroundColor: 'rgba(60,141,188,0.1)',
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            tension: 0.1
-        }]
-    };
-
-    var lineChartCanvas = $('#lineChart').get(0).getContext('2d');
-    var lineChart = new Chart(lineChartCanvas, {
-        type: 'line',
-        data: lineData,
-        options: {
-            maintainAspectRatio: false,
-            responsive: true,
-            legend: {
-                display: false
-            },
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true,
-                        stepSize: 1
-                    }
-                }]
-            }
+var lineChartCanvas = $('#lineChart').get(0).getContext('2d');
+new Chart(lineChartCanvas, {
+    type: 'line',
+    data: lineData,
+    options: {
+        maintainAspectRatio: false,
+        responsive: true,
+        legend: { display: false },
+        scales: {
+            yAxes: [{
+                ticks: { beginAtZero: true, stepSize: 1 }
+            }]
         }
-    });
-
-    // Auto-refresh cada 30 segundos
-    setTimeout(function() {
-        location.reload();
-    }, 30000);
+    }
+});
 </script>

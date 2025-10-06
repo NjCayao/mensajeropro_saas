@@ -66,8 +66,7 @@ $tiene_horarios = tieneHorariosBot();
                             <i class="nav-icon fas fa-user-tie"></i>
                             <p>
                                 Escalados
-                                <?php
-                                // Mostrar badge con pendientes - agregar filtro de empresa
+                                <?php                                
                                 $empresa_id = getEmpresaActual();
                                 $stmt = $pdo->prepare("SELECT COUNT(*) FROM estados_conversacion WHERE estado = 'escalado_humano' AND empresa_id = ?");
                                 $stmt->execute([$empresa_id]);
@@ -80,6 +79,7 @@ $tiene_horarios = tieneHorariosBot();
                         </a>
                     </li>
                 <?php endif; ?>
+
 
                 <li class="nav-item">
                     <a href="<?php echo url('cliente/plantillas'); ?>" class="nav-link <?php echo ($current_page == 'plantillas') ? 'active' : ''; ?>">
@@ -141,7 +141,7 @@ $tiene_horarios = tieneHorariosBot();
                         <p>WhatsApp</p>
                     </a>
                 </li>
-                
+
                 <li class="nav-item">
                     <a href="<?php echo url('cliente/perfil'); ?>" class="nav-link <?php echo ($current_page == 'perfil') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-user-cog"></i>

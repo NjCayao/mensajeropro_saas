@@ -40,7 +40,7 @@ $categorias = $stmt->fetchAll();
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="app.php">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="<?php echo url('cliente/dashboard'); ?>">Dashboard</a></li>
                         <li class="breadcrumb-item active">Contactos</li>
                     </ol>
                 </div>
@@ -53,22 +53,22 @@ $categorias = $stmt->fetchAll();
         <div class="container-fluid">
             <!-- Mostrar límite de contactos si aplica -->
             <?php if ($limite_contactos != PHP_INT_MAX): ?>
-            <div class="row mb-3">
-                <div class="col-12">
-                    <div class="callout callout-<?php echo $puede_agregar_contactos ? 'info' : 'warning'; ?>">
-                        <h5><i class="fas fa-info-circle"></i> Límite de contactos</h5>
-                        <p class="mb-0">
-                            Contactos: <strong><?php echo number_format($total_contactos); ?></strong> de 
-                            <strong><?php echo number_format($limite_contactos); ?></strong>
-                            <?php if (!$puede_agregar_contactos): ?>
-                                <a href="<?php echo url('cliente/mi-plan'); ?>" class="btn btn-sm btn-warning float-right">
-                                    <i class="fas fa-arrow-up"></i> Actualizar Plan
-                                </a>
-                            <?php endif; ?>
-                        </p>
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="callout callout-<?php echo $puede_agregar_contactos ? 'info' : 'warning'; ?>">
+                            <h5><i class="fas fa-info-circle"></i> Límite de contactos</h5>
+                            <p class="mb-0">
+                                Contactos: <strong><?php echo number_format($total_contactos); ?></strong> de
+                                <strong><?php echo number_format($limite_contactos); ?></strong>
+                                <?php if (!$puede_agregar_contactos): ?>
+                                    <a href="<?php echo url('cliente/mi-plan'); ?>" class="btn btn-sm btn-warning float-right">
+                                        <i class="fas fa-arrow-up"></i> Actualizar Plan
+                                    </a>
+                                <?php endif; ?>
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </div>
             <?php endif; ?>
 
             <div class="row">
@@ -170,6 +170,7 @@ $categorias = $stmt->fetchAll();
             </div>
             <form id="formContacto">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                     <input type="hidden" id="contacto_id" name="id" value="">
 
                     <div class="form-group">
@@ -237,6 +238,7 @@ $categorias = $stmt->fetchAll();
             </div>
             <form id="formImportarCSV" enctype="multipart/form-data">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                     <div class="alert alert-info">
                         <h5><i class="icon fas fa-info"></i> Formato del archivo CSV:</h5>
                         <p>El archivo debe contener las siguientes columnas (en este orden):</p>
@@ -324,7 +326,7 @@ require_once __DIR__ . '/../layouts/footer.php';
     function editarContacto(id) {
         $("#modalTitle").text("Editar Contacto");
 
-        $.get(API_URL + "/cliente/contactos/obtener.php", {
+        $.get(API_URL + "/contactos/obtener.php", {
             id: id
         }, function(response) {
             if (response.success) {
@@ -357,7 +359,9 @@ require_once __DIR__ . '/../layouts/footer.php';
                 $.ajax({
                     url: API_URL + "/cliente/contactos/eliminar.php",
                     method: "POST",
-                    data: { id: id },
+                    data: {
+                        id: id
+                    },
                     success: function(response) {
                         if (response.success) {
                             Swal.fire("Eliminado", response.message, "success");
@@ -395,7 +399,9 @@ require_once __DIR__ . '/../layouts/footer.php';
             "responsive": true,
             "lengthChange": true,
             "autoWidth": false,
-            "order": [[6, "desc"]],
+            "order": [
+                [6, "desc"]
+            ],
             "pageLength": 25,
             "language": {
                 "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
@@ -414,7 +420,7 @@ require_once __DIR__ . '/../layouts/footer.php';
 
             const formData = $(this).serialize();
             const esEdicion = $("#contacto_id").val() !== "";
-            
+
             // Si es nuevo contacto, verificar límite otra vez
             if (!esEdicion && !puedeAgregarContactos) {
                 Swal.fire({
