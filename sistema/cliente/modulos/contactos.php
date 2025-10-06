@@ -326,7 +326,7 @@ function nuevoContacto() {
 
 function editarContacto(id) {
     $("#modalTitle").text("Editar Contacto");
-    $.get(API_URL + "/contactos/obtener.php", { id: id }, function(response) {
+    $.get(API_URL + "/contactos/obtener", { id: id }, function(response) {
         if (response.success) {
             const contacto = response.data;
             $("#contacto_id").val(contacto.id);
@@ -355,7 +355,7 @@ function eliminarContacto(id) {
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
-                url: API_URL + "/contactos/eliminar.php",
+                url: API_URL + "/contactos/eliminar",
                 method: "POST",
                 data: { 
                     id: id,
@@ -422,7 +422,7 @@ $(document).ready(function() {
             return;
         }
 
-        const url = esEdicion ? API_URL + "/contactos/editar.php" : API_URL + "/contactos/crear.php";
+        const url = esEdicion ? API_URL + "/contactos/editar" : API_URL + "/contactos/crear";
 
         $.ajax({
             url: url,
@@ -472,7 +472,7 @@ $(document).ready(function() {
         });
 
         $.ajax({
-            url: API_URL + "/contactos/importar.php",
+            url: API_URL + "/contactos/importar",
             method: "POST",
             data: formData,
             processData: false,

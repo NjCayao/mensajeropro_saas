@@ -210,7 +210,7 @@ function marcarResuelto(id) {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post(API_URL + '/bot/marcar-resuelto.php', {
+            $.post(API_URL + '/bot/marcar-resuelto', {
                 id: id,
                 notas: result.value || ''
             }, function(response) {
@@ -230,7 +230,7 @@ function verHistorial(numeroCliente) {
     $('#modalHistorial').modal('show');
     $('#contenidoHistorial').html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>');
 
-    $.get(API_URL + '/bot/historial-conversacion.php', {
+    $.get(API_URL + '/bot/historial-conversacion', {
         numero: numeroCliente
     }, function(response) {
         if (response.success) {

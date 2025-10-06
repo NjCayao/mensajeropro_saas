@@ -979,3 +979,122 @@ Frontend: ✅ 100% completo
 APIs: ✅ 100% completo
 Crons: ⚠️ 70% - Necesita correcciones críticas
 Sistema Emails: ❌ Pendiente implementar
+
+
+1. SISTEMA DE EMAILS CON PHPMAILER
+Archivos creados:
+
+config/email.php - Configuración dinámica desde BD
+includes/email-sender.php - Clase EmailSender con PHPMailer
+includes/phpmailer/ - Librería PHPMailer (PHPMailer.php, SMTP.php, Exception.php)
+sistema/api/v1/superadmin/test-email.php - Endpoint para probar emails
+
+Archivos modificados:
+
+includes/functions.php - Reemplazadas funciones enviarEmailPlantilla() y enviarEmailSimple()
+sistema/superadmin/modulos/configuracion.php - Agregado tab "Email" con configuración SMTP
+sistema/api/v1/superadmin/guardar-configuracion.php - Agregado case 'email' con campos SMTP
+
+Configuraciones en BD (nuevas filas):
+sqlsmtp_host
+smtp_port
+smtp_secure
+smtp_username
+smtp_password
+Funcionalidades:
+
+En localhost: Emails se registran en logs (no se envían)
+En producción: Emails se envían vía SMTP configurado
+Panel SuperAdmin para configurar credenciales SMTP
+Botón "Enviar Email de Prueba" funcional
+Soporte para Gmail, Outlook, SMTP personalizado
+
+
+2. CORRECCIÓN DE CRONS (Eliminación de fecha_expiracion_trial)
+Archivos corregidos:
+A) cron/check-payments.php
+
+Cambio crítico línea ~14:
+
+❌ WHERE fecha_expiracion_trial < NOW()
+✅ WHERE s.fecha_fin < NOW()
+
+
+Ahora consulta suscripciones.fecha_fin en lugar de columna eliminada
+Agregado filtro es_superadmin = 0 para no suspender SuperAdmin
+
+B) cron/send-reminders.php
+
+Cambio crítico línea ~24:
+
+❌ DATE(e.fecha_expiracion_trial)
+✅ DATE(s.fecha_fin)
+
+
+Usa JOIN con tabla suscripciones
+Usa funciones de includes/functions.php para enviar emails
+
+C) cron/procesar_cola.php
+
+Integración WhatsApp real (ya no simulado)
+Nueva función enviarWhatsAppAPI() que llama a Node.js
+Endpoint: http://localhost:3001/api/send-message
+Headers: X-API-Key y X-Empresa-ID
+Manejo de errores y reintentos (máx 3)
+Delay entre mensajes: 3-8 segundos
+Registra en historial_mensajes después de enviar
+
+D) cron/procesar_programados.php
+
+Sin cambios (solo agrega a cola, el envío lo hace procesar_cola.php)
+
+
+3. FUNCIÓN HELPER PARA WHATSAPP
+Agregada en includes/functions.php:
+phpfunction enviarWhatsApp(int $empresa_id, string $numero, string $mensaje, ?string $imagen_path = null): array
+
+Llama a API Node.js en puerto 3001
+Maneja envío de texto e imágenes
+Retorna array con success/error
+
+
+4. CORRECCIÓN DE URLS EN APIS
+Problema: URLs con .php causaban error 404 por el router app.php
+Archivos corregidos (JavaScript):
+
+sistema/cliente/modulos/mensajes.php
+
+/server-time.php → /server-time
+/contactos/count.php → /contactos/count
+/mensajes/programar.php → /mensajes/programar
+
+
+sistema/cliente/modulos/contactos.php
+
+/contactos/obtener.php → /contactos/obtener
+/contactos/crear.php → /contactos/crear
+/contactos/editar.php → /contactos/editar
+/contactos/eliminar.php → /contactos/eliminar
+/contactos/importar.php → /contactos/importar
+
+
+sistema/cliente/modulos/whatsapp.php
+
+/whatsapp/status.php → /whatsapp/status
+
+
+
+Regla: Las APIs se llaman SIN .php porque app.php lo agrega automáticamente.
+
+5. ARCHIVOS API VERIFICADOS
+Ya existían:
+
+sistema/api/v1/mensajes/programar.php
+sistema/api/v1/contactos/count.php
+sistema/api/v1/server-time.php
+
+
+6. CSRF TOKEN AGREGADO
+En sistema/cliente/modulos/mensajes.php línea ~754:
+javascriptformData.append('csrf_token', '<?php echo $_SESSION['csrf_token'] ?? ''; ?>');
+Protección contra ataques CSRF en mensajes programados.

@@ -200,8 +200,8 @@ $categorias = $stmt->fetchAll();
             const formData = $(this).serialize();
             const id = $('#categoria_id').val();
             const url = id ?
-                API_URL + '/categorias/editar.php' :
-                API_URL + '/categorias/crear.php';
+                API_URL + '/categorias/editar' :
+                API_URL + '/categorias/crear';
 
             $.ajax({
                 url: url,
@@ -234,7 +234,7 @@ $categorias = $stmt->fetchAll();
     function editarCategoria(id) {
         $('#modalTitle').text('Editar Categoría');
 
-        $.get(API_URL + '/categorias/obtener.php', {
+        $.get(API_URL + '/categorias/obtener', {
             id: id
         }, function(response) {
             if (response.success) {
@@ -264,7 +264,7 @@ $categorias = $stmt->fetchAll();
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                $.post(API_URL + '/categorias/eliminar.php', {
+                $.post(API_URL + '/categorias/eliminar', {
                     id: id,
                     csrf_token: '<?php echo $_SESSION['csrf_token'] ?? ''; ?>'
                 }, function(response) {

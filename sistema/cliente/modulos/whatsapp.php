@@ -338,7 +338,7 @@ $puerto = $whatsapp['puerto'] ?? 3001;
     });
 
     async function verificarServicio() {
-        const dbResponse = await fetch(API_URL + '/whatsapp/status.php');
+        const dbResponse = await fetch(API_URL + '/whatsapp/status');
         const dbData = await dbResponse.json();
 
         if (dbData.success && dbData.data.estado === 'desconectado') {
@@ -385,7 +385,7 @@ $puerto = $whatsapp['puerto'] ?? 3001;
     async function checkStatus() {
         try {
             // Primero verificar el estado en la BD
-            const dbResponse = await fetch(API_URL + '/whatsapp/status.php');
+            const dbResponse = await fetch(API_URL + '/whatsapp/status');
             const dbData = await dbResponse.json();
             
             if (!dbData.success) {
@@ -505,7 +505,7 @@ $puerto = $whatsapp['puerto'] ?? 3001;
     async function getQRCode() {
         try {
             // Primero intentar obtener de la BD
-            const dbResponse = await fetch(API_URL + '/whatsapp/get-qr.php');
+            const dbResponse = await fetch(API_URL + '/whatsapp/get-qr');
             const dbResult = await dbResponse.json();
             
             if (dbResult.success && dbResult.qr) {
@@ -641,7 +641,7 @@ $puerto = $whatsapp['puerto'] ?? 3001;
             showConfirmButton: false,
             didOpen: () => {
                 // Iniciar petición al backend
-                fetch(API_URL + '/whatsapp/control-servicio.php', {
+                fetch(API_URL + '/whatsapp/control-servicio', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded'
@@ -719,7 +719,7 @@ $puerto = $whatsapp['puerto'] ?? 3001;
         if (!confirm.isConfirmed) return;
 
         try {
-            const response = await fetch(API_URL + '/whatsapp/control-servicio.php', {
+            const response = await fetch(API_URL + '/whatsapp/control-servicio', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
@@ -786,7 +786,7 @@ $puerto = $whatsapp['puerto'] ?? 3001;
 
     async function cargarEstadisticas() {
         try {
-            const response = await fetch(API_URL + '/whatsapp/estadisticas.php');
+            const response = await fetch(API_URL + '/whatsapp/estadisticas');
             const stats = await response.json();
 
             if (stats.success) {

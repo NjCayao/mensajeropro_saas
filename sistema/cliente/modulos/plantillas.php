@@ -303,8 +303,8 @@ $categorias = $stmt->fetchAll();
             const formData = $(this).serialize();
             const id = $('#plantilla_id').val();
             const url = id ?
-                API_URL + '/plantillas/editar.php' :
-                API_URL + '/plantillas/crear.php';
+                API_URL + '/plantillas/editar' :
+                API_URL + '/plantillas/crear';
 
             $.ajax({
                 url: url,
@@ -339,7 +339,7 @@ $categorias = $stmt->fetchAll();
     function editarPlantilla(id) {
         $('#modalTitle').text('Editar Plantilla');
 
-        $.get(API_URL + '/plantillas/obtener.php', {
+        $.get(API_URL + '/plantillas/obtener', {
             id: id
         }, function(response) {
             if (response.success) {
@@ -364,7 +364,7 @@ $categorias = $stmt->fetchAll();
     }
 
     function verPlantilla(id) {
-        $.get(API_URL + '/plantillas/obtener.php', {
+        $.get(API_URL + '/plantillas/obtener', {
             id: id
         }, function(response) {
             if (response.success) {
@@ -410,7 +410,7 @@ ${plantilla.mensaje}
     }
 
     function copiarPlantilla(id) {
-        $.get(API_URL + '/plantillas/obtener.php', {
+        $.get(API_URL + '/plantillas/obtener', {
             id: id
         }, function(response) {
             if (response.success) {
@@ -445,7 +445,7 @@ ${plantilla.mensaje}
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                $.post(API_URL + '/plantillas/eliminar.php', {
+                $.post(API_URL + '/plantillas/eliminar', {
                     id: id,
                     csrf_token: '<?php echo $_SESSION['csrf_token'] ?? ''; ?>'
                 }, function(response) {

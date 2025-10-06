@@ -369,7 +369,7 @@ $plantillas = $stmt->fetchAll();
                 $('#fechaProgramada').show();
 
                 // Obtener la hora actual del servidor PHP
-                $.get(API_URL + '/server-time.php', function(response) {
+                $.get(API_URL + '/server-time', function(response) {
                     if (response.success) {
                         // Usar la hora del servidor + 3 minutos
                         const serverTime = new Date(response.data.datetime);
@@ -476,7 +476,8 @@ $plantillas = $stmt->fetchAll();
                 if (programar) {
                     // ENVÍO PROGRAMADO
                     const formData = new FormData($('#formEnviarMensaje')[0]);
-
+                    formData.append('csrf_token', '<?php echo $_SESSION['csrf_token'] ?? ''; ?>');
+                    
                     // Agregar título automático
                     const ahora = new Date();
                     const titulo = `Mensaje programado - ${ahora.toLocaleDateString('es-PE')}`;
@@ -594,7 +595,7 @@ $plantillas = $stmt->fetchAll();
             $('#totalDestinatarios').html('<i class="fas fa-spinner fa-spin"></i>');
 
             $.ajax({
-                url: API_URL + '/contactos/count.php',
+                url: API_URL + '/contactos/count',
                 method: 'GET',
                 success: function(response) {
                     if (response.success && response.data) {

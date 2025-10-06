@@ -530,7 +530,7 @@ $plantillas = $stmt->fetchAll();
         }).then((result) => {
             if (result.isConfirmed) {
         
-                $.post(API_URL + '/programados/cancelar.php', {
+                $.post(API_URL + '/programados/cancelar', {
                     id: id,
                     csrf_token: '<?php echo $_SESSION['csrf_token'] ?? ''; ?>'
                 }, function(response) {
@@ -547,7 +547,7 @@ $plantillas = $stmt->fetchAll();
 
     function verDetalles(id) {
 
-        $.get(API_URL + '/programados/detalles.php', {
+        $.get(API_URL + '/programados/detalles', {
             id: id
         }, function(response) {
             if (response.success) {
@@ -600,7 +600,7 @@ $plantillas = $stmt->fetchAll();
         const tipo = $('#tipo_destinatarios').val();
 
         if (tipo === 'todos') {
-            $.get(API_URL + '/contactos/count.php', function(response) {
+            $.get(API_URL + '/contactos/count', function(response) {
                 if (response.success) {
                     $('#totalDestinatarios').text(response.data.total);
                 }
