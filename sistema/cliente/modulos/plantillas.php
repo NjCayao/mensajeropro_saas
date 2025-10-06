@@ -34,7 +34,7 @@ $categorias = $stmt->fetchAll();
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="app.php">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="<?php echo url('cliente/dashboard'); ?>">Dashboard</a></li>
                         <li class="breadcrumb-item active">Plantillas</li>
                     </ol>
                 </div>
@@ -180,6 +180,7 @@ $categorias = $stmt->fetchAll();
             </div>
             <form id="formPlantilla">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                     <input type="hidden" id="plantilla_id" name="id">
 
                     <div class="row">
@@ -445,7 +446,8 @@ ${plantilla.mensaje}
         }).then((result) => {
             if (result.isConfirmed) {
                 $.post(API_URL + '/plantillas/eliminar.php', {
-                    id: id
+                    id: id,
+                    csrf_token: '<?php echo $_SESSION['csrf_token'] ?? ''; ?>'
                 }, function(response) {
                     if (response.success) {
                         Swal.fire('Eliminada', response.message, 'success');

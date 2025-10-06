@@ -265,7 +265,8 @@ $categorias = $stmt->fetchAll();
         }).then((result) => {
             if (result.isConfirmed) {
                 $.post(API_URL + '/categorias/eliminar.php', {
-                    id: id
+                    id: id,
+                    csrf_token: '<?php echo $_SESSION['csrf_token'] ?? ''; ?>'
                 }, function(response) {
                     if (response.success) {
                         Swal.fire('Eliminada', response.message, 'success');

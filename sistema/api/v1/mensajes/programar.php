@@ -13,6 +13,10 @@ if (!isset($_SESSION['user_id'])) {
     jsonResponse(false, 'No autorizado');
 }
 
+if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+    jsonResponse(false, 'Token de seguridad inválido');
+}
+
 date_default_timezone_set('America/Lima');
 
 // Este archivo maneja la programación desde el módulo de mensajes

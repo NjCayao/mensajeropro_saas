@@ -13,6 +13,10 @@ if (!isset($_SESSION['user_id'])) {
     jsonResponse(false, 'No autorizado');
 }
 
+if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+    jsonResponse(false, 'Token de seguridad inválido');
+}
+
 $id = intval($_GET['id'] ?? 0);
 
 if ($id <= 0) {

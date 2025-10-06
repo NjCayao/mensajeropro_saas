@@ -6,20 +6,27 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../config/app.php';
 
-// Obtener la ruta desde REQUEST_URI
-$request = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+// Obtener la ruta limpia
+$request_uri = $_SERVER['REQUEST_URI'];
+$script_name = $_SERVER['SCRIPT_NAME'];
 
-// Detectar base_path automáticamente
-$scriptDir = dirname($_SERVER['SCRIPT_NAME']);
-$base_path = ($scriptDir === '/' || $scriptDir === '\\') ? '' : $scriptDir;
+// Obtener el directorio base (ejemplo: /mensajeroprov2)
+$base_dir = dirname(dirname($script_name));
+if ($base_dir === '/' || $base_dir === '\\') {
+    $base_dir = '';
+}
 
 // Limpiar la ruta
-$path = str_replace($base_path, '', $request);
+$path = parse_url($request_uri, PHP_URL_PATH);
+$path = str_replace($base_dir, '', $path);
 $path = trim($path, '/');
+
+// Eliminar query string si existe
+$path = strtok($path, '?');
 
 // Si no hay path, redirigir según sesión
 if (empty($path) || $path === 'app.php') {
-    if (isset($_SESSION['user_id']) || isset($_SESSION['empresa_id'])) {
+    if (isset($_SESSION['user_id'])) {
         if (isset($_SESSION['user_rol']) && $_SESSION['user_rol'] === 'superadmin') {
             header('Location: ' . url('superadmin/dashboard'));
         } else {
@@ -51,7 +58,10 @@ if (strpos($path, 'api/') === 0) {
     } else {
         header('HTTP/1.1 404 Not Found');
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'API endpoint not found']);
+        echo json_encode([
+            'success' => false, 
+            'error' => 'API endpoint not found'
+        ]);
         exit;
     }
 }

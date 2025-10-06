@@ -48,6 +48,12 @@ try {
         case 'email':
             guardarConfig('email_remitente', $_POST['email_remitente'] ?? '', 'texto', 'Email remitente');
             guardarConfig('email_nombre', $_POST['email_nombre'] ?? 'MensajeroPro', 'texto', 'Nombre remitente');
+            // SMTP
+            guardarConfig('smtp_host', $_POST['smtp_host'] ?? '', 'texto', 'Servidor SMTP');
+            guardarConfig('smtp_port', $_POST['smtp_port'] ?? '587', 'numero', 'Puerto SMTP');
+            guardarConfig('smtp_secure', $_POST['smtp_secure'] ?? 'tls', 'texto', 'Seguridad SMTP');
+            guardarConfig('smtp_username', $_POST['smtp_username'] ?? '', 'texto', 'Usuario SMTP');
+            guardarConfig('smtp_password', $_POST['smtp_password'] ?? '', 'texto', 'Contraseña SMTP');
             break;
 
         case 'google':

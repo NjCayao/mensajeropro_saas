@@ -19,8 +19,12 @@ define('ENVIRONMENT', IS_LOCALHOST ? 'development' : 'production');
 
 // URLs dinámicas
 if (IS_LOCALHOST) {
-    // Detectar automáticamente el subdirectorio
+    // Detectar automáticamente el subdirectorio - CORREGIDO
     $scriptPath = dirname($_SERVER['SCRIPT_NAME']);
+    
+    // Si estamos en /web, quitar ese segmento
+    $scriptPath = str_replace('/web', '', $scriptPath);
+    
     $baseUrl = 'http://' . $_SERVER['HTTP_HOST'] . $scriptPath;
     define('APP_URL', rtrim($baseUrl, '/'));
     define('WHATSAPP_API_URL', 'http://localhost:3001');

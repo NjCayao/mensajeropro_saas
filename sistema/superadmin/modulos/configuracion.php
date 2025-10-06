@@ -31,6 +31,13 @@ $config = [
     'email_remitente' => getConfig('email_remitente', 'noreply@mensajeropro.com'),
     'email_nombre' => getConfig('email_nombre', 'MensajeroPro'),
 
+    // SMTP - AGREGADO
+    'smtp_host' => getConfig('smtp_host'),
+    'smtp_port' => getConfig('smtp_port', '587'),
+    'smtp_secure' => getConfig('smtp_secure', 'tls'),
+    'smtp_username' => getConfig('smtp_username'),
+    'smtp_password' => getConfig('smtp_password'),
+
     // WhatsApp
     'whatsapp_soporte' => getConfig('whatsapp_soporte'),
 
@@ -258,29 +265,119 @@ $config = [
                         <!-- Tab Email -->
                         <div class="tab-pane fade" id="email" role="tabpanel">
                             <form id="formEmail">
-                                <h4><i class="fas fa-envelope"></i> Configuración de Email</h4>
+                                <h4>Configuración de Email</h4>
+                                <p class="text-muted">Configura el servidor SMTP para envío de emails</p>
 
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label>Email Remitente:</label>
-                                            <input type="email" class="form-control" name="email_remitente"
-                                                value="<?= htmlspecialchars($config['email_remitente']) ?>"
-                                                placeholder="noreply@mensajeropro.com">
+                                        <div class="card card-outline card-primary mb-3">
+                                            <div class="card-header">
+                                                <h5 class="card-title">Remitente</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="form-group">
+                                                    <label>Email Remitente: <span class="text-danger">*</span></label>
+                                                    <input type="email" class="form-control" name="email_remitente"
+                                                        value="<?= htmlspecialchars($config['email_remitente']) ?>"
+                                                        placeholder="noreply@mensajeropro.com" required>
+                                                    <small class="text-muted">Email que aparecerá como remitente</small>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Nombre Remitente:</label>
+                                                    <input type="text" class="form-control" name="email_nombre"
+                                                        value="<?= htmlspecialchars($config['email_nombre']) ?>"
+                                                        placeholder="MensajeroPro">
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+
                                     <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label>Nombre Remitente:</label>
-                                            <input type="text" class="form-control" name="email_nombre"
-                                                value="<?= htmlspecialchars($config['email_nombre']) ?>"
-                                                placeholder="MensajeroPro">
+                                        <div class="card card-outline card-success mb-3">
+                                            <div class="card-header">
+                                                <h5 class="card-title">Servidor SMTP</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="form-group">
+                                                    <label>Host SMTP: <span class="text-danger">*</span></label>
+                                                    <input type="text" class="form-control" name="smtp_host"
+                                                        value="<?= htmlspecialchars($config['smtp_host']) ?>"
+                                                        placeholder="smtp.gmail.com" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Puerto:</label>
+                                                    <input type="number" class="form-control" name="smtp_port"
+                                                        value="<?= $config['smtp_port'] ?>"
+                                                        placeholder="587">
+                                                    <small class="text-muted">587 para TLS, 465 para SSL</small>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Seguridad:</label>
+                                                    <select class="form-control" name="smtp_secure">
+                                                        <option value="tls" <?= $config['smtp_secure'] == 'tls' ? 'selected' : '' ?>>TLS (Recomendado)</option>
+                                                        <option value="ssl" <?= $config['smtp_secure'] == 'ssl' ? 'selected' : '' ?>>SSL</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="card card-outline card-warning mb-3">
+                                            <div class="card-header">
+                                                <h5 class="card-title">Autenticación SMTP</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="form-group">
+                                                    <label>Usuario SMTP:</label>
+                                                    <input type="email" class="form-control" name="smtp_username"
+                                                        value="<?= htmlspecialchars($config['smtp_username']) ?>"
+                                                        placeholder="tu-email@gmail.com">
+                                                    <small class="text-muted">Generalmente es el mismo email remitente</small>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Contraseña SMTP:</label>
+                                                    <div class="input-group">
+                                                        <input type="password" class="form-control"
+                                                            id="smtp_password"
+                                                            name="smtp_password"
+                                                            value="<?= htmlspecialchars($config['smtp_password']) ?>"
+                                                            placeholder="Contraseña o App Password">
+                                                        <div class="input-group-append">
+                                                            <button class="btn btn-outline-secondary" type="button"
+                                                                onclick="togglePassword('smtp_password')">
+                                                                <i class="fas fa-eye"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="alert alert-info">
+                                            <h6>Configuración Gmail</h6>
+                                            <ol class="mb-2 small">
+                                                <li>Ve a <a href="https://myaccount.google.com/security" target="_blank">Google Security</a></li>
+                                                <li>Activa "Verificación en 2 pasos"</li>
+                                                <li>Busca "Contraseñas de aplicaciones"</li>
+                                                <li>Genera una para "Correo"</li>
+                                                <li>Usa esa contraseña aquí</li>
+                                            </ol>
+                                        </div>
+
+                                        <div class="alert alert-warning">
+                                            <strong>Modo desarrollo:</strong> En localhost, los emails solo se registran en logs, no se envían.
                                         </div>
                                     </div>
                                 </div>
 
                                 <button type="submit" class="btn btn-success">
                                     <i class="fas fa-save"></i> Guardar Configuración de Email
+                                </button>
+                                <button type="button" class="btn btn-info" onclick="probarEmail()">
+                                    <i class="fas fa-envelope"></i> Enviar Email de Prueba
                                 </button>
                             </form>
                         </div>
@@ -579,18 +676,15 @@ $config = [
 
     function guardarConfiguracion(seccion, datos) {
         $.ajax({
-            // CORRECCIÓN: Usar url() helper que maneja las rutas correctamente
             url: '<?= url("api/v1/superadmin/guardar-configuracion") ?>',
             method: 'POST',
             dataType: 'json',
             data: datos + '&seccion=' + seccion,
             beforeSend: function() {
-                // Opcional: mostrar loading
                 console.log('Guardando configuración de ' + seccion + '...');
             },
             success: function(response) {
                 if (response.success) {
-                    // Usar SweetAlert2 si está disponible, sino alert
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
                             icon: 'success',
@@ -633,4 +727,43 @@ $config = [
         e.preventDefault();
         guardarConfiguracion('seguridad', $(this).serialize());
     });
+
+    // Función para probar email
+    function probarEmail() {
+        Swal.fire({
+            title: 'Email de Prueba',
+            input: 'email',
+            inputLabel: 'Enviar email de prueba a:',
+            inputPlaceholder: 'tu-email@ejemplo.com',
+            showCancelButton: true,
+            confirmButtonText: 'Enviar',
+            cancelButtonText: 'Cancelar',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'Debes ingresar un email';
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '<?= url("api/v1/superadmin/test-email") ?>', // ✅ SIN sistema/ y SIN .php
+                    method: 'POST',
+                    data: {
+                        email: result.value
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire('Éxito', 'Email de prueba enviado. Revisa tu bandeja de entrada.', 'success');
+                        } else {
+                            Swal.fire('Error', response.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        Swal.fire('Error', 'No se pudo enviar el email de prueba', 'error');
+                    }
+                });
+            }
+        });
+    }
 </script>

@@ -299,230 +299,217 @@ require_once __DIR__ . '/../layouts/footer.php';
 ?>
 
 <script>
-    // Variable para verificar si puede agregar contactos
-    const puedeAgregarContactos = <?php echo $puede_agregar_contactos ? 'true' : 'false'; ?>;
-    const limiteContactos = <?php echo $limite_contactos == PHP_INT_MAX ? 'null' : $limite_contactos; ?>;
-    const contactosActuales = <?php echo $total_contactos; ?>;
+// Variables globales
+const puedeAgregarContactos = <?php echo $puede_agregar_contactos ? 'true' : 'false'; ?>;
+const limiteContactos = <?php echo $limite_contactos == PHP_INT_MAX ? 'null' : $limite_contactos; ?>;
+const contactosActuales = <?php echo $total_contactos; ?>;
+const mensajeLimite = <?php echo json_encode(mostrarMensajeLimite("contactos")); ?>;
+const csrfToken = '<?php echo $_SESSION['csrf_token'] ?? ''; ?>';
 
-    // Funciones globales
-    function nuevoContacto() {
-        if (!puedeAgregarContactos) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Límite alcanzado',
-                html: '<?php echo mostrarMensajeLimite("contactos"); ?>',
-                showConfirmButton: false,
-                showCloseButton: true
-            });
-            return;
-        }
-
-        $("#modalTitle").text("Nuevo Contacto");
-        $("#formContacto")[0].reset();
-        $("#contacto_id").val("");
-        $("#modalContacto").modal("show");
-    }
-
-    function editarContacto(id) {
-        $("#modalTitle").text("Editar Contacto");
-
-        $.get(API_URL + "/contactos/obtener.php", {
-            id: id
-        }, function(response) {
-            if (response.success) {
-                const contacto = response.data;
-                $("#contacto_id").val(contacto.id);
-                $("#nombre").val(contacto.nombre);
-                $("#numero").val(contacto.numero);
-                $("#categoria_id").val(contacto.categoria_id || "");
-                $("#notas").val(contacto.notas || "");
-                $("#activo").val(contacto.activo);
-                $("#modalContacto").modal("show");
-            } else {
-                Swal.fire("Error", response.message, "error");
-            }
-        });
-    }
-
-    function eliminarContacto(id) {
+// Funciones globales
+function nuevoContacto() {
+    if (!puedeAgregarContactos) {
         Swal.fire({
-            title: "¿Eliminar contacto?",
-            text: "Esta acción no se puede deshacer",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#d33",
-            cancelButtonColor: "#3085d6",
-            confirmButtonText: "Sí, eliminar",
-            cancelButtonText: "Cancelar"
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: API_URL + "/cliente/contactos/eliminar.php",
-                    method: "POST",
-                    data: {
-                        id: id
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            Swal.fire("Eliminado", response.message, "success");
-                            setTimeout(() => location.reload(), 1500);
-                        } else {
-                            Swal.fire("Error", response.message, "error");
-                        }
-                    }
-                });
-            }
+            icon: 'warning',
+            title: 'Límite alcanzado',
+            html: mensajeLimite,
+            showConfirmButton: false,
+            showCloseButton: true
         });
+        return;
     }
+    $("#modalTitle").text("Nuevo Contacto");
+    $("#formContacto")[0].reset();
+    $("#contacto_id").val("");
+    $("#modalContacto").modal("show");
+}
 
-    function importarCSV() {
-        if (!puedeAgregarContactos) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Límite alcanzado',
-                html: '<?php echo mostrarMensajeLimite("contactos"); ?>',
-                showConfirmButton: false,
-                showCloseButton: true
-            });
-            return;
+function editarContacto(id) {
+    $("#modalTitle").text("Editar Contacto");
+    $.get(API_URL + "/contactos/obtener.php", { id: id }, function(response) {
+        if (response.success) {
+            const contacto = response.data;
+            $("#contacto_id").val(contacto.id);
+            $("#nombre").val(contacto.nombre);
+            $("#numero").val(contacto.numero);
+            $("#categoria_id").val(contacto.categoria_id || "");
+            $("#notas").val(contacto.notas || "");
+            $("#activo").val(contacto.activo);
+            $("#modalContacto").modal("show");
+        } else {
+            Swal.fire("Error", response.message, "error");
         }
+    });
+}
 
-        $("#formImportarCSV")[0].reset();
-        $(".custom-file-label").removeClass("selected").html("Elegir archivo...");
-        $("#modalImportarCSV").modal("show");
-    }
-
-    // Document ready
-    $(document).ready(function() {
-        // DataTable
-        $("#tablaContactos").DataTable({
-            "responsive": true,
-            "lengthChange": true,
-            "autoWidth": false,
-            "order": [
-                [6, "desc"]
-            ],
-            "pageLength": 25,
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
-            }
-        });
-
-        // Cambiar label del input file
-        $(".custom-file-input").on("change", function() {
-            var fileName = $(this).val().split("\\").pop();
-            $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
-        });
-
-        // Manejar envío del formulario de contacto
-        $("#formContacto").on("submit", function(e) {
-            e.preventDefault();
-
-            const formData = $(this).serialize();
-            const esEdicion = $("#contacto_id").val() !== "";
-
-            // Si es nuevo contacto, verificar límite otra vez
-            if (!esEdicion && !puedeAgregarContactos) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Límite alcanzado',
-                    html: '<?php echo mostrarMensajeLimite("contactos"); ?>'
-                });
-                return;
-            }
-
-            const url = esEdicion ?
-                API_URL + "/cliente/contactos/editar.php" :
-                API_URL + "/cliente/contactos/crear.php";
-
+function eliminarContacto(id) {
+    Swal.fire({
+        title: "¿Eliminar contacto?",
+        text: "Esta acción no se puede deshacer",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Sí, eliminar",
+        cancelButtonText: "Cancelar"
+    }).then((result) => {
+        if (result.isConfirmed) {
             $.ajax({
-                url: url,
+                url: API_URL + "/contactos/eliminar.php",
                 method: "POST",
-                data: formData,
-                dataType: "json",
+                data: { 
+                    id: id,
+                    csrf_token: csrfToken
+                },
                 success: function(response) {
                     if (response.success) {
-                        $("#modalContacto").modal("hide");
-                        Swal.fire({
-                            icon: "success",
-                            title: response.message,
-                            showConfirmButton: false,
-                            timer: 1500
-                        });
+                        Swal.fire("Eliminado", response.message, "success");
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        if (response.limite_alcanzado) {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Límite alcanzado',
-                                html: response.message
-                            });
-                        } else {
-                            Swal.fire("Error", response.message, "error");
-                        }
+                        Swal.fire("Error", response.message, "error");
                     }
-                },
-                error: function(xhr, status, error) {
-                    console.error("Error:", xhr.responseText);
-                    Swal.fire("Error", "Error al procesar la solicitud", "error");
                 }
             });
+        }
+    });
+}
+
+function importarCSV() {
+    if (!puedeAgregarContactos) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Límite alcanzado',
+            html: mensajeLimite,
+            showConfirmButton: false,
+            showCloseButton: true
         });
+        return;
+    }
+    $("#formImportarCSV")[0].reset();
+    $(".custom-file-label").removeClass("selected").html("Elegir archivo...");
+    $("#modalImportarCSV").modal("show");
+}
 
-        // Manejar importación CSV
-        $("#formImportarCSV").on("submit", function(e) {
-            e.preventDefault();
+// Document ready
+$(document).ready(function() {
+    $("#tablaContactos").DataTable({
+        "responsive": true,
+        "lengthChange": true,
+        "autoWidth": false,
+        "order": [[6, "desc"]],
+        "pageLength": 25,
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
+        }
+    });
 
-            const formData = new FormData(this);
+    $(".custom-file-input").on("change", function() {
+        var fileName = $(this).val().split("\\").pop();
+        $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
+    });
 
+    $("#formContacto").on("submit", function(e) {
+        e.preventDefault();
+        const formData = $(this).serialize();
+        const esEdicion = $("#contacto_id").val() !== "";
+        
+        if (!esEdicion && !puedeAgregarContactos) {
             Swal.fire({
-                title: "Importando...",
-                text: "Por favor espere mientras se procesan los contactos",
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
+                icon: 'warning',
+                title: 'Límite alcanzado',
+                html: mensajeLimite
             });
+            return;
+        }
 
-            $.ajax({
-                url: API_URL + "/cliente/contactos/importar.php",
-                method: "POST",
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    if (response.success) {
-                        $("#modalImportarCSV").modal("hide");
+        const url = esEdicion ? API_URL + "/contactos/editar.php" : API_URL + "/contactos/crear.php";
+
+        $.ajax({
+            url: url,
+            method: "POST",
+            data: formData,
+            dataType: "json",
+            success: function(response) {
+                if (response.success) {
+                    $("#modalContacto").modal("hide");
+                    Swal.fire({
+                        icon: "success",
+                        title: response.message,
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    if (response.limite_alcanzado) {
                         Swal.fire({
-                            icon: "success",
-                            title: "Importación completada",
+                            icon: 'warning',
+                            title: 'Límite alcanzado',
                             html: response.message
-                        }).then(() => {
-                            location.reload();
                         });
                     } else {
-                        if (response.limite_alcanzado) {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Límite alcanzado',
-                                html: response.message
-                            });
-                        } else {
-                            Swal.fire("Error", response.message, "error");
-                        }
+                        Swal.fire("Error", response.message, "error");
                     }
-                },
-                error: function(xhr) {
-                    Swal.fire("Error", "Error al procesar el archivo", "error");
                 }
-            });
-        });
-
-        // Validación del número de teléfono
-        $("#numero").on("input", function() {
-            let valor = $(this).val();
-            valor = valor.replace(/[^0-9+]/g, "");
-            $(this).val(valor);
+            },
+            error: function(xhr) {
+                console.error("Error:", xhr.responseText);
+                Swal.fire("Error", "Error al procesar la solicitud", "error");
+            }
         });
     });
+
+    $("#formImportarCSV").on("submit", function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        Swal.fire({
+            title: "Importando...",
+            text: "Por favor espere mientras se procesan los contactos",
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: API_URL + "/contactos/importar.php",
+            method: "POST",
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    $("#modalImportarCSV").modal("hide");
+                    Swal.fire({
+                        icon: "success",
+                        title: "Importación completada",
+                        html: response.message
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    if (response.limite_alcanzado) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Límite alcanzado',
+                            html: response.message
+                        });
+                    } else {
+                        Swal.fire("Error", response.message, "error");
+                    }
+                }
+            },
+            error: function(xhr) {
+                console.error("Error:", xhr.responseText);
+                Swal.fire("Error", "Error al procesar el archivo", "error");
+            }
+        });
+    });
+
+    $("#numero").on("input", function() {
+        let valor = $(this).val();
+        valor = valor.replace(/[^0-9+]/g, "");
+        $(this).val(valor);
+    });
+});
 </script>

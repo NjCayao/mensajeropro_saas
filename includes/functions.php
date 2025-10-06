@@ -47,7 +47,7 @@ function jsonResponse(bool $success, string $message, mixed $data = null): never
 function validatePhone(string $phone): bool
 {
     $phone = preg_replace('/[^0-9+]/', '', $phone);
-    return preg_match('/^\+?[1-9]\d{8,14}$/', $phone);
+    return (bool) preg_match('/^\+?[1-9]\d{8,14}$/', $phone);
 }
 
 /**
@@ -230,59 +230,71 @@ function enviarEmailRecuperacion(string $email, string $nombre_empresa, string $
     ]);
 }
 
+/**
+ * Enviar email usando plantilla de BD
+ */
 function enviarEmailPlantilla(string $codigo_plantilla, string $email_destino, array $variables): bool
 {
-    global $pdo;
+    require_once __DIR__ . '/email-sender.php';
+    $emailSender = new EmailSender();
+    return $emailSender->enviarDesdePlantilla($codigo_plantilla, $email_destino, $variables);
+}
 
-    try {
-        // Obtener plantilla
-        $stmt = $pdo->prepare("
-            SELECT asunto, contenido_html 
-            FROM plantillas_email 
-            WHERE codigo = ? AND activa = 1
-        ");
-        $stmt->execute([$codigo_plantilla]);
-        $plantilla = $stmt->fetch();
+/**
+ * Enviar email simple sin plantilla
+ */
+function enviarEmailSimple(string $email_destino, string $asunto, string $mensaje_html): bool
+{
+    require_once __DIR__ . '/email-sender.php';
+    $emailSender = new EmailSender();
+    return $emailSender->enviarSimple($email_destino, $asunto, $mensaje_html);
+}
 
-        if (!$plantilla) {
-            error_log("Plantilla '{$codigo_plantilla}' no encontrada o inactiva");
-            return false;
-        }
 
-        // Agregar variables globales
-        $variables['app_name'] = APP_NAME;
-
-        // Reemplazar variables en asunto
-        $asunto = $plantilla['asunto'];
-        foreach ($variables as $key => $value) {
-            $asunto = str_replace('{{' . $key . '}}', $value, $asunto);
-        }
-
-        // Reemplazar variables en contenido
-        $contenido = $plantilla['contenido_html'];
-        foreach ($variables as $key => $value) {
-            $contenido = str_replace('{{' . $key . '}}', $value, $contenido);
-        }
-
-        // Headers
-        $headers = "MIME-Version: 1.0\r\n";
-        $headers .= "Content-type: text/html; charset=utf-8\r\n";
-        $headers .= "From: " . APP_NAME . " <noreply@" . $_SERVER['HTTP_HOST'] . ">\r\n";
-
-        // En desarrollo, solo loguear
-        if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
-            error_log("=== EMAIL (DEV) ===");
-            error_log("Plantilla: {$codigo_plantilla}");
-            error_log("Para: {$email_destino}");
-            error_log("Asunto: {$asunto}");
-            error_log("===================");
-            return true;
-        }
-
-        // En producción, enviar
-        return mail($email_destino, $asunto, $contenido, $headers);
-    } catch (Exception $e) {
-        error_log("Error enviando email: " . $e->getMessage());
-        return false;
+/**
+ * Enviar mensaje de WhatsApp via API
+ */
+function enviarWhatsApp(int $empresa_id, string $numero, string $mensaje, ?string $imagen_path = null): array
+{
+    $url = WHATSAPP_API_URL . '/api/send-message';
+    
+    $payload = [
+        'empresa_id' => $empresa_id,
+        'numero' => $numero,
+        'mensaje' => $mensaje
+    ];
+    
+    // Agregar imagen si existe
+    if ($imagen_path && file_exists($imagen_path)) {
+        $payload['imagen'] = $imagen_path;
     }
+    
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'X-API-Key: mensajeroPro2025',
+        'X-Empresa-ID: ' . $empresa_id
+    ]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code !== 200) {
+        return [
+            'success' => false,
+            'error' => "HTTP $http_code: " . ($response ?: 'Sin respuesta')
+        ];
+    }
+    
+    $result = json_decode($response, true);
+    
+    return $result ?: [
+        'success' => false,
+        'error' => 'Respuesta JSON inválida'
+    ];
 }

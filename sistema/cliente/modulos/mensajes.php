@@ -5,13 +5,11 @@ require_once __DIR__ . '/../layouts/sidebar.php';
 
 $empresa_id = getEmpresaActual();
 
-// Obtener puerto de WhatsApp
-$puerto = $whatsapp['puerto'] ?? 3001;
-
 // Verificar estado de WhatsApp
 $stmt = $pdo->prepare("SELECT estado FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
 $stmt->execute([$empresa_id]);
 $whatsapp = $stmt->fetch();
+$puerto = $whatsapp['puerto'] ?? 3001;
 $whatsappConectado = $whatsapp && $whatsapp['estado'] == 'conectado';
 
 // Obtener categorías
@@ -36,7 +34,7 @@ $plantillas = $stmt->fetchAll();
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="app.php">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="<?php echo url('cliente/dashboard'); ?>">Dashboard</a></li>
                         <li class="breadcrumb-item active">Enviar Mensajes</li>
                     </ol>
                 </div>
@@ -492,7 +490,7 @@ $plantillas = $stmt->fetchAll();
                     }
 
                     // Usar API de mensajes programados
-                    const response = await fetch(API_URL + '/mensajes/programar.php', {
+                    const response = await fetch(API_URL + '/mensajes/programar', {
                         method: 'POST',
                         body: formData
                     });

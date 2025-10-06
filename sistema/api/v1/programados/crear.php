@@ -17,6 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonResponse(false, 'Método no permitido');
 }
 
+if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+    jsonResponse(false, 'Token de seguridad inválido');
+}
+
 // Obtener datos
 $titulo = sanitize($_POST['titulo'] ?? '');
 $mensaje = sanitize($_POST['mensaje'] ?? '');
@@ -107,7 +111,8 @@ try {
         $categoria_id,
         $enviar_a_todos,
         $fecha->format('Y-m-d H:i:s'),
-        $total_destinatarios
+        $total_destinatarios,
+        getEmpresaActual() // Agregar este
     ]);
 
     // Log

@@ -17,6 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonResponse(false, 'Método no permitido');
 }
 
+if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) {
+    jsonResponse(false, 'Token de seguridad inválido');
+}
+
 $id = intval($_POST['id'] ?? 0);
 
 if ($id <= 0) {

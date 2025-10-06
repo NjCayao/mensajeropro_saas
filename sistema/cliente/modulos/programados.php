@@ -46,7 +46,7 @@ $plantillas = $stmt->fetchAll();
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="app.php">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="<?php echo url('cliente/dashboard'); ?>">Dashboard</a></li>
                         <li class="breadcrumb-item active">Mensajes Programados</li>
                     </ol>
                 </div>
@@ -257,6 +257,7 @@ $plantillas = $stmt->fetchAll();
             </div>
             <form id="formProgramado">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                     <input type="hidden" id="programado_id" name="id">
 
                     <div class="row">
@@ -528,9 +529,10 @@ $plantillas = $stmt->fetchAll();
             cancelButtonText: 'No'
         }).then((result) => {
             if (result.isConfirmed) {
-                // CORRECCIÓN: Quitar las llaves duplicadas
+        
                 $.post(API_URL + '/programados/cancelar.php', {
-                    id: id
+                    id: id,
+                    csrf_token: '<?php echo $_SESSION['csrf_token'] ?? ''; ?>'
                 }, function(response) {
                     if (response.success) {
                         Swal.fire('Cancelado', response.message, 'success');
@@ -544,7 +546,7 @@ $plantillas = $stmt->fetchAll();
     }
 
     function verDetalles(id) {
-        // CORRECCIÓN: Quitar las llaves duplicadas
+
         $.get(API_URL + '/programados/detalles.php', {
             id: id
         }, function(response) {

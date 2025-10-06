@@ -1,3 +1,8 @@
+# configuraciones 
+- config/app.php
+- config/email.php
+
+
 # para configurar 
 - config/app
 - web/robots.txt
@@ -81,3 +86,7 @@ Actualmente:
 ✅ Google OAuth funciona
 ✅ Seguridad implementada (CSRF, rate limit, fuerza bruta)
 ✅ Control de suscripciones vencidas
+
+- en la base de datos suscripciones  si esta vencido el plan que se cambie el plan a vencido 
+
+- agregar un input cuando el humano habla el bot espera unos 10 segundos para poder responder mientras no haya hablado el humano. 
