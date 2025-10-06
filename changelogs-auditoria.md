@@ -1098,3 +1098,5 @@ sistema/api/v1/server-time.php
 En sistema/cliente/modulos/mensajes.php línea ~754:
 javascriptformData.append('csrf_token', '<?php echo $_SESSION['csrf_token'] ?? ''; ?>');
 Protección contra ataques CSRF en mensajes programados.
+
+# 
