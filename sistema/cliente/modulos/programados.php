@@ -421,8 +421,8 @@ $plantillas = $stmt->fetchAll();
             const formData = new FormData(this);
             const id = $('#programado_id').val();
             const url = id ?
-                API_URL + '/programados/editar.php' :
-                API_URL + '/programados/crear.php';
+                API_URL + '/programados/editar' :
+                API_URL + '/programados/crear';
 
             $.ajax({
                 url: url,
@@ -466,7 +466,7 @@ $plantillas = $stmt->fetchAll();
     function editarProgramado(id) {
         $('#modalTitle').text('Editar Mensaje Programado');
 
-        $.get(API_URL + '/programados/obtener.php', {
+        $.get(API_URL + '/programados/obtener', {
             id: id
         }, function(response) {
             if (response.success) {

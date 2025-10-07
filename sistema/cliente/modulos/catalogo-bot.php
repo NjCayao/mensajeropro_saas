@@ -99,7 +99,7 @@ if ($catalogo && $catalogo['datos_json']) {
                                         </button>
 
                                         <?php if ($catalogo && $catalogo['archivo_excel']): ?>
-                                            <a href="<?= url('api/v1/bot/descargar-catalogo.php?tipo=excel') ?>"
+                                            <a href="<?= url('api/v1/bot/descargar-catalogo?tipo=excel') ?>"
                                                 class="btn btn-outline-success btn-block mt-2">
                                                 <i class="fas fa-download"></i> Descargar Excel Actual
                                             </a>
@@ -144,7 +144,7 @@ if ($catalogo && $catalogo['datos_json']) {
                                         </button>
 
                                         <?php if ($catalogo && $catalogo['archivo_pdf']): ?>
-                                            <a href="<?= url('api/v1/bot/descargar-catalogo.php?tipo=pdf') ?>"
+                                            <a href="<?= url('api/v1/bot/descargar-catalogo?tipo=pdf') ?>"
                                                 class="btn btn-outline-danger btn-block mt-2" target="_blank">
                                                 <i class="fas fa-eye"></i> Ver PDF Actual
                                             </a>
@@ -385,7 +385,7 @@ if ($catalogo && $catalogo['datos_json']) {
         btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
 
         $.ajax({
-            url: API_URL + '/bot/subir-catalogo.php',
+            url: API_URL + '/bot/subir-catalogo',
             type: 'POST',
             data: formData,
             processData: false,
@@ -432,7 +432,7 @@ if ($catalogo && $catalogo['datos_json']) {
         btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Subiendo...');
 
         $.ajax({
-            url: API_URL + '/bot/subir-catalogo.php',
+            url: API_URL + '/bot/subir-catalogo',
             type: 'POST',
             data: formData,
             processData: false,

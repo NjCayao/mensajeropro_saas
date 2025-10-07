@@ -1099,4 +1099,62 @@ En sistema/cliente/modulos/mensajes.php línea ~754:
 javascriptformData.append('csrf_token', '<?php echo $_SESSION['csrf_token'] ?? ''; ?>');
 Protección contra ataques CSRF en mensajes programados.
 
-# 
+# 📝 CHANGELOG - FASE 6: WhatsApp y Bot IA
+✅ Completado al 100%
+🤖 Bot IA Inteligente
+
+Sistema de respuestas automáticas con OpenAI GPT
+Personalización completa (personalidad, información del negocio, prompts específicos)
+3 tipos de bot: Ventas, Citas y Soporte
+Sistema de templates predefinidos por industria
+Modo prueba para testear sin afectar clientes reales
+Chat de prueba en tiempo real dentro del panel
+
+📊 Sistema de Notificaciones
+
+Notificaciones automáticas vía WhatsApp
+3 tipos: Escalamiento, Ventas y Citas
+Mensajes personalizables con variables dinámicas
+Configuración por número de teléfono
+
+🔄 Escalamiento Inteligente
+
+Detección de palabras clave para escalar a humano
+Límite de mensajes sin resolver
+Estado de conversación (bot vs humano)
+Métricas de escalamiento
+
+📈 Métricas y Análisis
+
+Conversaciones iniciadas y completadas
+Tokens usados por día
+Escalamientos registrados
+Preguntas frecuentes detectadas
+Hora pico de conversaciones
+
+⚙️ Configuración Avanzada
+
+Horario de atención configurable
+Mensaje fuera de horario
+Delay de respuesta (simula escritura humana)
+Responder a no registrados (opcional)
+Palabras de activación personalizables
+
+🔧 Correcciones Técnicas
+
+API endpoints funcionando (configurar.php, guardar-notificaciones.php, test.php, verificar-config.php, cargar-template.php)
+Integración correcta entre PHP y Node.js
+Recargar configuración cada 30 segundos en tiempo real
+Manejo correcto de tipos de bot (ventas/citas/soporte)
+
+
+📂 Archivos Principales Creados/Modificados
+Backend:
+
+sistema/cliente/modulos/bot-config.php ✅
+sistema/api/v1/bot/*.php (5 endpoints) ✅
+whatsapp-service/src/botHandler.js ✅
+
+Base de Datos:
+
+Tablas: configuracion_bot, notificaciones_bot, bot_metricas, bot_templates, conversaciones_bot ✅

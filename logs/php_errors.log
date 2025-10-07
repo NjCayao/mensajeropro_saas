@@ -2,3 +2,10 @@
 [07-Oct-2025 10:40:37 America/Lima] PHP Warning:  Undefined variable $puerto_empresa in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\mensajes.php on line 298
 [07-Oct-2025 10:43:03 America/Lima] PHP Warning:  Undefined variable $puerto_empresa in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\mensajes.php on line 298
 [07-Oct-2025 10:44:45 America/Lima] PHP Warning:  Undefined variable $puerto_empresa in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\mensajes.php on line 298
+[07-Oct-2025 15:03:50 America/Lima] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'e.fecha_expiracion_trial' in 'field list' in C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\empresas.php:42
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\empresas.php(42): PDO->prepare('\r\n    SELECT \r\n...')
+#1 C:\xampp\htdocs\mensajeroprov2\web\app.php(93): require_once('C:\\xampp\\htdocs...')
+#2 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\empresas.php on line 42
+[07-Oct-2025 15:19:16 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\bot\descargar-catalogo.php on line 3

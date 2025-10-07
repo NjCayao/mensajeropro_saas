@@ -21,7 +21,7 @@ $usuario = $stmt->fetch();
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="app.php">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="<?php echo url('cliente/dashboard'); ?>">Dashboard</a></li>
                         <li class="breadcrumb-item active">Mi Perfil</li>
                     </ol>
                 </div>
@@ -99,7 +99,7 @@ $(document).ready(function() {
         e.preventDefault();
         
         try {
-            const response = await fetch(API_URL + '/usuarios/cambiar-email.php', {
+            const response = await fetch(API_URL + '/usuarios/cambiar-email', {
                 method: 'POST',
                 body: new FormData(this)
             });
@@ -130,7 +130,7 @@ $(document).ready(function() {
         }
         
         try {
-            const response = await fetch(API_URL + '/usuarios/cambiar-password.php', {
+            const response = await fetch(API_URL + '/usuarios/cambiar-password', {
                 method: 'POST',
                 body: new FormData(this)
             });

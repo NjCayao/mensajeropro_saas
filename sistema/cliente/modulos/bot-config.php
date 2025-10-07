@@ -257,11 +257,12 @@ $tokens_usados_hoy = $stmt->fetchColumn();
                                                             <h5 class="mt-2">Soporte</h5>
                                                             <p class="text-muted small">ISP, tickets, SaaS</p>
                                                             <div class="form-check">
-                                                                <input class="form-check-input" type="radio" name="tipo_bot" id="tipo_bot_soporte" value="soporte"
+                                                                <label  class="form-check-label">Muy pronto</label>
+                                                                <!-- <input class="form-check-input" type="radio" name="tipo_bot" id="tipo_bot_soporte" value="soporte"
                                                                     <?= $config['tipo_bot'] == 'soporte' ? 'checked' : '' ?>>
                                                                 <label class="form-check-label" for="tipo_bot_soporte">
                                                                     Seleccionar
-                                                                </label>
+                                                                </label> -->
                                                             </div>
                                                         </div>
                                                     </div>
@@ -955,7 +956,7 @@ function cargarTemplate(templateId) {
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
-                url: API_URL + "/bot/cargar-template.php",
+                url: API_URL + "/bot/cargar-template",
                 method: 'GET',
                 data: {id: templateId},
                 dataType: 'json',
@@ -1056,7 +1057,7 @@ function guardarConfiguracion() {
     });
 
     $.ajax({
-        url: API_URL + "/bot/configurar.php",
+        url: API_URL + "/bot/configurar",
         method: 'POST',
         data: formData,
         success: function(response) {
@@ -1108,7 +1109,7 @@ function guardarNotificaciones() {
             mensaje_citas: $('textarea[name="mensaje_citas"]').val()
         };
         
-        $.post(API_URL + '/bot/guardar-notificaciones.php', notifData, function() {
+        $.post(API_URL + '/bot/guardar-notificaciones', notifData, function() {
             resolve();
         });
     });
@@ -1147,7 +1148,7 @@ function enviarMensajePrueba() {
 
     $('#chatTest').scrollTop($('#chatTest')[0].scrollHeight);
 
-    $.post(API_URL + "/bot/test.php", {mensaje: mensaje}, function(response) {
+    $.post(API_URL + "/bot/test", {mensaje: mensaje}, function(response) {
         $('#typing').remove();
 
         if (response.success) {
@@ -1186,7 +1187,7 @@ function enviarMensajePrueba() {
 }
 
 function verificarConfiguracion() {
-    $.get(API_URL + "/bot/verificar-config.php", function(response) {
+    $.get(API_URL + "/bot/verificar-config", function(response) {
         if (response.success) {
             Swal.fire({
                 title: 'Configuración Actual',

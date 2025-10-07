@@ -511,7 +511,7 @@ $dias_semana = [
                                                 <li>Habilita la API de Google Calendar</li>
                                                 <li>Crea credenciales OAuth 2.0</li>
                                                 <li>Añade la URL de redirección:<br>
-                                                    <code><?= url('sistema/api/v1/bot/google-callback.php') ?></code>
+                                                    <code><?= url('sistema/api/v1/bot/google-callback') ?></code>
                                                 </li>
                                                 <li>Copia el Client ID y Secret aquí</li>
                                                 <li>Autoriza la aplicación</li>
@@ -606,7 +606,7 @@ $dias_semana = [
             },
             events: function(info, successCallback) {
                 $.ajax({
-                    url: API_URL + '/bot/obtener-citas-fechas.php',
+                    url: API_URL + '/bot/obtener-citas-fechas',
                     data: {
                         start: info.startStr,
                         end: info.endStr
@@ -642,7 +642,7 @@ $dias_semana = [
         const fecha = $('#filtroFecha').val();
 
         $.ajax({
-            url: API_URL + '/bot/obtener-citas-fechas.php',
+            url: API_URL + '/bot/obtener-citas-fechas',
             data: {
                 pagina: pagina,
                 fecha: fecha || undefined
@@ -782,7 +782,7 @@ $dias_semana = [
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: API_URL + '/bot/cambiar-estado-cita.php',
+                    url: API_URL + '/bot/cambiar-estado-cita',
                     method: 'POST',
                     data: {
                         id: id,
@@ -805,7 +805,7 @@ $dias_semana = [
     // Ver detalles
     function verDetallesCita(id) {
         $.ajax({
-            url: API_URL + '/bot/detalle-cita.php',
+            url: API_URL + '/bot/detalle-cita',
             data: {
                 id: id
             },
@@ -873,7 +873,7 @@ $dias_semana = [
         e.preventDefault();
 
         $.ajax({
-            url: API_URL + '/bot/configurar-horarios.php',
+            url: API_URL + '/bot/configurar-horarios',
             method: 'POST',
             data: $(this).serialize(),
             success: function(response) {
@@ -899,7 +899,7 @@ $dias_semana = [
         };
 
         $.ajax({
-            url: API_URL + '/bot/guardar-servicio.php',
+            url: API_URL + '/bot/guardar-servicio',
             method: 'POST',
             data: data,
             success: function(response) {
@@ -917,7 +917,7 @@ $dias_semana = [
 
     // Editar servicio
     function editarServicio(id) {
-        $.get(API_URL + '/bot/obtener-servicio.php', {
+        $.get(API_URL + '/bot/obtener-servicio', {
             id: id
         }, function(response) {
             if (response.success) {
@@ -946,7 +946,7 @@ $dias_semana = [
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: API_URL + '/bot/eliminar-servicio.php',
+                    url: API_URL + '/bot/eliminar-servicio',
                     method: 'POST',
                     data: {
                         id: id
@@ -965,7 +965,7 @@ $dias_semana = [
     // Cambiar estado cita
     function cambiarEstadoCita(id, nuevoEstado) {
         $.ajax({
-            url: API_URL + '/bot/cambiar-estado-cita.php',
+            url: API_URL + '/bot/cambiar-estado-cita',
             method: 'POST',
             data: {
                 id: id,
@@ -985,7 +985,7 @@ $dias_semana = [
 
     // Ver detalles cita
     function verDetallesCita(id) {
-        $.get(API_URL + '/bot/detalle-cita.php', {
+        $.get(API_URL + '/bot/detalle-cita', {
             id: id
         }, function(response) {
             if (response.success) {
@@ -1011,7 +1011,7 @@ $dias_semana = [
     // Exportar citas
     function exportarCitas() {
         const fecha = $('#filtroFecha').val();
-        window.open(API_URL + '/bot/exportar-citas.php?fecha=' + fecha);
+        window.open(API_URL + '/bot/exportar-citas?fecha=' + fecha);
     }
 
     // Google Calendar
@@ -1028,7 +1028,7 @@ $dias_semana = [
         const formData = $(this).serialize();
 
         $.ajax({
-            url: API_URL + '/bot/guardar-config-google.php',
+            url: API_URL + '/bot/guardar-config-google',
             method: 'POST',
             data: formData,
             success: function(response) {
@@ -1043,7 +1043,7 @@ $dias_semana = [
 
     function autorizarGoogle() {
         const clientId = $('#google_client_id').val();
-        const redirectUri = '<?= url('sistema/api/v1/bot/google-callback.php') ?>';
+        const redirectUri = '<?= url('sistema/api/v1/bot/google-callback') ?>';
         const scope = 'https://www.googleapis.com/auth/calendar';
 
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -1068,7 +1068,7 @@ $dias_semana = [
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: API_URL + '/bot/desconectar-google.php',
+                    url: API_URL + '/bot/desconectar-google',
                     method: 'POST',
                     success: function(response) {
                         if (response.success) {
@@ -1084,7 +1084,7 @@ $dias_semana = [
     // Cargar calendarios si está conectado
     <?php if ($google_config && $google_config['google_refresh_token']): ?>
         $(document).ready(function() {
-            $.get(API_URL + '/bot/obtener-calendarios.php', function(response) {
+            $.get(API_URL + '/bot/obtener-calendarios', function(response) {
                 if (response.success) {
                     let options = '<option value="">Seleccionar calendario...</option>';
                     response.data.forEach(cal => {

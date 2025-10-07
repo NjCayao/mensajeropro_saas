@@ -240,7 +240,7 @@ $cuentas_pago = json_decode($config['cuentas_pago'], true) ?: [];
         };
 
         $.ajax({
-            url: API_URL + '/negocio/actualizar.php',
+            url: API_URL + '/negocio/actualizar',
             method: 'POST',
             data: formData,
             dataType: 'json',

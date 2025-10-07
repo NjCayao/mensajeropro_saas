@@ -532,7 +532,7 @@ function procesarPago(metodo) {
     });
     
     $.ajax({
-        url: API_URL + '/cliente/pagos/crear-suscripcion.php',
+        url: API_URL + '/cliente/pagos/crear-suscripcion',
         type: 'POST',
         data: JSON.stringify({
             plan_id: planSeleccionado,
@@ -572,7 +572,7 @@ function cancelarSuscripcion() {
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
-                url: API_URL + '/cliente/pagos/cancelar-suscripcion.php',
+                url: API_URL + '/cliente/pagos/cancelar-suscripcion',
                 type: 'POST',
                 success: function(response) {
                     if (response.success) {

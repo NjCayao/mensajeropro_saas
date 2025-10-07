@@ -108,10 +108,12 @@ if (strpos($path, 'cliente/') === 0) {
         'mensajes' => '/modulos/mensajes.php',
         'plantillas' => '/modulos/plantillas.php',
         'programados' => '/modulos/programados.php',
+        'escalados' => '/modulos/escalados.php',
         'whatsapp' => '/modulos/whatsapp.php',
         'negocio-config' => '/modulos/negocio-config.php',
         'perfil' => '/modulos/perfil.php',
         'bot-config' => '/modulos/bot-config.php',
+        'catalogo-bot' => '/modulos/catalogo-bot.php',
         'mi-plan' => '/modulos/mi-plan.php',
         'logout' => '/logout.php'
     ];
