@@ -1,11 +1,10 @@
 <?php
-// app/api/v1/webhooks/mercadopago.php
+// sistema/api/v1/webhooks/mercadopago.php
 // Webhook para procesar notificaciones de MercadoPago
 
 // No requiere sesión
 require_once __DIR__ . '/../../../../config/app.php';
 require_once __DIR__ . '/../../../../config/database.php';
-require_once __DIR__ . '/../../../../config/payments.php';
 
 // Log de entrada para debug
 error_log("Webhook MercadoPago recibido: " . file_get_contents('php://input'));
@@ -45,12 +44,17 @@ try {
 function procesarSuscripcion($preapproval_id) {
     global $pdo;
     
+    // Obtener token de MercadoPago desde BD
+    $stmt = $pdo->prepare("SELECT valor FROM configuracion_plataforma WHERE clave = 'mercadopago_access_token'");
+    $stmt->execute();
+    $mp_token = $stmt->fetchColumn();
+    
     // Obtener detalles de la suscripción desde MP
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, "https://api.mercadopago.com/preapproval/" . $preapproval_id);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "Authorization: Bearer " . MP_ACCESS_TOKEN
+        "Authorization: Bearer " . $mp_token
     ]);
     
     $response = curl_exec($ch);
@@ -94,49 +98,46 @@ function procesarSuscripcion($preapproval_id) {
             ");
             $stmt->execute([json_encode($subscription), $pago['id']]);
             
-            // Crear o actualizar suscripción
-            $stmt = $pdo->prepare("
-                INSERT INTO suscripciones_pago 
-                (empresa_id, plan_id, metodo, suscripcion_externa_id, estado, fecha_inicio, fecha_proximo_pago, monto, metadata)
-                VALUES (?, ?, 'mercadopago', ?, 'activa', CURDATE(), ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                    estado = 'activa',
-                    fecha_proximo_pago = VALUES(fecha_proximo_pago),
-                    metadata = VALUES(metadata)
-            ");
+            // ✅ CORREGIDO: Crear o actualizar en tabla suscripciones (no suscripciones_pago)
+            $tipo = ($subscription['auto_recurring']['frequency'] == 12) ? 'anual' : 'mensual';
+            $fecha_fin = ($tipo == 'anual') 
+                ? date('Y-m-d', strtotime('+1 year'))
+                : date('Y-m-d', strtotime('+1 month'));
             
             $fecha_proximo = date('Y-m-d', strtotime($subscription['next_payment_date']));
+            $monto = $subscription['auto_recurring']['transaction_amount'];
+            
+            $stmt = $pdo->prepare("
+                INSERT INTO suscripciones 
+                (empresa_id, plan_id, tipo, fecha_inicio, fecha_fin, estado, auto_renovar, metodo_pago, referencia_externa, suscripcion_externa_id, fecha_proximo_pago, monto, metadata)
+                VALUES (?, ?, ?, CURDATE(), ?, 'activa', 1, 'mercadopago', ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    estado = 'activa',
+                    fecha_fin = VALUES(fecha_fin),
+                    fecha_proximo_pago = VALUES(fecha_proximo_pago),
+                    monto = VALUES(monto),
+                    metadata = VALUES(metadata)
+            ");
             
             $stmt->execute([
                 $pago['empresa_id'],
                 $pago['plan_id'],
+                $tipo,
+                $fecha_fin,
+                $preapproval_id,
                 $preapproval_id,
                 $fecha_proximo,
-                $subscription['auto_recurring']['transaction_amount'],
+                $monto,
                 json_encode($subscription)
             ]);
             
             // Actualizar empresa con nuevo plan
             $stmt = $pdo->prepare("
                 UPDATE empresas 
-                SET plan_id = ? 
+                SET plan_id = ?, activo = 1
                 WHERE id = ?
             ");
             $stmt->execute([$pago['plan_id'], $pago['empresa_id']]);
-            
-            // Crear suscripción en tabla suscripciones
-            $stmt = $pdo->prepare("
-                INSERT INTO suscripciones 
-                (empresa_id, plan_id, tipo, fecha_inicio, fecha_fin, estado, auto_renovar, metodo_pago)
-                VALUES (?, ?, ?, CURDATE(), ?, 'activa', 1, 'mercadopago')
-            ");
-            
-            $tipo = ($subscription['auto_recurring']['frequency'] == 12) ? 'anual' : 'mensual';
-            $fecha_fin = ($tipo == 'anual') 
-                ? date('Y-m-d', strtotime('+1 year'))
-                : date('Y-m-d', strtotime('+1 month'));
-            
-            $stmt->execute([$pago['empresa_id'], $pago['plan_id'], $tipo, $fecha_fin]);
             
             $pdo->commit();
             
@@ -149,23 +150,16 @@ function procesarSuscripcion($preapproval_id) {
         }
         
     } elseif (in_array($subscription['status'], ['cancelled', 'paused'])) {
-        // Suscripción cancelada o pausada
+        // ✅ CORREGIDO: Actualizar en tabla suscripciones
+        $nuevo_estado = ($subscription['status'] === 'cancelled') ? 'cancelada' : 'activa';
+        $auto_renovar = ($subscription['status'] === 'cancelled') ? 0 : 1;
+        
         $stmt = $pdo->prepare("
-            UPDATE suscripciones_pago 
-            SET estado = ? 
+            UPDATE suscripciones 
+            SET estado = ?, auto_renovar = ?
             WHERE suscripcion_externa_id = ?
         ");
-        $stmt->execute([$subscription['status'] === 'cancelled' ? 'cancelada' : 'pausada', $preapproval_id]);
-        
-        // Si está cancelada, marcar suscripción como vencida
-        if ($subscription['status'] === 'cancelled') {
-            $stmt = $pdo->prepare("
-                UPDATE suscripciones 
-                SET estado = 'cancelada' 
-                WHERE empresa_id = ? AND estado = 'activa'
-            ");
-            $stmt->execute([$pago['empresa_id']]);
-        }
+        $stmt->execute([$nuevo_estado, $auto_renovar, $preapproval_id]);
     }
 }
 
@@ -175,12 +169,17 @@ function procesarSuscripcion($preapproval_id) {
 function procesarPagoRecurrente($payment_id) {
     global $pdo;
     
+    // Obtener token de MercadoPago desde BD
+    $stmt = $pdo->prepare("SELECT valor FROM configuracion_plataforma WHERE clave = 'mercadopago_access_token'");
+    $stmt->execute();
+    $mp_token = $stmt->fetchColumn();
+    
     // Obtener detalles del pago
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, "https://api.mercadopago.com/authorized_payments/" . $payment_id);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "Authorization: Bearer " . MP_ACCESS_TOKEN
+        "Authorization: Bearer " . $mp_token
     ]);
     
     $response = curl_exec($ch);
@@ -192,47 +191,57 @@ function procesarPagoRecurrente($payment_id) {
         // Registrar pago exitoso
         $preapproval_id = $payment['preapproval_id'];
         
-        // Obtener suscripción
+        // ✅ CORREGIDO: Obtener desde tabla suscripciones
         $stmt = $pdo->prepare("
-            SELECT * FROM suscripciones_pago 
+            SELECT * FROM suscripciones 
             WHERE suscripcion_externa_id = ?
         ");
         $stmt->execute([$preapproval_id]);
         $suscripcion = $stmt->fetch();
         
         if ($suscripcion) {
-            // Registrar pago
-            $stmt = $pdo->prepare("
-                INSERT INTO pagos 
-                (empresa_id, suscripcion_id, monto, metodo, referencia_externa, estado, fecha_pago, respuesta_gateway)
-                VALUES (?, ?, ?, 'mercadopago', ?, 'aprobado', NOW(), ?)
-            ");
+            $pdo->beginTransaction();
             
-            $stmt->execute([
-                $suscripcion['empresa_id'],
-                $suscripcion['id'],
-                $payment['transaction_amount'],
-                $payment_id,
-                json_encode($payment)
-            ]);
-            
-            // Actualizar fecha próximo pago
-            $fecha_proximo = date('Y-m-d', strtotime('+1 month'));
-            
-            $stmt = $pdo->prepare("
-                UPDATE suscripciones_pago 
-                SET fecha_proximo_pago = ? 
-                WHERE id = ?
-            ");
-            $stmt->execute([$fecha_proximo, $suscripcion['id']]);
-            
-            // Extender suscripción
-            $stmt = $pdo->prepare("
-                UPDATE suscripciones 
-                SET fecha_fin = DATE_ADD(fecha_fin, INTERVAL 1 MONTH)
-                WHERE empresa_id = ? AND estado = 'activa'
-            ");
-            $stmt->execute([$suscripcion['empresa_id']]);
+            try {
+                // Registrar pago
+                $stmt = $pdo->prepare("
+                    INSERT INTO pagos 
+                    (empresa_id, suscripcion_id, plan_id, monto, metodo, referencia_externa, estado, fecha_pago, respuesta_gateway)
+                    VALUES (?, ?, ?, ?, 'mercadopago', ?, 'aprobado', NOW(), ?)
+                ");
+                
+                $stmt->execute([
+                    $suscripcion['empresa_id'],
+                    $suscripcion['id'],
+                    $suscripcion['plan_id'],
+                    $payment['transaction_amount'],
+                    $payment_id,
+                    json_encode($payment)
+                ]);
+                
+                // Extender suscripción según tipo
+                if ($suscripcion['tipo'] === 'anual') {
+                    $nuevo_fecha_fin = date('Y-m-d', strtotime($suscripcion['fecha_fin'] . ' +1 year'));
+                } else {
+                    $nuevo_fecha_fin = date('Y-m-d', strtotime($suscripcion['fecha_fin'] . ' +1 month'));
+                }
+                
+                $fecha_proximo = date('Y-m-d', strtotime($nuevo_fecha_fin));
+                
+                $stmt = $pdo->prepare("
+                    UPDATE suscripciones 
+                    SET fecha_fin = ?,
+                        fecha_proximo_pago = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([$nuevo_fecha_fin, $fecha_proximo, $suscripcion['id']]);
+                
+                $pdo->commit();
+                
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
         }
     }
 }

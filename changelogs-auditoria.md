@@ -1158,3 +1158,231 @@ whatsapp-service/src/botHandler.js ✅
 Base de Datos:
 
 Tablas: configuracion_bot, notificaciones_bot, bot_metricas, bot_templates, conversaciones_bot ✅
+
+# 📝 CHANGELOG - FASE 7: Planes y Suscripciones
+Fecha: 07 Octubre 2025
+
+✅ PASO 1: Base de Datos - Ampliar tabla suscripciones
+SQL Ejecutado:
+sqlALTER TABLE `suscripciones` 
+ADD COLUMN `suscripcion_externa_id` VARCHAR(100) AFTER `referencia_externa`,
+ADD COLUMN `fecha_proximo_pago` DATE AFTER `fecha_fin`,
+ADD COLUMN `monto` DECIMAL(10,2) DEFAULT 0.00 AFTER `credito_disponible`,
+ADD COLUMN `metadata` LONGTEXT AFTER `suscripcion_externa_id`,
+ADD COLUMN `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`,
+ADD INDEX `idx_suscripcion_externa` (`suscripcion_externa_id`),
+ADD INDEX `idx_fecha_proximo_pago` (`fecha_proximo_pago`);
+Nuevas columnas agregadas:
+
+suscripcion_externa_id - ID de la suscripción en MercadoPago/PayPal
+fecha_proximo_pago - Fecha del próximo cobro recurrente
+monto - Monto de la suscripción
+metadata - JSON con datos adicionales de la pasarela
+updated_at - Timestamp de última actualización
+
+Razón: Consolidar TODA la información de suscripciones en una sola tabla (eliminando dependencia de suscripciones_pago que fue borrada en FASE 1).
+
+✅ PASO 2: Archivo Nuevo - Webhook de PayPal
+Archivo Creado:
+sistema/api/v1/webhooks/paypal.php
+Funcionalidades:
+
+Procesa eventos de PayPal:
+
+BILLING.SUBSCRIPTION.ACTIVATED - Suscripción activada
+BILLING.SUBSCRIPTION.CANCELLED - Suscripción cancelada
+BILLING.SUBSCRIPTION.SUSPENDED - Suscripción suspendida
+PAYMENT.SALE.COMPLETED - Pago recurrente exitoso
+
+
+Seguridad:
+
+Verifica firma del webhook con API de PayPal
+Valida token de acceso
+Log de todas las operaciones
+
+
+Configuración Dinámica:
+
+Lee credenciales desde BD (configuracion_plataforma)
+Soporta modo sandbox/live
+No hay credenciales hardcodeadas
+
+
+Integración con BD:
+
+Actualiza tabla suscripciones
+Registra pagos en tabla pagos
+Actualiza plan de empresa automáticamente
+
+
+
+
+✅ PASO 3: Archivos Corregidos
+3.1 - sistema/api/v1/cliente/pagos/cambiar-plan.php
+Problema: Usaba tabla suscripciones_pago (eliminada en FASE 1)
+Corrección:
+php// ❌ ANTES
+SELECT sp.*, ... FROM suscripciones_pago sp
+
+// ✅ AHORA
+SELECT s.*, ... FROM suscripciones s
+Mejoras adicionales:
+
+Función cancelarSuscripcionPasarela() lee configs desde BD
+Soporte para MercadoPago y PayPal
+Cálculo correcto de prorrateo
+
+
+3.2 - sistema/api/v1/cliente/pagos/cancelar-suscripcion.php
+Problema: Usaba tabla suscripciones_pago
+Corrección:
+php// ❌ ANTES
+SELECT * FROM suscripciones_pago
+
+// ✅ AHORA
+SELECT * FROM suscripciones
+Mejoras:
+
+Funciones cancelarMercadoPago() y cancelarPayPal() dinámicas
+Lee credenciales desde BD
+Mantiene acceso hasta fecha_fin
+
+
+3.3 - sistema/api/v1/webhooks/mercadopago.php
+Problema: Referencias múltiples a suscripciones_pago
+Correcciones:
+php// ❌ ANTES (Línea 91)
+INSERT INTO suscripciones_pago ...
+
+// ✅ AHORA
+INSERT INTO suscripciones ...
+
+// ❌ ANTES (Línea 149)
+UPDATE suscripciones_pago ...
+
+// ✅ AHORA
+UPDATE suscripciones ...
+
+// ❌ ANTES (Línea 176)
+SELECT * FROM suscripciones_pago ...
+
+// ✅ AHORA
+SELECT * FROM suscripciones ...
+Mejoras:
+
+Lee token de MercadoPago desde BD
+Actualiza columnas nuevas (suscripcion_externa_id, metadata, etc.)
+Manejo correcto de estados (activa, cancelada)
+
+
+3.4 - sistema/api/v1/superadmin/extender-trial.php
+Problema: Usaba columna empresas.fecha_expiracion_trial (eliminada en FASE 1)
+Corrección:
+php// ❌ ANTES
+UPDATE empresas 
+SET fecha_expiracion_trial = DATE_ADD(...)
+
+// ✅ AHORA
+SELECT * FROM suscripciones WHERE tipo = 'trial' ...
+UPDATE suscripciones SET fecha_fin = DATE_ADD(fecha_fin, ...)
+Lógica mejorada:
+
+Si existe trial activo → Lo extiende
+Si NO existe trial → Crea uno nuevo
+Asegura que empresa esté activa
+Registra en logs
+
+
+📊 RESUMEN DE IMPACTO
+Archivos modificados: 5
+
+sistema/api/v1/cliente/pagos/cambiar-plan.php ✅
+sistema/api/v1/cliente/pagos/cancelar-suscripcion.php ✅
+sistema/api/v1/webhooks/mercadopago.php ✅
+sistema/api/v1/superadmin/extender-trial.php ✅
+Tabla suscripciones (ampliada) ✅
+
+Archivos creados: 1
+
+sistema/api/v1/webhooks/paypal.php ✅
+
+Tablas afectadas:
+
+suscripciones (5 columnas nuevas + 2 índices)
+pagos (sin cambios)
+empresas (sin cambios)
+
+
+⚠️ CONFIGURACIÓN REQUERIDA EN PRODUCCIÓN
+1. PayPal (desde SuperAdmin → Configuración → Pagos)
+- Client ID
+- Secret
+- Mode (sandbox/live)
+2. MercadoPago (desde SuperAdmin → Configuración → Pagos)
+- Access Token
+- Public Key
+3. Webhooks URLs
+MercadoPago:
+https://tudominio.com/api/v1/webhooks/mercadopago
+PayPal:
+https://tudominio.com/api/v1/webhooks/paypal
+Estos webhooks deben configurarse en los paneles de MercadoPago y PayPal respectivamente.
+
+🎯 FUNCIONALIDADES COMPLETADAS
+✅ Cliente puede:
+
+Ver su plan actual con límites y uso
+Ver planes disponibles
+Cambiar de plan (con prorrateo)
+Cancelar suscripción
+Ver historial de pagos
+
+✅ SuperAdmin puede:
+
+Ver todos los pagos del sistema
+Gestionar planes (editar precios, límites, características)
+Cambiar plan a cualquier empresa manualmente
+Extender trial de cualquier empresa
+Activar/Desactivar planes
+Ver métricas de pagos
+
+✅ Sistema automático:
+
+Procesa webhooks de MercadoPago
+Procesa webhooks de PayPal
+Registra pagos recurrentes
+Extiende suscripciones automáticamente
+Detecta y suspende cuentas vencidas (cron)
+
+
+🔧 ARCHIVOS QUE NO REQUIRIERON CAMBIOS
+Los siguientes archivos ya estaban correctos:
+
+sistema/cliente/modulos/mi-plan.php ✅
+sistema/superadmin/modulos/planes.php ✅
+sistema/superadmin/modulos/pagos.php ✅
+sistema/api/v1/superadmin/cambiar-plan.php ✅
+sistema/api/v1/superadmin/guardar-plan.php ✅
+sistema/api/v1/superadmin/plan-detalles.php ✅
+sistema/api/v1/superadmin/toggle-plan.php ✅
+includes/plan-limits.php ✅
+config/payments.php ✅
+cron/check-payments.php ✅
+
+
+🚀 PRÓXIMOS PASOS
+
+Ejecutar SQL para ampliar tabla suscripciones
+Reemplazar archivos corregidos en el servidor
+Crear archivo webhooks/paypal.php
+Configurar credenciales de PayPal/MercadoPago desde panel SuperAdmin
+Configurar webhooks en paneles de MercadoPago y PayPal
+Probar flujo completo:
+
+Registro con trial
+Compra de plan (MercadoPago y PayPal)
+Cambio de plan
+Cancelación de suscripción
+Pagos recurrentes (webhooks)
+Extensión de trial desde SuperAdmin

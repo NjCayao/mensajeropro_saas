@@ -5,7 +5,6 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../../../../config/app.php';
 require_once __DIR__ . '/../../../../../config/database.php';
-require_once __DIR__ . '/../../../../../config/payments.php';
 require_once __DIR__ . '/../../../../../includes/auth.php';
 require_once __DIR__ . '/../../../../../includes/multi_tenant.php';
 
@@ -19,8 +18,8 @@ if (!estaLogueado()) {
 // Obtener datos
 $data = json_decode(file_get_contents('php://input'), true);
 $plan_id = $data['plan_id'] ?? 0;
-$tipo_pago = $data['tipo_pago'] ?? 'mensual'; // mensual o anual
-$metodo = $data['metodo'] ?? 'mercadopago'; // mercadopago o paypal
+$tipo_pago = $data['tipo_pago'] ?? 'mensual';
+$metodo = $data['metodo'] ?? 'mercadopago';
 
 // Validar plan
 $stmt = $pdo->prepare("SELECT * FROM planes WHERE id = ? AND activo = 1");
@@ -43,12 +42,19 @@ if ($monto <= 0) {
     exit;
 }
 
+// ✅ Leer configuración desde BD
+function getPaymentConfig($clave) {
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT valor FROM configuracion_plataforma WHERE clave = ?");
+    $stmt->execute([$clave]);
+    $result = $stmt->fetch();
+    return $result ? $result['valor'] : '';
+}
+
 try {
     if ($metodo === 'mercadopago') {
-        // Crear suscripción en MercadoPago
         $response = crearSuscripcionMercadoPago($empresa, $plan, $tipo_pago, $monto);
     } else {
-        // Crear suscripción en PayPal
         $response = crearSuscripcionPayPal($empresa, $plan, $tipo_pago, $monto);
     }
     
@@ -58,7 +64,7 @@ try {
     error_log("Error creando suscripción: " . $e->getMessage());
     echo json_encode([
         'success' => false,
-        'message' => 'Error al procesar el pago'
+        'message' => 'Error al procesar el pago: ' . $e->getMessage()
     ]);
 }
 
@@ -68,23 +74,33 @@ try {
 function crearSuscripcionMercadoPago($empresa, $plan, $tipo_pago, $monto) {
     global $pdo;
     
-    // Configurar MercadoPago SDK (sin Composer)
-    $access_token = MP_ACCESS_TOKEN;
+    // ✅ Leer desde BD
+    $access_token = getPaymentConfig('mercadopago_access_token');
     
-    // Crear plan de suscripción
+    if (empty($access_token)) {
+        throw new Exception("MercadoPago no está configurado");
+    }
+    
+    // ✅ URLs correctas
+    $success_url = url('cliente/pago-exitoso');
+    $failure_url = url('cliente/pago-fallido');
+    $pending_url = url('cliente/pago-pendiente');
+    
     $plan_data = [
         "reason" => $plan['nombre'] . " - " . ucfirst($tipo_pago),
         "auto_recurring" => [
             "frequency" => ($tipo_pago === 'anual') ? 12 : 1,
             "frequency_type" => "months",
-            "transaction_amount" => $monto,
-            "currency_id" => PAYMENT_CURRENCY
+            "transaction_amount" => (float)$monto,
+            "currency_id" => "PEN" // ✅ Perú
         ],
-        "back_url" => PAYMENT_SUCCESS_URL,
-        "payer_email" => $empresa['email']
+        "back_url" => $success_url,
+        "payer" => [
+            "email" => $empresa['email']
+        ],
+        "external_reference" => "empresa_" . $empresa['id'] . "_plan_" . $plan['id']
     ];
     
-    // Llamada a API de MercadoPago
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, "https://api.mercadopago.com/preapproval");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -100,12 +116,12 @@ function crearSuscripcionMercadoPago($empresa, $plan, $tipo_pago, $monto) {
     curl_close($ch);
     
     if ($http_code !== 201) {
-        throw new Exception("Error en MercadoPago: " . $response);
+        throw new Exception("Error en MercadoPago (HTTP $http_code): " . $response);
     }
     
     $result = json_decode($response, true);
     
-    // Guardar intento de suscripción
+    // Guardar intento
     $stmt = $pdo->prepare("
         INSERT INTO pagos (empresa_id, plan_id, monto, metodo, referencia_externa, estado, respuesta_gateway)
         VALUES (?, ?, ?, 'mercadopago', ?, 'pendiente', ?)
@@ -131,12 +147,22 @@ function crearSuscripcionMercadoPago($empresa, $plan, $tipo_pago, $monto) {
 function crearSuscripcionPayPal($empresa, $plan, $tipo_pago, $monto) {
     global $pdo;
     
-    // Configurar PayPal
-    $client_id = PAYPAL_CLIENT_ID;
-    $secret = PAYPAL_SECRET;
-    $base_url = (PAYPAL_MODE === 'sandbox') 
+    // ✅ Leer desde BD
+    $client_id = getPaymentConfig('paypal_client_id');
+    $secret = getPaymentConfig('paypal_secret');
+    $mode = getPaymentConfig('paypal_mode') ?: 'sandbox';
+    
+    if (empty($client_id) || empty($secret)) {
+        throw new Exception("PayPal no está configurado");
+    }
+    
+    $base_url = ($mode === 'sandbox') 
         ? "https://api-m.sandbox.paypal.com" 
         : "https://api-m.paypal.com";
+    
+    // ✅ URLs correctas
+    $success_url = url('cliente/pago-exitoso');
+    $cancel_url = url('cliente/pago-fallido');
     
     // 1. Obtener access token
     $ch = curl_init();
@@ -153,6 +179,11 @@ function crearSuscripcionPayPal($empresa, $plan, $tipo_pago, $monto) {
     curl_close($ch);
     
     $auth = json_decode($response, true);
+    
+    if (!isset($auth['access_token'])) {
+        throw new Exception("Error obteniendo token de PayPal");
+    }
+    
     $access_token = $auth['access_token'];
     
     // 2. Crear producto
@@ -176,6 +207,10 @@ function crearSuscripcionPayPal($empresa, $plan, $tipo_pago, $monto) {
     curl_close($ch);
     
     $product = json_decode($response, true);
+    
+    if (!isset($product['id'])) {
+        throw new Exception("Error creando producto en PayPal");
+    }
     
     // 3. Crear plan de suscripción
     $billing_cycles = [
@@ -222,13 +257,17 @@ function crearSuscripcionPayPal($empresa, $plan, $tipo_pago, $monto) {
     
     $billing_plan = json_decode($response, true);
     
+    if (!isset($billing_plan['id'])) {
+        throw new Exception("Error creando plan en PayPal");
+    }
+    
     // 4. Crear suscripción
     $subscription_data = [
         "plan_id" => $billing_plan['id'],
         "application_context" => [
             "brand_name" => APP_NAME,
-            "return_url" => PAYMENT_SUCCESS_URL,
-            "cancel_url" => PAYMENT_FAILURE_URL
+            "return_url" => $success_url,
+            "cancel_url" => $cancel_url
         ]
     ];
     
@@ -247,7 +286,7 @@ function crearSuscripcionPayPal($empresa, $plan, $tipo_pago, $monto) {
     curl_close($ch);
     
     if ($http_code !== 201) {
-        throw new Exception("Error en PayPal: " . $response);
+        throw new Exception("Error creando suscripción en PayPal (HTTP $http_code): " . $response);
     }
     
     $subscription = json_decode($response, true);
@@ -280,4 +319,3 @@ function crearSuscripcionPayPal($empresa, $plan, $tipo_pago, $monto) {
         'subscription_id' => $subscription['id']
     ];
 }
-?>

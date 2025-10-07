@@ -1,5 +1,5 @@
 <?php
-// app/api/v1/cliente/pagos/cambiar-plan.php
+// sistema/api/v1/cliente/pagos/cambiar-plan.php
 session_start();
 header('Content-Type: application/json');
 
@@ -14,22 +14,30 @@ if (!estaLogueado()) {
     exit;
 }
 
+// ✅ Función para leer config desde BD
+function getPaymentConfig($clave) {
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT valor FROM configuracion_plataforma WHERE clave = ?");
+    $stmt->execute([$clave]);
+    $result = $stmt->fetch();
+    return $result ? $result['valor'] : '';
+}
+
 $data = json_decode(file_get_contents('php://input'), true);
 $nuevo_plan_id = $data['plan_id'] ?? 0;
 $tipo_pago = $data['tipo_pago'] ?? 'mensual';
 
 try {
-    // Obtener plan actual y nuevo plan
     $empresa = getDatosEmpresa();
     $plan_actual_id = $empresa['plan_id'];
     
-    // Verificar suscripción activa
+    // ✅ Verificar suscripción activa (tabla correcta)
     $stmt = $pdo->prepare("
-        SELECT sp.*, p.precio_mensual, p.precio_anual, s.fecha_inicio, s.fecha_fin
-        FROM suscripciones_pago sp
-        JOIN suscripciones s ON s.empresa_id = sp.empresa_id AND s.estado = 'activa'
+        SELECT s.*, p.precio_mensual, p.precio_anual, p.nombre as plan_nombre
+        FROM suscripciones s
         JOIN planes p ON p.id = s.plan_id
-        WHERE sp.empresa_id = ? AND sp.estado = 'activa'
+        WHERE s.empresa_id = ? AND s.estado = 'activa'
+        ORDER BY s.fecha_fin DESC
         LIMIT 1
     ");
     $stmt->execute([$empresa['id']]);
@@ -50,27 +58,20 @@ try {
         exit;
     }
     
-    // Calcular el prorrateo
+    // Calcular prorrateo
     $hoy = new DateTime();
     $fecha_fin = new DateTime($suscripcion_actual['fecha_fin']);
-    $dias_restantes = $hoy->diff($fecha_fin)->days;
+    $dias_restantes = max(0, $hoy->diff($fecha_fin)->days);
     
-    // Precio por día del plan actual
     $precio_actual_mensual = $suscripcion_actual['precio_mensual'];
-    $dias_mes = 30; // Simplificado
+    $dias_mes = 30;
     $precio_dia_actual = $precio_actual_mensual / $dias_mes;
     
-    // Crédito por días no usados
     $credito = $precio_dia_actual * $dias_restantes;
-    
-    // Precio del nuevo plan
     $precio_nuevo = ($tipo_pago === 'anual') ? $nuevo_plan['precio_anual'] : $nuevo_plan['precio_mensual'];
-    
-    // Monto a pagar = Precio nuevo - Crédito
     $monto_a_pagar = max(0, $precio_nuevo - $credito);
-    
-    // Si es downgrade (plan más barato), el crédito se guarda para el próximo mes
     $tiene_credito = ($credito > $precio_nuevo);
+    $credito_restante = $tiene_credito ? ($credito - $precio_nuevo) : 0;
     
     $response = [
         'success' => true,
@@ -82,18 +83,19 @@ try {
             'precio_nuevo_plan' => $precio_nuevo,
             'monto_a_pagar' => round($monto_a_pagar, 2),
             'tiene_credito' => $tiene_credito,
-            'credito_restante' => $tiene_credito ? round($credito - $precio_nuevo, 2) : 0
+            'credito_restante' => round($credito_restante, 2)
         ]
     ];
     
-    // Si no hay que pagar (downgrade con crédito suficiente)
+    // Si no hay que pagar (downgrade con crédito)
     if ($monto_a_pagar == 0) {
-        // Actualizar directamente
         $pdo->beginTransaction();
         
         try {
-            // Cancelar suscripción actual en la pasarela
-            cancelarSuscripcionPasarela($suscripcion_actual);
+            // Cancelar suscripción en pasarela
+            if (!empty($suscripcion_actual['suscripcion_externa_id'])) {
+                cancelarSuscripcionPasarela($suscripcion_actual);
+            }
             
             // Actualizar plan
             $stmt = $pdo->prepare("UPDATE empresas SET plan_id = ? WHERE id = ?");
@@ -102,17 +104,16 @@ try {
             // Actualizar suscripción
             $stmt = $pdo->prepare("
                 UPDATE suscripciones 
-                SET plan_id = ?, 
-                    credito_disponible = ?
+                SET plan_id = ?, credito_disponible = ?
                 WHERE empresa_id = ? AND estado = 'activa'
             ");
             $stmt->execute([$nuevo_plan_id, $credito_restante, $empresa['id']]);
             
-            // Registrar el cambio
+            // Registrar cambio
             $stmt = $pdo->prepare("
                 INSERT INTO cambios_plan 
-                (empresa_id, plan_anterior_id, plan_nuevo_id, credito_aplicado, monto_pagado, fecha_cambio)
-                VALUES (?, ?, ?, ?, 0, NOW())
+                (empresa_id, plan_anterior_id, plan_nuevo_id, credito_aplicado, monto_pagado)
+                VALUES (?, ?, ?, ?, 0)
             ");
             $stmt->execute([$empresa['id'], $plan_actual_id, $nuevo_plan_id, $credito]);
             
@@ -127,49 +128,71 @@ try {
         }
         
     } else {
-        // Necesita pagar - crear nueva suscripción con el monto prorrateado
-        if ($data['confirmar_pago'] ?? false) {
-            // Procesar el pago
-            $response['pago_requerido'] = true;
-            $response['url_pago'] = crearPagoProrrateado($empresa, $nuevo_plan, $monto_a_pagar, $credito);
-        }
+        $response['pago_requerido'] = true;
+        $response['message'] = 'Necesitas pagar la diferencia para cambiar de plan';
     }
     
     echo json_encode($response);
     
 } catch (Exception $e) {
     error_log("Error cambiando plan: " . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => 'Error al procesar el cambio']);
+    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
 
-/**
- * Cancelar suscripción en la pasarela
- */
 function cancelarSuscripcionPasarela($suscripcion) {
-    if ($suscripcion['metodo'] === 'mercadopago') {
-        // Cancelar en MercadoPago
+    if ($suscripcion['metodo_pago'] === 'mercadopago') {
+        $access_token = getPaymentConfig('mercadopago_access_token');
+        if (empty($access_token)) return;
+        
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, "https://api.mercadopago.com/preapproval/" . $suscripcion['suscripcion_externa_id']);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['status' => 'cancelled']));
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Bearer " . MP_ACCESS_TOKEN,
+            "Authorization: Bearer " . $access_token,
+            "Content-Type: application/json"
+        ]);
+        curl_exec($ch);
+        curl_close($ch);
+        
+    } elseif ($suscripcion['metodo_pago'] === 'paypal') {
+        $client_id = getPaymentConfig('paypal_client_id');
+        $secret = getPaymentConfig('paypal_secret');
+        $mode = getPaymentConfig('paypal_mode') ?: 'sandbox';
+        
+        if (empty($client_id) || empty($secret)) return;
+        
+        $base_url = ($mode === 'sandbox') 
+            ? "https://api-m.sandbox.paypal.com" 
+            : "https://api-m.paypal.com";
+        
+        // Obtener token
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $base_url . "/v1/oauth2/token");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/x-www-form-urlencoded"]);
+        curl_setopt($ch, CURLOPT_USERPWD, $client_id . ":" . $secret);
+        
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        $auth = json_decode($response, true);
+        if (!isset($auth['access_token'])) return;
+        
+        // Cancelar
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $base_url . "/v1/billing/subscriptions/" . $suscripcion['suscripcion_externa_id'] . "/cancel");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['reason' => 'Plan change']));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Authorization: Bearer " . $auth['access_token'],
             "Content-Type: application/json"
         ]);
         curl_exec($ch);
         curl_close($ch);
     }
-    // Similar para PayPal
 }
-
-/**
- * Crear pago prorrateado
- */
-function crearPagoProrrateado($empresa, $nuevo_plan, $monto, $credito) {
-    // Aquí creas una preferencia de pago único para la diferencia
-    // y al confirmarse, creas la nueva suscripción recurrente
-    
-    // Por simplicidad, retornamos URL de ejemplo
-    return url('cliente/pagar-cambio-plan?monto=' . $monto);
-}
-?>

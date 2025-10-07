@@ -3,11 +3,33 @@ $current_page = 'perfil';
 require_once __DIR__ . '/../layouts/header.php';
 require_once __DIR__ . '/../layouts/sidebar.php';
 
-// Obtener datos del usuario actual
-$stmt = $pdo->prepare("SELECT * FROM usuarios WHERE id = ?");
-$stmt->execute([$_SESSION['user_id']]);
-$usuario = $stmt->fetch();
+// Verificar sesión
+if (!isset($_SESSION['empresa_id'])) {
+    echo '<div class="content-wrapper">
+        <div class="alert alert-danger m-3">
+            <h4>Error de Sesión</h4>
+            <p>Por favor, <a href="' . url('logout') . '">inicia sesión nuevamente</a>.</p>
+        </div>
+    </div>';
+    require_once __DIR__ . '/../layouts/footer.php';
+    exit;
+}
 
+// Obtener datos de la empresa (que actúa como usuario)
+$stmt = $pdo->prepare("SELECT * FROM empresas WHERE id = ?");
+$stmt->execute([$_SESSION['empresa_id']]);
+$empresa = $stmt->fetch();
+
+if (!$empresa) {
+    echo '<div class="content-wrapper">
+        <div class="alert alert-danger m-3">
+            <h4>Empresa No Encontrada</h4>
+            <p>Por favor, <a href="' . url('logout') . '">inicia sesión nuevamente</a>.</p>
+        </div>
+    </div>';
+    require_once __DIR__ . '/../layouts/footer.php';
+    exit;
+}
 ?>
 
 <!-- Content Wrapper -->
@@ -33,6 +55,58 @@ $usuario = $stmt->fetch();
     <section class="content">
         <div class="container-fluid">
             <div class="row">
+                <!-- Información de la Empresa -->
+                <div class="col-md-12 mb-3">
+                    <div class="card card-primary">
+                        <div class="card-header">
+                            <h3 class="card-title">Información de la Empresa</h3>
+                        </div>
+                        <div class="card-body">
+                            <form id="formEmpresa">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Nombre de la Empresa</label>
+                                            <input type="text" name="nombre_empresa" class="form-control" 
+                                                value="<?php echo htmlspecialchars($empresa['nombre_empresa']); ?>" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Teléfono</label>
+                                            <input type="text" name="telefono" class="form-control" 
+                                                value="<?php echo htmlspecialchars($empresa['telefono'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>RUC</label>
+                                            <input type="text" name="ruc" class="form-control" 
+                                                value="<?php echo htmlspecialchars($empresa['ruc'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Razón Social</label>
+                                            <input type="text" name="razon_social" class="form-control" 
+                                                value="<?php echo htmlspecialchars($empresa['razon_social'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label>Dirección</label>
+                                            <textarea name="direccion" class="form-control" rows="2"><?php echo htmlspecialchars($empresa['direccion'] ?? ''); ?></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Actualizar Información
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="col-md-6">
                     <!-- Cambiar Email -->
                     <div class="card">
@@ -43,7 +117,7 @@ $usuario = $stmt->fetch();
                             <form id="formEmail">
                                 <div class="form-group">
                                     <label>Email Actual</label>
-                                    <input type="email" class="form-control" value="<?php echo $usuario['email']; ?>" readonly>
+                                    <input type="email" class="form-control" value="<?php echo htmlspecialchars($empresa['email']); ?>" readonly>
                                 </div>
                                 <div class="form-group">
                                     <label>Nuevo Email</label>
@@ -94,12 +168,35 @@ $usuario = $stmt->fetch();
 
 <script>
 $(document).ready(function() {
+    // Actualizar información de empresa
+    $('#formEmpresa').on('submit', async function(e) {
+        e.preventDefault();
+        
+        try {
+            const response = await fetch(API_URL + '/empresas/actualizar-info', {
+                method: 'POST',
+                body: new FormData(this)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                Swal.fire('Éxito', 'Información actualizada correctamente', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            Swal.fire('Error', error.message, 'error');
+        }
+    });
+
     // Cambiar email
     $('#formEmail').on('submit', async function(e) {
         e.preventDefault();
         
         try {
-            const response = await fetch(API_URL + '/usuarios/cambiar-email', {
+            const response = await fetch(API_URL + '/empresas/cambiar-email', {
                 method: 'POST',
                 body: new FormData(this)
             });
@@ -130,7 +227,7 @@ $(document).ready(function() {
         }
         
         try {
-            const response = await fetch(API_URL + '/usuarios/cambiar-password', {
+            const response = await fetch(API_URL + '/empresas/cambiar-password', {
                 method: 'POST',
                 body: new FormData(this)
             });

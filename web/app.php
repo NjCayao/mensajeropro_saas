@@ -59,7 +59,7 @@ if (strpos($path, 'api/') === 0) {
         header('HTTP/1.1 404 Not Found');
         header('Content-Type: application/json');
         echo json_encode([
-            'success' => false, 
+            'success' => false,
             'error' => 'API endpoint not found'
         ]);
         exit;
@@ -69,9 +69,9 @@ if (strpos($path, 'api/') === 0) {
 // Rutas SuperAdmin
 if (strpos($path, 'superadmin/') === 0) {
     require_once __DIR__ . '/../includes/superadmin_session_check.php';
-    
+
     $module_path = substr($path, 11);
-    
+
     $route_mapping = [
         'dashboard' => '/dashboard.php',
         'empresas' => '/modulos/empresas.php',
@@ -98,9 +98,9 @@ if (strpos($path, 'superadmin/') === 0) {
 // Rutas Cliente
 if (strpos($path, 'cliente/') === 0) {
     require_once __DIR__ . '/../includes/session_check.php';
-    
+
     $module_path = substr($path, 8);
-    
+
     $route_mapping = [
         'dashboard' => '/dashboard.php',
         'contactos' => '/modulos/contactos.php',
@@ -115,6 +115,9 @@ if (strpos($path, 'cliente/') === 0) {
         'bot-config' => '/modulos/bot-config.php',
         'catalogo-bot' => '/modulos/catalogo-bot.php',
         'mi-plan' => '/modulos/mi-plan.php',
+        'pago-exitoso' => '/pago-exitoso.php',  
+        'pago-fallido' => '/pago-fallido.php',  
+        'pago-pendiente' => '/pago-pendiente.php', 
         'logout' => '/logout.php'
     ];
 

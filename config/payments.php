@@ -1,20 +1,13 @@
 <?php
 // config/payments.php
-// Configuración de pasarelas de pago para suscripciones
+// Configuración de pasarelas de pago - Solo constantes fijas
+// ⚠️ Las credenciales se obtienen desde la BD (configuracion_plataforma)
 
-// MercadoPago
-define('MP_ACCESS_TOKEN', ''); // Tu Access Token de producción
-define('MP_PUBLIC_KEY', '');   // Tu Public Key
-define('MP_SANDBOX', true);    // true para pruebas, false para producción
-
-// PayPal
-define('PAYPAL_CLIENT_ID', '');
-define('PAYPAL_SECRET', '');
-define('PAYPAL_MODE', 'sandbox'); // 'sandbox' o 'live'
+// ✅ Solo URLs y constantes que NO cambian
 
 // Configuración general
-define('PAYMENT_CURRENCY', 'USD'); // Moneda principal
-define('PAYMENT_CURRENCY_SYMBOL', '$'); // Símbolo de moneda
+define('PAYMENT_CURRENCY', 'USD');
+define('PAYMENT_CURRENCY_SYMBOL', '$');
 define('TAX_RATE', 0.18); // IGV 18%
 
 // URLs de retorno - Se construyen dinámicamente
@@ -26,68 +19,109 @@ define('PAYMENT_SUCCESS_URL', APP_URL . '/cliente/pago-exitoso');
 define('PAYMENT_FAILURE_URL', APP_URL . '/cliente/pago-fallido');
 define('PAYMENT_PENDING_URL', APP_URL . '/cliente/pago-pendiente');
 
-// Webhooks
+// Webhooks URLs
 define('MP_WEBHOOK_URL', APP_URL . '/api/v1/webhooks/mercadopago');
 define('PAYPAL_WEBHOOK_URL', APP_URL . '/api/v1/webhooks/paypal');
 
-// Función para inicializar MercadoPago SDK (si usas Composer)
-function initMercadoPago() {
-    if (class_exists('MercadoPago\SDK')) {
-        MercadoPago\SDK::setAccessToken(MP_ACCESS_TOKEN);
-        return true;
-    }
-    return false;
-}
-
-// Función para obtener cliente PayPal (si usas SDK)
-function getPayPalClient() {
-    // Solo si tienes el SDK de PayPal instalado
-    if (!class_exists('\PayPalCheckoutSdk\Core\PayPalHttpClient')) {
-        return null;
-    }
+/**
+ * Obtener configuración de MercadoPago desde BD
+ * @return array
+ */
+function getMercadoPagoConfig() {
+    global $pdo;
     
-    $clientId = PAYPAL_CLIENT_ID;
-    $clientSecret = PAYPAL_SECRET;
+    $stmt = $pdo->prepare("
+        SELECT clave, valor 
+        FROM configuracion_plataforma 
+        WHERE clave IN ('mercadopago_access_token', 'mercadopago_public_key')
+    ");
+    $stmt->execute();
     
-    if (PAYPAL_MODE === 'live') {
-        $environment = new \PayPalCheckoutSdk\Core\ProductionEnvironment($clientId, $clientSecret);
-    } else {
-        $environment = new \PayPalCheckoutSdk\Core\SandboxEnvironment($clientId, $clientSecret);
-    }
-        
-    return new \PayPalCheckoutSdk\Core\PayPalHttpClient($environment);
-}
-
-// Configuración para MercadoPago sin SDK (usando cURL)
-function getMercadoPagoHeaders() {
-    return [
-        'Authorization: Bearer ' . MP_ACCESS_TOKEN,
-        'Content-Type: application/json',
-        'X-Idempotency-Key: ' . uniqid()
+    $config = [
+        'access_token' => '',
+        'public_key' => ''
     ];
+    
+    while ($row = $stmt->fetch()) {
+        switch ($row['clave']) {
+            case 'mercadopago_access_token': $config['access_token'] = $row['valor']; break;
+            case 'mercadopago_public_key': $config['public_key'] = $row['valor']; break;
+        }
+    }
+    
+    return $config;
 }
 
-// URL base de MercadoPago según el modo
+/**
+ * Obtener configuración de PayPal desde BD
+ * @return array
+ */
+function getPayPalConfig() {
+    global $pdo;
+    
+    $stmt = $pdo->prepare("
+        SELECT clave, valor 
+        FROM configuracion_plataforma 
+        WHERE clave IN ('paypal_client_id', 'paypal_secret', 'paypal_mode')
+    ");
+    $stmt->execute();
+    
+    $config = [
+        'client_id' => '',
+        'secret' => '',
+        'mode' => 'sandbox'
+    ];
+    
+    while ($row = $stmt->fetch()) {
+        switch ($row['clave']) {
+            case 'paypal_client_id': $config['client_id'] = $row['valor']; break;
+            case 'paypal_secret': $config['secret'] = $row['valor']; break;
+            case 'paypal_mode': $config['mode'] = $row['valor']; break;
+        }
+    }
+    
+    return $config;
+}
+
+/**
+ * Obtener URL base de MercadoPago
+ * @return string
+ */
 function getMercadoPagoApiUrl() {
     return 'https://api.mercadopago.com';
 }
 
-// Configuración para PayPal sin SDK (usando cURL)
+/**
+ * Obtener URL base de PayPal según modo
+ * @return string
+ */
 function getPayPalApiUrl() {
-    return (PAYPAL_MODE === 'sandbox') 
+    $config = getPayPalConfig();
+    return ($config['mode'] === 'sandbox') 
         ? 'https://api-m.sandbox.paypal.com' 
         : 'https://api-m.paypal.com';
 }
 
-// Obtener token de PayPal
+/**
+ * Obtener token de acceso de PayPal
+ * @return string|false
+ */
 function getPayPalAccessToken() {
+    $config = getPayPalConfig();
+    
+    if (!$config['client_id'] || !$config['secret']) {
+        return false;
+    }
+    
+    $base_url = getPayPalApiUrl();
+    
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, getPayPalApiUrl() . "/v1/oauth2/token");
+    curl_setopt($ch, CURLOPT_URL, $base_url . "/v1/oauth2/token");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
     curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/x-www-form-urlencoded"]);
-    curl_setopt($ch, CURLOPT_USERPWD, PAYPAL_CLIENT_ID . ":" . PAYPAL_SECRET);
+    curl_setopt($ch, CURLOPT_USERPWD, $config['client_id'] . ":" . $config['secret']);
     
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -100,4 +134,3 @@ function getPayPalAccessToken() {
     
     return false;
 }
-?>

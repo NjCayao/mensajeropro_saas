@@ -523,12 +523,26 @@ function seleccionarPlan(planId) {
 function procesarPago(metodo) {
     const tipoPago = $('input[name="tipo_pago"]:checked').val();
     
+    // Cerrar modal
+    $('#modalPago').modal('hide');
+    
+    // Mostrar loading
     Swal.fire({
         title: 'Procesando pago...',
+        html: 'Conectando con ' + (metodo === 'mercadopago' ? 'MercadoPago' : 'PayPal') + '...',
         allowOutsideClick: false,
+        allowEscapeKey: false,
         didOpen: () => {
             Swal.showLoading();
         }
+    });
+    
+    // Debug en consola
+    console.log('Procesando pago:', {
+        plan_id: planSeleccionado,
+        tipo_pago: tipoPago,
+        metodo: metodo,
+        url: API_URL + '/cliente/pagos/crear-suscripcion'
     });
     
     $.ajax({
@@ -540,21 +554,86 @@ function procesarPago(metodo) {
             metodo: metodo
         }),
         contentType: 'application/json',
+        dataType: 'json',
         success: function(response) {
+            console.log('Respuesta del servidor:', response);
+            
             Swal.close();
+            
+            // Si es exitoso, redirigir a pasarela
             if (response.success) {
                 if (metodo === 'mercadopago' && response.init_point) {
-                    window.location.href = response.init_point;
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Redirigiendo...',
+                        text: 'Serás redirigido a MercadoPago',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = response.init_point;
+                    });
                 } else if (metodo === 'paypal' && response.approval_url) {
-                    window.location.href = response.approval_url;
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Redirigiendo...',
+                        text: 'Serás redirigido a PayPal',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = response.approval_url;
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se recibió URL de pago. Intenta de nuevo.'
+                    });
                 }
             } else {
-                Swal.fire('Error', response.message || 'Error al procesar el pago', 'error');
+                // Mostrar mensaje de error del servidor
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Configuración Requerida',
+                    html: response.message || 'Error al procesar el pago',
+                    confirmButtonText: 'Entendido'
+                });
             }
         },
-        error: function() {
+        error: function(xhr, status, error) {
+            console.error('Error AJAX:', {
+                status: status,
+                error: error,
+                responseText: xhr.responseText,
+                statusCode: xhr.status
+            });
+            
             Swal.close();
-            Swal.fire('Error', 'Error al conectar con el servidor', 'error');
+            
+            // Intentar parsear la respuesta como JSON
+            let errorMessage = 'Error al conectar con el servidor';
+            
+            try {
+                const response = JSON.parse(xhr.responseText);
+                if (response.message) {
+                    errorMessage = response.message;
+                }
+            } catch (e) {
+                // No es JSON válido
+                if (xhr.status === 404) {
+                    errorMessage = 'Servicio no encontrado (Error 404)';
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Error interno del servidor (Error 500)';
+                } else if (xhr.status === 0) {
+                    errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión.';
+                }
+            }
+            
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                html: errorMessage,
+                footer: xhr.status > 0 ? 'Código de error: ' + xhr.status : ''
+            });
         }
     });
 }
@@ -571,22 +650,57 @@ function cancelarSuscripcion() {
         cancelButtonText: 'No, mantener'
     }).then((result) => {
         if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Cancelando...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
             $.ajax({
                 url: API_URL + '/cliente/pagos/cancelar-suscripcion',
                 type: 'POST',
+                dataType: 'json',
                 success: function(response) {
+                    Swal.close();
+                    
                     if (response.success) {
-                        Swal.fire('Cancelada', 'Tu suscripción ha sido cancelada', 'success')
-                            .then(() => location.reload());
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Cancelada',
+                            text: response.message || 'Tu suscripción ha sido cancelada'
+                        }).then(() => location.reload());
                     } else {
-                        Swal.fire('Error', response.message, 'error');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message || 'No se pudo cancelar la suscripción'
+                        });
                     }
                 },
-                error: function() {
-                    Swal.fire('Error', 'Error al cancelar la suscripción', 'error');
+                error: function(xhr) {
+                    Swal.close();
+                    
+                    let errorMessage = 'Error al cancelar la suscripción';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.message) {
+                            errorMessage = response.message;
+                        }
+                    } catch (e) {}
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errorMessage
+                    });
                 }
             });
         }
     });
 }
+
+// Debug: Verificar que API_URL esté definida
+console.log('API_URL:', API_URL);
 </script>
