@@ -632,12 +632,17 @@ function createAPI(whatsappClient) {
   });
 
   app.post("/api/disconnect", async (req, res) => {
+    // ← AGREGAR async si no lo tiene
     try {
+      console.log("📡 Petición de desconexión recibida");
+
+      // Desconectar cliente
       await whatsappClient.disconnect();
 
-      // Actualizar estado en BD
+      // Actualizar estado en BD CON await
       const empresaId = global.EMPRESA_ID || 1;
       await db.getPool().execute(
+        // ← ASEGURAR await
         `UPDATE whatsapp_sesiones_empresa 
        SET estado = 'desconectado', 
            numero_conectado = NULL, 
@@ -650,9 +655,20 @@ function createAPI(whatsappClient) {
       console.log(
         `✅ WhatsApp desconectado y BD actualizada para empresa ${empresaId}`
       );
-      res.json({ success: true, message: "WhatsApp desconectado" });
+
+      // Responder ANTES de cerrar el proceso
+      res.json({
+        success: true,
+        message: "WhatsApp desconectado correctamente",
+      });
+
+      // Cerrar proceso después de responder
+      setTimeout(() => {
+        console.log("👋 Cerrando proceso Node.js tras desconexión manual");
+        process.exit(0);
+      }, 2000);
     } catch (error) {
-      console.error("Error desconectando WhatsApp:", error);
+      console.error("❌ Error desconectando WhatsApp:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   });

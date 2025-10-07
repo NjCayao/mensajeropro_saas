@@ -43,8 +43,8 @@ bash Verificar pagos cada hora (consola)
 # Procesar programados cada minuto
 * * * * * php /var/www/mensajeropro/cron/procesar_programados.php >> /var/www/mensajeropro/logs/cron.log 2>&1
 
-# cerrar-sesiones-vencidas en QR.php
-0 * * * * /usr/bin/php /ruta/a/mensajeroprov2/cron/cerrar-sesiones-vencidas.php
+# cerrar-sesiones-vencidas en QR.php cada hora
+0 * * * * /usr/bin/php /var/www/html/mensajeroprov2/cron/cerrar-sesiones-vencidas.php >> /var/www/html/mensajeroprov2/logs/vencimientos.log 2>&1
 
 # instalar dependencias en local primera vez
 cd whatsapp-service
@@ -92,3 +92,5 @@ Actualmente:
 - en la base de datos suscripciones  si esta vencido el plan que se cambie el plan a vencido 
 
 - agregar un input cuando el humano habla el bot espera unos 10 segundos para poder responder mientras no haya hablado el humano. 
+
+- cuando vence el plan no se cierra sesion el qr de whatsapp

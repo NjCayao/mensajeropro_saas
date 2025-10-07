@@ -6,7 +6,7 @@ require_once __DIR__ . '/../layouts/sidebar.php';
 $empresa_id = getEmpresaActual();
 
 // Verificar estado de WhatsApp
-$stmt = $pdo->prepare("SELECT estado FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
+$stmt = $pdo->prepare("SELECT estado, puerto FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
 $stmt->execute([$empresa_id]);
 $whatsapp = $stmt->fetch();
 $puerto = $whatsapp['puerto'] ?? 3001;
@@ -278,19 +278,23 @@ $plantillas = $stmt->fetchAll();
 <link rel="stylesheet" href="<?php echo asset('plugins/select2/css/select2.min.css'); ?>">
 <script src="<?php echo asset('plugins/select2/js/select2.full.min.js'); ?>"></script>
 
-<script>
+<script>  
+
     <?php
-    // Obtener puerto dinámico desde BD
-    $stmt = $pdo->prepare("SELECT puerto FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
-    $stmt->execute([$empresa_id]);
-    $puerto_empresa = $stmt->fetchColumn() ?: 3001;
+    // Determinar URL base según entorno
+    if (defined('IS_LOCALHOST') && IS_LOCALHOST) {
+        // En local: usar localhost con puerto dinámico
+        $whatsapp_url = "http://localhost:" . $puerto;
+    } else {
+        // En producción: usar dominio del proyecto con puerto
+        $whatsapp_url = rtrim(APP_URL, '/') . ":" . $puerto;
+    }
     ?>
 
-    const API_URL = '<?php echo url("api/v1"); ?>';
-    const WHATSAPP_API_URL = '<?php echo IS_LOCALHOST ? "http://localhost:" . $puerto_empresa : APP_URL . ":" . $puerto_empresa; ?>';
+    const WHATSAPP_API_URL = '<?php echo $whatsapp_url; ?>';
     const API_KEY = 'mensajeroPro2025';
 
-    console.log('Puerto WhatsApp empresa <?php echo $empresa_id; ?>:', <?php echo $puerto_empresa; ?>);
+    console.log('Puerto WhatsApp empresa <?php echo $empresa_id; ?>:', <?php echo $puerto; ?>);  // ✅ CAMBIADO
     console.log('WHATSAPP_API_URL:', WHATSAPP_API_URL);
 
     $(document).ready(function() {
@@ -760,7 +764,7 @@ $plantillas = $stmt->fetchAll();
             // Guardar en historial
             if (result.success) {
                 try {
-                    await fetch(API_URL + '/contactos/guardar-individual.php', {
+                    await fetch(API_URL + '/mensajes/guardar-individual', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -849,7 +853,7 @@ $plantillas = $stmt->fetchAll();
     $('#formGuardarPlantilla').on('submit', function(e) {
         e.preventDefault();
 
-        $.post(API_URL + '/plantillas/crear.php', {
+        $.post(API_URL + '/plantillas/crear', {
             nombre: $('#nombrePlantilla').val(),
             mensaje: $('#mensajePlantilla').val()
         }, function(response) {

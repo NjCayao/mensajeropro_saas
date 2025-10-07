@@ -373,27 +373,96 @@ class WhatsAppClient {
     });
 
     // Cambio de estado (mantener como estaba)
-    this.client.onStateChange((state) => {
+    this.client.onStateChange(async (state) => {
+      // ← IMPORTANTE: async
       console.log("🔄 Estado cambió a:", state);
 
       if (state === "CONFLICT" || state === "UNLAUNCHED") {
-        console.log("⚠️ Sesión cerrada, reconectando...");
-        this.client.useHere();
+        console.log("⚠️ Sesión cerrada en otro dispositivo, reconectando...");
+        try {
+          await this.client.useHere();
+        } catch (e) {
+          console.error("Error en useHere():", e.message);
+        }
+        return;
       }
 
-      if (state === "UNPAIRED" || state === "DISCONNECTED") {
-        console.log("❌ WhatsApp desconectado");
+      // DESCONEXIÓN TEMPORAL (NO CERRAR EL SERVICIO)
+      if (state === "DISCONNECTED") {
+        console.log(
+          "⚠️ WhatsApp desconectado temporalmente (pérdida de señal)"
+        );
         this.isReady = false;
-        db.updateWhatsAppStatus("desconectado");
 
-        // Cerrar proceso después de 5 segundos
+        // Actualizar BD CON await para garantizar escritura
+        try {
+          await db.updateWhatsAppStatus("desconectado");
+          console.log("✅ BD actualizada a 'desconectado'");
+        } catch (e) {
+          console.error("❌ Error actualizando BD:", e.message);
+        }
+
+        console.log("🔄 Esperando reconexión automática...");
+        console.log(
+          "ℹ️ El servicio seguirá corriendo y reconectará cuando haya señal"
+        );
+
+        // NO ejecutar process.exit() aquí
+        // WPPConnect intentará reconectar automáticamente
+        return;
+      }
+
+      // SESIÓN ELIMINADA PERMANENTEMENTE (SÍ CERRAR)
+      if (state === "UNPAIRED") {
+        console.log("❌ Sesión eliminada del celular (usuario desvinculó)");
+        this.isReady = false;
+
+        // Actualizar BD CON await
+        try {
+          await db.updateWhatsAppStatus("desconectado");
+          console.log("✅ BD actualizada a 'desconectado'");
+        } catch (e) {
+          console.error("❌ Error actualizando BD:", e.message);
+        }
+
+        // Verificar si suscripción está vencida
+        const empresaId = global.EMPRESA_ID || 1;
+        try {
+          const [suscripcion] = await db
+            .getPool()
+            .execute(
+              "SELECT estado, fecha_fin FROM suscripciones WHERE empresa_id = ? AND estado = 'activa' LIMIT 1",
+              [empresaId]
+            );
+
+          if (suscripcion.length > 0) {
+            const fechaFin = new Date(suscripcion[0].fecha_fin);
+            const ahora = new Date();
+
+            if (fechaFin < ahora) {
+              console.log("⏰ Suscripción vencida detectada");
+            } else {
+              console.log(
+                "✅ Suscripción activa - Usuario eliminó sesión manualmente"
+              );
+            }
+          } else {
+            console.log("⚠️ No hay suscripción activa");
+          }
+        } catch (e) {
+          console.error("Error verificando suscripción:", e.message);
+        }
+
+        // Cerrar servicio después de 5 segundos
         setTimeout(() => {
-          console.log("👋 Cerrando servicio por desconexión");
+          console.log("👋 Cerrando proceso por sesión eliminada (UNPAIRED)");
           process.exit(0);
         }, 5000);
+
+        return;
       }
 
-      // AGREGAR ESTOS CASOS:
+      // ERRORES DE QR/AUTENTICACIÓN
       if (
         state === "qrReadError" ||
         state === "autocloseCalled" ||
