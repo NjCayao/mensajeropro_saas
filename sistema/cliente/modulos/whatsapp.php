@@ -22,13 +22,13 @@ try {
     ");
     $stmt->execute([$empresa_id]);
     $suscripcion = $stmt->fetch();
-    
+
     if (!$suscripcion) {
         echo '<div class="content-wrapper">
             <div class="alert alert-danger">
                 <h4><i class="fas fa-exclamation-triangle"></i> Suscripción Inactiva</h4>
                 <p>Tu suscripción ha expirado. Para usar WhatsApp, debes renovar tu plan.</p>
-                <a href="'.url('cliente/mi-plan').'" class="btn btn-warning">
+                <a href="' . url('cliente/mi-plan') . '" class="btn btn-warning">
                     <i class="fas fa-credit-card"></i> Renovar Suscripción
                 </a>
             </div>
@@ -36,14 +36,14 @@ try {
         require_once __DIR__ . '/../layouts/footer.php';
         exit;
     }
-    
+
     // Verificar si ya expiró
     if (strtotime($suscripcion['fecha_fin']) < time()) {
         echo '<div class="content-wrapper">
             <div class="alert alert-warning">
                 <h4><i class="fas fa-clock"></i> Suscripción Expirada</h4>
-                <p>Tu '.($suscripcion['tipo'] === 'trial' ? 'periodo de prueba' : 'suscripción').' expiró el '.date('d/m/Y', strtotime($suscripcion['fecha_fin'])).'</p>
-                <a href="'.url('cliente/mi-plan').'" class="btn btn-success">
+                <p>Tu ' . ($suscripcion['tipo'] === 'trial' ? 'periodo de prueba' : 'suscripción') . ' expiró el ' . date('d/m/Y', strtotime($suscripcion['fecha_fin'])) . '</p>
+                <a href="' . url('cliente/mi-plan') . '" class="btn btn-success">
                     <i class="fas fa-arrow-up"></i> Mejorar Plan
                 </a>
             </div>
@@ -51,7 +51,6 @@ try {
         require_once __DIR__ . '/../layouts/footer.php';
         exit;
     }
-    
 } catch (Exception $e) {
     error_log("Error verificando suscripción: " . $e->getMessage());
 }
@@ -66,14 +65,14 @@ try {
     if (!$whatsapp) {
         // Asignar puerto base + empresa_id
         $puerto = 3000 + $empresa_id;
-        
+
         $stmt = $pdo->prepare("
             INSERT INTO whatsapp_sesiones_empresa (empresa_id, estado, puerto) 
             VALUES (?, 'desconectado', ?)
         ");
-        
+
         $stmt->execute([$empresa_id, $puerto]);
-        
+
         // Volver a obtener el registro
         $stmt = $pdo->prepare("SELECT * FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
         $stmt->execute([$empresa_id]);
@@ -173,12 +172,12 @@ $puerto = $whatsapp['puerto'] ?? 3001;
                             <div id="qrTimer" class="mb-3" style="display: none;">
                                 <div class="alert alert-warning">
                                     <h4 class="alert-heading">
-                                        <i class="fas fa-clock"></i> 
+                                        <i class="fas fa-clock"></i>
                                         Tiempo restante: <span id="timeRemaining">45</span> segundos
                                     </h4>
                                     <div class="progress" style="height: 25px;">
-                                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" 
-                                             role="progressbar" style="width: 100%">
+                                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                                            role="progressbar" style="width: 100%">
                                         </div>
                                     </div>
                                 </div>
@@ -319,14 +318,23 @@ $puerto = $whatsapp['puerto'] ?? 3001;
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script> 
-    const WHATSAPP_API_URL = '<?php echo WHATSAPP_API_URL; ?>';   
+<script>
+    <?php
+    // Obtener puerto dinámico desde BD
+    $stmt = $pdo->prepare("SELECT puerto FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
+    $stmt->execute([$empresa_id]);
+    $puerto_empresa = $stmt->fetchColumn() ?: 3001;
+    ?>
+
+    const WHATSAPP_API_URL = '<?php echo IS_LOCALHOST ? "http://localhost:" . $puerto_empresa : APP_URL . ":" . $puerto_empresa; ?>';
     const EMPRESA_ID = <?php echo $_SESSION['empresa_id'] ?? 0; ?>;
+    const PUERTO_EMPRESA = <?php echo $puerto_empresa; ?>;
     const IS_PRODUCTION = <?php echo IS_LOCALHOST ? 'false' : 'true'; ?>;
+
     console.log('WhatsApp Service URL:', WHATSAPP_API_URL);
     console.log('Entorno:', IS_PRODUCTION ? 'PRODUCCIÓN' : 'LOCAL');
-    console.log('Puerto configurado:', <?php echo $puerto; ?>);
-    console.log('API URL:', WHATSAPP_API_URL);
+    console.log('Puerto configurado para empresa <?php echo $empresa_id; ?>:', PUERTO_EMPRESA);
+
     const API_KEY = 'mensajeroPro2025';
 
     let checkInterval = null;
@@ -387,12 +395,12 @@ $puerto = $whatsapp['puerto'] ?? 3001;
             // Primero verificar el estado en la BD
             const dbResponse = await fetch(API_URL + '/whatsapp/status');
             const dbData = await dbResponse.json();
-            
+
             if (!dbData.success) {
                 mostrarServicioNoIniciado();
                 return;
             }
-            
+
             // Si hay QR pendiente, mostrarlo inmediatamente
             if (dbData.data.estado === 'qr_pendiente' && dbData.qr) {
                 $('#statusContainer').html(`
@@ -400,21 +408,21 @@ $puerto = $whatsapp['puerto'] ?? 3001;
                     <h4 class="mt-2">Esperando Conexión</h4>
                     <p>Escanea el código QR para conectar</p>
                 `);
-                
+
                 $('#qrContainer').show();
                 $('#infoContainer').hide();
                 $('#statsContainer').hide();
-                
+
                 // Mostrar el QR directamente
                 document.getElementById('qrcode').innerHTML = '';
                 const img = document.createElement('img');
                 img.src = dbData.qr;
                 img.style.maxWidth = '280px';
                 document.getElementById('qrcode').appendChild(img);
-                
+
                 return;
             }
-            
+
             // Si no hay QR, verificar con el servicio Node
             try {
                 const response = await fetch(`${WHATSAPP_API_URL}/api/status`, {
@@ -507,22 +515,22 @@ $puerto = $whatsapp['puerto'] ?? 3001;
             // Primero intentar obtener de la BD
             const dbResponse = await fetch(API_URL + '/whatsapp/get-qr');
             const dbResult = await dbResponse.json();
-            
+
             if (dbResult.success && dbResult.qr) {
                 document.getElementById('qrcode').innerHTML = '';
                 const img = document.createElement('img');
                 img.src = dbResult.qr;
                 img.style.maxWidth = '280px';
                 document.getElementById('qrcode').appendChild(img);
-                
+
                 // Iniciar contador
                 startQRCountdown();
-                
+
                 // Seguir verificando el estado
                 setTimeout(() => checkStatus(), 2000);
                 return;
             }
-            
+
             // Si no hay QR en BD, intentar con el servicio
             const response = await fetch(`${WHATSAPP_API_URL}/api/qr`, {
                 headers: {
@@ -549,7 +557,7 @@ $puerto = $whatsapp['puerto'] ?? 3001;
                         margin: 2
                     });
                 }
-                
+
                 // Iniciar contador
                 startQRCountdown();
             } else {
@@ -573,30 +581,30 @@ $puerto = $whatsapp['puerto'] ?? 3001;
     function startQRCountdown() {
         let timeLeft = 60; // 60 segundos
         $('#qrTimer').show();
-        
+
         // Limpiar contador anterior si existe
         if (qrCountdown) {
             clearInterval(qrCountdown);
         }
-        
+
         qrCountdown = setInterval(() => {
             timeLeft--;
             $('#timeRemaining').text(timeLeft);
-            
+
             // Actualizar barra de progreso
             const percentage = (timeLeft / 60) * 100;
             $('#progressBar').css('width', percentage + '%');
-            
+
             // Cambiar color según el tiempo restante
             if (timeLeft <= 20) {
                 $('#progressBar').removeClass('bg-warning').addClass('bg-danger');
             }
-            
+
             // Si se acaba el tiempo
             if (timeLeft <= 0) {
                 clearInterval(qrCountdown);
                 $('#qrTimer').hide();
-                
+
                 // Mostrar mensaje de expiración
                 $('#qrcode').html(`
                     <div class="alert alert-danger">
@@ -608,7 +616,7 @@ $puerto = $whatsapp['puerto'] ?? 3001;
                         </button>
                     </div>
                 `);
-                
+
                 // El servicio se detiene automáticamente en el backend
                 setTimeout(() => {
                     mostrarServicioNoIniciado();

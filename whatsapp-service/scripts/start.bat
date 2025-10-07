@@ -36,7 +36,7 @@ if not exist ".env" (
         echo # Configuracion del servicio
         echo NODE_ENV=%NODE_ENV%
         echo API_KEY=mensajeroPro2025
-        echo SESSION_PATH=.wwebjs_auth
+        echo SESSION_PATH=tokens
         echo MAX_MESSAGES_PER_MINUTE=20
         echo DELAY_MIN_MS=3000
         echo DELAY_MAX_MS=8000

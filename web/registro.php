@@ -127,12 +127,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ");
                     $stmt->execute([$empresa_id]);
 
-                    // WhatsApp
+                    // WhatsApp - Asignar puerto automáticamente
+                    $puerto_asignado = 3001 + ($empresa_id - 1);
                     $stmt = $pdo->prepare("
-                        INSERT INTO whatsapp_sesiones_empresa (empresa_id, estado) 
-                        VALUES (?, 'desconectado')
+                        INSERT INTO whatsapp_sesiones_empresa (empresa_id, estado, puerto) 
+                        VALUES (?, 'desconectado', ?)
                     ");
-                    $stmt->execute([$empresa_id]);
+                    $stmt->execute([$empresa_id, $puerto_asignado]);
 
                     // Bot
                     $stmt = $pdo->prepare("

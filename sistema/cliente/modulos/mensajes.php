@@ -279,8 +279,19 @@ $plantillas = $stmt->fetchAll();
 <script src="<?php echo asset('plugins/select2/js/select2.full.min.js'); ?>"></script>
 
 <script>
-    const WHATSAPP_API_URL = 'http://localhost:<?php echo $puerto; ?>';
+    <?php
+    // Obtener puerto dinámico desde BD
+    $stmt = $pdo->prepare("SELECT puerto FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
+    $stmt->execute([$empresa_id]);
+    $puerto_empresa = $stmt->fetchColumn() ?: 3001;
+    ?>
+
+    const API_URL = '<?php echo url("api/v1"); ?>';
+    const WHATSAPP_API_URL = '<?php echo IS_LOCALHOST ? "http://localhost:" . $puerto_empresa : APP_URL . ":" . $puerto_empresa; ?>';
     const API_KEY = 'mensajeroPro2025';
+
+    console.log('Puerto WhatsApp empresa <?php echo $empresa_id; ?>:', <?php echo $puerto_empresa; ?>);
+    console.log('WHATSAPP_API_URL:', WHATSAPP_API_URL);
 
     $(document).ready(function() {
         // Inicializar Select2
@@ -477,7 +488,7 @@ $plantillas = $stmt->fetchAll();
                     // ENVÍO PROGRAMADO
                     const formData = new FormData($('#formEnviarMensaje')[0]);
                     formData.append('csrf_token', '<?php echo $_SESSION['csrf_token'] ?? ''; ?>');
-                    
+
                     // Agregar título automático
                     const ahora = new Date();
                     const titulo = `Mensaje programado - ${ahora.toLocaleDateString('es-PE')}`;

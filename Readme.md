@@ -2,6 +2,8 @@
 - config/app.php
 - config/email.php
 
+-whatsapp-service/src/database.js
+
 
 # para configurar 
 - config/app

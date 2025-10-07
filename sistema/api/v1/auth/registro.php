@@ -45,18 +45,18 @@ try {
     // Verificar si email existe
     $stmt = $pdo->prepare("SELECT id FROM empresas WHERE email = ?");
     $stmt->execute([$email]);
-    
+
     if ($stmt->rowCount() > 0) {
         echo json_encode(['success' => false, 'message' => 'El email ya está registrado']);
         exit;
     }
-    
+
     $pdo->beginTransaction();
-    
+
     // Generar código de verificación
     $codigo_verificacion = sprintf('%06d', mt_rand(0, 999999));
     $fecha_expiracion_trial = date('Y-m-d H:i:s', strtotime('+' . TRIAL_DAYS . ' days'));
-    
+
     // Crear empresa
     $stmt = $pdo->prepare("
         INSERT INTO empresas 
@@ -65,48 +65,49 @@ try {
          plan_id, fecha_registro, fecha_expiracion_trial, activo) 
         VALUES (?, ?, ?, ?, 'email', ?, 0, ?, NOW(), ?, 0)
     ");
-    
+
     $password_hash = password_hash($password, PASSWORD_DEFAULT);
     $stmt->execute([
-        $nombre_empresa, 
-        $email, 
-        $password_hash, 
+        $nombre_empresa,
+        $email,
+        $password_hash,
         $telefono,
         $codigo_verificacion,
         DEFAULT_PLAN_ID,
         $fecha_expiracion_trial
     ]);
-    
+
     $empresa_id = $pdo->lastInsertId();
-    
+
     // Crear categoría General
     $stmt = $pdo->prepare("
         INSERT INTO categorias (nombre, descripcion, color, activo, empresa_id) 
         VALUES ('General', 'Categoría por defecto', '#17a2b8', 1, ?)
     ");
     $stmt->execute([$empresa_id]);
-    
+
     // Crear sesión WhatsApp
+    $puerto_asignado = 3001 + ($empresa_id - 1);
     $stmt = $pdo->prepare("
-        INSERT INTO whatsapp_sesiones_empresa (empresa_id, estado) 
-        VALUES (?, 'desconectado')
+        INSERT INTO whatsapp_sesiones_empresa (empresa_id, estado, puerto) 
+        VALUES (?, 'desconectado', ?)
     ");
-    $stmt->execute([$empresa_id]);
-    
+    $stmt->execute([$empresa_id, $puerto_asignado]);
+
     // Crear configuración del bot
     $stmt = $pdo->prepare("
         INSERT INTO configuracion_bot (empresa_id, activo) 
         VALUES (?, 0)
     ");
     $stmt->execute([$empresa_id]);
-    
+
     // Crear configuración de negocio
     $stmt = $pdo->prepare("
         INSERT INTO configuracion_negocio (empresa_id, nombre_negocio) 
         VALUES (?, ?)
     ");
     $stmt->execute([$empresa_id, $nombre_empresa]);
-    
+
     // Crear suscripción trial
     $stmt = $pdo->prepare("
         INSERT INTO suscripciones 
@@ -114,19 +115,18 @@ try {
         VALUES (?, ?, 'trial', NOW(), ?, 'activa')
     ");
     $stmt->execute([$empresa_id, DEFAULT_PLAN_ID, $fecha_expiracion_trial]);
-    
+
     $pdo->commit();
-    
+
     // Enviar email de verificación
     $email_enviado = enviarEmailVerificacion($email, $nombre_empresa, $codigo_verificacion);
-    
+
     echo json_encode([
-        'success' => true, 
+        'success' => true,
         'message' => 'Registro exitoso. Revisa tu email para verificar tu cuenta.',
         'empresa_id' => $empresa_id,
         'email_enviado' => $email_enviado
     ]);
-    
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();

@@ -348,9 +348,15 @@ function createAPI(whatsappClient) {
       const { contacto_id, mensaje, tipo = "texto", imagen_path } = req.body;
 
       const [result] = await db.getPool().execute(
-        `INSERT INTO cola_mensajes (contacto_id, mensaje, tipo, imagen_path) 
-                 VALUES (?, ?, ?, ?)`,
-        [contacto_id, mensaje, tipo, imagen_path]
+        `INSERT INTO cola_mensajes (contacto_id, mensaje, tipo, imagen_path, empresa_id) 
+        VALUES (?, ?, ?, ?, ?)`,
+        [
+          contacto_id,
+          mensaje,
+          tipo,
+          imagen_path,
+          req.body.empresa_id || global.EMPRESA_ID || 1,
+        ]
       );
 
       res.json({
@@ -554,9 +560,16 @@ function createAPI(whatsappClient) {
             // Insertar en la cola con el mensaje personalizado
             await connection.execute(
               `INSERT INTO cola_mensajes 
-                      (contacto_id, mensaje, tipo, imagen_path, estado, fecha_creacion) 
-                      VALUES (?, ?, ?, ?, 'pendiente', ?)`,
-              [contacto.id, mensajePersonalizado, tipo, imagen_path, ahora]
+              (contacto_id, mensaje, tipo, imagen_path, estado, fecha_creacion, empresa_id) 
+              VALUES (?, ?, ?, ?, 'pendiente', ?, ?)`,
+              [
+                contacto.id,
+                mensajePersonalizado,
+                tipo,
+                imagen_path,
+                ahora,
+                contacto.empresa_id,
+              ]
             );
             agregados++;
 
@@ -618,12 +631,28 @@ function createAPI(whatsappClient) {
     }
   });
 
-  // Desconectar WhatsApp
   app.post("/api/disconnect", async (req, res) => {
     try {
       await whatsappClient.disconnect();
+
+      // Actualizar estado en BD
+      const empresaId = global.EMPRESA_ID || 1;
+      await db.getPool().execute(
+        `UPDATE whatsapp_sesiones_empresa 
+       SET estado = 'desconectado', 
+           numero_conectado = NULL, 
+           qr_code = NULL,
+           ultima_actualizacion = NOW()
+       WHERE empresa_id = ?`,
+        [empresaId]
+      );
+
+      console.log(
+        `✅ WhatsApp desconectado y BD actualizada para empresa ${empresaId}`
+      );
       res.json({ success: true, message: "WhatsApp desconectado" });
     } catch (error) {
+      console.error("Error desconectando WhatsApp:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -641,4 +670,3 @@ function createAPI(whatsappClient) {
 }
 
 module.exports = createAPI;
-

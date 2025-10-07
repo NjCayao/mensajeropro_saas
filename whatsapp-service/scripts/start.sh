@@ -44,7 +44,7 @@ if [ ! -f ".env" ]; then
 # Configuración del servicio
 NODE_ENV=$NODE_ENV
 API_KEY=mensajeroPro2025
-SESSION_PATH=.wwebjs_auth
+SESSION_PATH=tokens
 MAX_MESSAGES_PER_MINUTE=20
 DELAY_MIN_MS=3000
 DELAY_MAX_MS=8000

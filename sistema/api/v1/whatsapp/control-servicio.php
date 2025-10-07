@@ -59,19 +59,18 @@ try {
         }
 
         // Limpiar sesiones anteriores
-        $sessionPaths = [
-            $servicePath . DIRECTORY_SEPARATOR . '.wwebjs_auth',
-            $servicePath . DIRECTORY_SEPARATOR . 'tokens'
-        ];
+        // Limpiar SOLO la sesión de esta empresa (multi-tenant)
+        $sessionEmpresa = $servicePath . DIRECTORY_SEPARATOR . 'tokens' . DIRECTORY_SEPARATOR . 'empresa-' . $empresa_id;
 
-        foreach ($sessionPaths as $sessionPath) {
-            if (file_exists($sessionPath)) {
-                if ($isWindows) {
-                    @exec("rmdir /s /q \"$sessionPath\" 2>&1");
-                } else {
-                    @exec("rm -rf \"$sessionPath\" 2>&1");
-                }
+        if (file_exists($sessionEmpresa)) {
+            // echo "Limpiando sesión de empresa $empresa_id...\n";
+            if ($isWindows) {
+                @exec("rmdir /s /q \"$sessionEmpresa\" 2>&1");
+            } else {
+                @exec("rm -rf \"$sessionEmpresa\" 2>&1");
             }
+        } else {
+            // echo "📂 No hay sesión previa para empresa $empresa_id\n";
         }
 
         // Actualizar estado
@@ -190,12 +189,12 @@ try {
         sleep(2);
 
         // Limpiar sesión específica de la empresa
-        $sessionPath = $servicePath . DIRECTORY_SEPARATOR . '.wwebjs_auth' . DIRECTORY_SEPARATOR . 'session-empresa-' . $empresa_id;
-        if (file_exists($sessionPath)) {
+        $sessionEmpresa = $servicePath . DIRECTORY_SEPARATOR . 'tokens' . DIRECTORY_SEPARATOR . 'empresa-' . $empresa_id;
+        if (file_exists($sessionEmpresa)) {  
             if ($isWindows) {
-                @exec("rmdir /s /q \"$sessionPath\" 2>&1");
+                @exec("rmdir /s /q \"$sessionEmpresa\" 2>&1");  
             } else {
-                @exec("rm -rf \"$sessionPath\" 2>&1");
+                @exec("rm -rf \"$sessionEmpresa\" 2>&1");  
             }
         }
 

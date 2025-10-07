@@ -31,13 +31,18 @@ class Scheduler {
       this.isProcessing = true;
 
       // Solo mostrar log cuando hay mensajes para procesar
-      const [mensajes] = await db.getPool().execute(`
-            SELECT * FROM mensajes_programados 
-            WHERE estado = 'pendiente' 
-            AND fecha_programada <= NOW()
-            ORDER BY fecha_programada ASC
-            LIMIT 5
-        `);
+      const empresaId = global.EMPRESA_ID || 1;
+      const [mensajes] = await db.getPool().execute(
+        `
+          SELECT * FROM mensajes_programados 
+          WHERE estado = 'pendiente' 
+          AND fecha_programada <= NOW()
+          AND empresa_id = ?
+          ORDER BY fecha_programada ASC
+          LIMIT 5
+      `,
+        [empresaId]
+      );
 
       if (mensajes.length === 0) {
         // logs que se repiten cada 30 segundos
@@ -48,13 +53,18 @@ class Scheduler {
         this.checkCount++;
 
         if (this.checkCount % 10 === 0) {
-          const [proximo] = await db.getPool().execute(`
-                    SELECT id, titulo, fecha_programada 
-                    FROM mensajes_programados 
-                    WHERE estado = 'pendiente'
-                    ORDER BY fecha_programada ASC
-                    LIMIT 1
-                `);
+          const empresaId = global.EMPRESA_ID || 1;
+          const [proximo] = await db.getPool().execute(
+            `
+              SELECT id, titulo, fecha_programada 
+              FROM mensajes_programados 
+              WHERE estado = 'pendiente'
+              AND empresa_id = ?
+              ORDER BY fecha_programada ASC
+              LIMIT 1
+          `,
+            [empresaId]
+          );
 
           if (proximo.length > 0) {
             const fechaProgramada = new Date(proximo[0].fecha_programada);
@@ -96,12 +106,12 @@ class Scheduler {
       // Verificar si es mensaje individual
       const [mensajeIndividual] = await db.getPool().execute(
         `
-                SELECT c.id, c.nombre, c.numero 
-                FROM mensajes_programados_individuales mpi
-                JOIN contactos c ON mpi.contacto_id = c.id
-                WHERE mpi.mensaje_programado_id = ? AND c.activo = 1
-            `,
-        [mensaje.id]
+  SELECT c.id, c.nombre, c.numero 
+  FROM mensajes_programados_individuales mpi
+  JOIN contactos c ON mpi.contacto_id = c.id
+  WHERE mpi.mensaje_programado_id = ? AND c.activo = 1 AND c.empresa_id = ?
+  `,
+        [mensaje.id, mensaje.empresa_id] // ← AGREGAR mensaje.empresa_id
       );
 
       if (mensajeIndividual.length > 0) {
@@ -109,20 +119,21 @@ class Scheduler {
         contactos = mensajeIndividual;
         console.log(`📤 Enviando a: ${contactos[0].nombre}`);
       } else if (mensaje.enviar_a_todos) {
-        // Enviar a todos
-        const [rows] = await db
-          .getPool()
-          .execute("SELECT id, nombre, numero FROM contactos WHERE activo = 1");
-        contactos = rows;
-        console.log(`📤 Enviando a: TODOS (${contactos.length} contactos)`);
-      } else if (mensaje.categoria_id && mensaje.categoria_id > 0) {
-        // Enviar por categoría
+        // Enviar a todos DE LA MISMA EMPRESA
         const [rows] = await db
           .getPool()
           .execute(
-            "SELECT id, nombre, numero FROM contactos WHERE categoria_id = ? AND activo = 1",
-            [mensaje.categoria_id]
-          );
+            "SELECT id, nombre, numero FROM contactos WHERE activo = 1 AND empresa_id = ?",
+            [mensaje.empresa_id]
+          ); // ← AGREGAR filtro
+        contactos = rows;
+        console.log(`📤 Enviando a: TODOS (${contactos.length} contactos)`);
+      } else if (mensaje.categoria_id && mensaje.categoria_id > 0) {
+        // Enviar por categoría DE LA MISMA EMPRESA
+        const [rows] = await db.getPool().execute(
+          "SELECT id, nombre, numero FROM contactos WHERE categoria_id = ? AND activo = 1 AND empresa_id = ?",
+          [mensaje.categoria_id, mensaje.empresa_id] // ← AGREGAR mensaje.empresa_id
+        );
         contactos = rows;
         console.log(
           `📤 Enviando a: Categoría ID ${mensaje.categoria_id} (${contactos.length} contactos)`
@@ -313,7 +324,8 @@ class Scheduler {
               mensajePersonalizado,
               "saliente",
               "enviado",
-              mensaje.id
+              mensaje.id,
+              mensaje.empresa_id
             );
           } else {
             throw new Error("Envío falló sin error específico");
@@ -348,7 +360,8 @@ class Scheduler {
             mensaje.mensaje,
             "saliente",
             "error",
-            mensaje.id
+            mensaje.id,
+            mensaje.empresa_id
           );
         }
       }

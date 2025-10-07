@@ -143,13 +143,16 @@ async function registrarMensaje(
   mensaje,
   tipo = "saliente",
   estado = "enviado",
-  mensajeProgramadoId = null
+  mensajeProgramadoId = null,
+  empresaId = null
 ) {
   try {
+    const empresa = empresaId || global.EMPRESA_ID || 1;
+    
     await executeWithCommit(
-      `INSERT INTO historial_mensajes (contacto_id, mensaje, tipo, estado, mensaje_programado_id, fecha) 
-             VALUES (?, ?, ?, ?, ?, NOW())`,
-      [contactoId, mensaje, tipo, estado, mensajeProgramadoId]
+      `INSERT INTO historial_mensajes (contacto_id, mensaje, tipo, estado, mensaje_programado_id, fecha, empresa_id) 
+       VALUES (?, ?, ?, ?, ?, NOW(), ?)`,
+      [contactoId, mensaje, tipo, estado, mensajeProgramadoId, empresa]
     );
     console.log("✅ Mensaje registrado en historial");
   } catch (error) {

@@ -15,14 +15,14 @@ class WhatsAppClient {
   async initialize() {
     console.log("🔄 Inicializando WhatsApp...");
     console.log("📍 Directorio actual:", process.cwd());
-    console.log("📍 Session path:", process.env.SESSION_PATH || ".wwebjs_auth");
+    console.log("📍 Session path:", process.env.SESSION_PATH || "tokens");
 
     try {
       console.log("📦 Creando cliente...");
 
       this.client = new Client({
         authStrategy: new LocalAuth({
-          dataPath: process.env.SESSION_PATH || ".wwebjs_auth",
+          dataPath: process.env.SESSION_PATH || "tokens",
           clientId: "client-one",
         }),
         puppeteer: {
