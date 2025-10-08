@@ -201,6 +201,39 @@ $config = [
                             <form id="formPagos">
                                 <h4><i class="fas fa-credit-card"></i> Pasarelas de Pago</h4>
 
+                                <!-- URLS DE WEBHOOKS -->
+                                <div class="alert alert-warning">
+                                    <h5><i class="fas fa-bell"></i> URLs de Webhooks (Obligatorio configurar)</h5>
+                                    <p class="mb-2">Copia estas URLs y configúralas en los paneles de MercadoPago y PayPal para recibir notificaciones de pagos:</p>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label><strong>MercadoPago Webhook:</strong></label>
+                                            <div class="input-group mb-2">
+                                                <input type="text" class="form-control" id="mp_webhook_url"
+                                                    value="<?= APP_URL ?>/api/v1/webhooks/mercadopago" readonly>
+                                                <div class="input-group-append">
+                                                    <button class="btn btn-info" type="button" onclick="copiarURL('mp_webhook_url')">
+                                                        <i class="fas fa-copy"></i> Copiar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label><strong>PayPal Webhook:</strong></label>
+                                            <div class="input-group mb-2">
+                                                <input type="text" class="form-control" id="pp_webhook_url"
+                                                    value="<?= APP_URL ?>/api/v1/webhooks/paypal" readonly>
+                                                <div class="input-group-append">
+                                                    <button class="btn btn-primary" type="button" onclick="copiarURL('pp_webhook_url')">
+                                                        <i class="fas fa-copy"></i> Copiar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="card card-outline card-info">
@@ -210,10 +243,19 @@ $config = [
                                             <div class="card-body">
                                                 <div class="form-group">
                                                     <label>Access Token:</label>
-                                                    <input type="password" class="form-control"
-                                                        name="mercadopago_access_token"
-                                                        value="<?= htmlspecialchars($config['mercadopago_access_token']) ?>"
-                                                        placeholder="APP_USR-...">
+                                                    <div class="input-group">
+                                                        <input type="password" class="form-control"
+                                                            id="mp_access_token"
+                                                            name="mercadopago_access_token"
+                                                            value="<?= htmlspecialchars($config['mercadopago_access_token']) ?>"
+                                                            placeholder="APP_USR-...">
+                                                        <div class="input-group-append">
+                                                            <button class="btn btn-outline-secondary" type="button"
+                                                                onclick="togglePassword('mp_access_token')">
+                                                                <i class="fas fa-eye"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div class="form-group">
                                                     <label>Public Key:</label>
@@ -221,6 +263,33 @@ $config = [
                                                         name="mercadopago_public_key"
                                                         value="<?= htmlspecialchars($config['mercadopago_public_key']) ?>"
                                                         placeholder="APP_USR-...">
+                                                </div>
+
+                                                <!-- INSTRUCCIONES MP -->
+                                                <div class="mt-3">
+                                                    <button class="btn btn-sm btn-outline-info" type="button" data-toggle="collapse" data-target="#instruccionesMP">
+                                                        <i class="fas fa-question-circle"></i> Ver instrucciones
+                                                    </button>
+                                                    <div class="collapse mt-2" id="instruccionesMP">
+                                                        <div class="card card-body bg-light">
+                                                            <h6><i class="fas fa-list-ol"></i> Configurar MercadoPago:</h6>
+                                                            <ol class="mb-0 small">
+                                                                <li>Ve a <a href="https://www.mercadopago.com.pe/developers/panel/credentials" target="_blank">Credenciales MercadoPago</a></li>
+                                                                <li>Copia el <strong>Access Token</strong> y <strong>Public Key</strong></li>
+                                                                <li>Pégalos arriba y guarda</li>
+                                                                <li>Ve a <a href="https://www.mercadopago.com.pe/developers/panel/webhooks" target="_blank">Webhooks</a></li>
+                                                                <li>Haz clic en "Crear webhook"</li>
+                                                                <li>Pega la URL del webhook de arriba</li>
+                                                                <li>Selecciona eventos:
+                                                                    <ul>
+                                                                        <li>✅ subscription_preapproval</li>
+                                                                        <li>✅ subscription_authorized_payment</li>
+                                                                    </ul>
+                                                                </li>
+                                                                <li>Guarda y copia el ID del webhook</li>
+                                                            </ol>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -236,27 +305,81 @@ $config = [
                                                     <label>Client ID:</label>
                                                     <input type="text" class="form-control"
                                                         name="paypal_client_id"
-                                                        value="<?= htmlspecialchars($config['paypal_client_id']) ?>">
+                                                        value="<?= htmlspecialchars($config['paypal_client_id']) ?>"
+                                                        placeholder="Tu Client ID">
                                                 </div>
                                                 <div class="form-group">
                                                     <label>Secret:</label>
-                                                    <input type="password" class="form-control"
-                                                        name="paypal_secret"
-                                                        value="<?= htmlspecialchars($config['paypal_secret']) ?>">
+                                                    <div class="input-group">
+                                                        <input type="password" class="form-control"
+                                                            id="pp_secret"
+                                                            name="paypal_secret"
+                                                            value="<?= htmlspecialchars($config['paypal_secret']) ?>"
+                                                            placeholder="Tu Secret">
+                                                        <div class="input-group-append">
+                                                            <button class="btn btn-outline-secondary" type="button"
+                                                                onclick="togglePassword('pp_secret')">
+                                                                <i class="fas fa-eye"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div class="form-group">
                                                     <label>Modo:</label>
                                                     <select class="form-control" name="paypal_mode">
-                                                        <option value="sandbox" <?= $config['paypal_mode'] == 'sandbox' ? 'selected' : '' ?>>Sandbox (Pruebas)</option>
-                                                        <option value="live" <?= $config['paypal_mode'] == 'live' ? 'selected' : '' ?>>Live (Producción)</option>
+                                                        <option value="sandbox" <?= $config['paypal_mode'] == 'sandbox' ? 'selected' : '' ?>>
+                                                            Sandbox (Pruebas)
+                                                        </option>
+                                                        <option value="live" <?= $config['paypal_mode'] == 'live' ? 'selected' : '' ?>>
+                                                            Live (Producción) ⚠️
+                                                        </option>
                                                     </select>
+                                                    <small class="text-danger">
+                                                        <i class="fas fa-exclamation-triangle"></i>
+                                                        Cambia a "Live" solo en producción con credenciales reales
+                                                    </small>
+                                                </div>
+
+                                                <!-- INSTRUCCIONES PAYPAL -->
+                                                <div class="mt-3">
+                                                    <button class="btn btn-sm btn-outline-primary" type="button" data-toggle="collapse" data-target="#instruccionesPP">
+                                                        <i class="fas fa-question-circle"></i> Ver instrucciones
+                                                    </button>
+                                                    <div class="collapse mt-2" id="instruccionesPP">
+                                                        <div class="card card-body bg-light">
+                                                            <h6><i class="fas fa-list-ol"></i> Configurar PayPal:</h6>
+                                                            <ol class="mb-0 small">
+                                                                <li>Ve a <a href="https://developer.paypal.com/dashboard/applications/sandbox" target="_blank">PayPal Dashboard</a></li>
+                                                                <li>Crea o selecciona una app</li>
+                                                                <li>Copia <strong>Client ID</strong> y <strong>Secret</strong></li>
+                                                                <li>Pégalos arriba y guarda</li>
+                                                                <li>Ve a la sección <a href="https://developer.paypal.com/dashboard/webhooks" target="_blank">Webhooks</a></li>
+                                                                <li>Haz clic en "Add webhook"</li>
+                                                                <li>Pega la URL del webhook de arriba</li>
+                                                                <li>Selecciona eventos:
+                                                                    <ul>
+                                                                        <li>✅ BILLING.SUBSCRIPTION.ACTIVATED</li>
+                                                                        <li>✅ BILLING.SUBSCRIPTION.CANCELLED</li>
+                                                                        <li>✅ BILLING.SUBSCRIPTION.SUSPENDED</li>
+                                                                        <li>✅ PAYMENT.SALE.COMPLETED</li>
+                                                                    </ul>
+                                                                </li>
+                                                                <li>Guarda</li>
+                                                            </ol>
+                                                            <div class="alert alert-warning mt-2 mb-0">
+                                                                <strong>Producción:</strong> Repite estos pasos en
+                                                                <a href="https://developer.paypal.com/dashboard/applications/live" target="_blank">modo Live</a>
+                                                                cuando cambies a producción.
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <button type="submit" class="btn btn-success">
+                                <button type="submit" class="btn btn-success btn-lg">
                                     <i class="fas fa-save"></i> Guardar Configuración de Pagos
                                 </button>
                             </form>
@@ -765,5 +888,37 @@ $config = [
                 });
             }
         });
+    }
+
+    function copiarURL(inputId) {
+        const input = document.getElementById(inputId);
+        input.select();
+        input.setSelectionRange(0, 99999); // Para móviles
+
+        try {
+            document.execCommand('copy');
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Copiado!',
+                    text: 'URL copiada al portapapeles',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } else {
+                alert('✓ URL copiada al portapapeles');
+            }
+        } catch (err) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo copiar. Cópiala manualmente.'
+                });
+            } else {
+                alert('✗ Error al copiar. Cópiala manualmente.');
+            }
+        }
     }
 </script>

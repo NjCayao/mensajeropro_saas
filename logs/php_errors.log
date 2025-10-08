@@ -5,3 +5,4 @@
 [07-Oct-2025 17:48:00 America/Lima] Error creando suscripción: MercadoPago no está configurado. Contacta al administrador.
 [07-Oct-2025 17:48:05 America/Lima] Error creando suscripción: PayPal no está configurado. Contacta al administrador.
 [07-Oct-2025 17:53:21 America/Lima] Error creando suscripción: MercadoPago no está configurado. Contacta al administrador.
+[07-Oct-2025 18:20:53 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\logout.php on line 3
