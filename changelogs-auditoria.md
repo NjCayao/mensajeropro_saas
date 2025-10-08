@@ -1386,3 +1386,47 @@ Cambio de plan
 Cancelación de suscripción
 Pagos recurrentes (webhooks)
 Extensión de trial desde SuperAdmin
+
+# 📝 CHANGELOG - FASE 8: Panel SuperAdmin
+Fecha: 08 Octubre 2025
+
+✅ ARCHIVOS CREADOS (4)
+
+sistema/api/v1/bot/crear-template.php - Crear templates de bot
+sistema/api/v1/bot/eliminar-template.php - Eliminar templates
+sistema/api/v1/bot/obtener-template.php - Obtener template por ID
+sistema/superadmin/layouts/footer.php - Footer del panel
+
+
+🔧 ARCHIVOS CORREGIDOS (6)
+1. sistema/superadmin/modulos/empresas.php
+Problema: Usaba columna fecha_expiracion_trial (eliminada en FASE 1)
+Solución: Consulta ahora usa suscripciones.fecha_fin con LEFT JOIN
+2. sistema/superadmin/modulos/planes.php
+Problema: number_format(null) causaba warnings en PHP 8+
+Solución: Agregado ?? 0 y badges "Ilimitado" para valores NULL
+3. sistema/superadmin/modulos/emails.php
+Problema: URLs con .php causaban error 404
+Solución: Todas las URLs en JavaScript sin .php
+4. sistema/superadmin/modulos/bot-templates.php
+Problema: URLs con .php + APIs faltantes
+Solución: URLs corregidas + creadas las 3 APIs faltantes
+5. sistema/superadmin/layouts/sidebar.php
+Problema: Typo "Plnatillas Bot"
+Solución: Corregido a "Plantillas Bot"
+6. sistema/api/v1/bot/actualizar-template.php
+Problema: Usaba session_check.php (para clientes)
+Solución: Cambiado a superadmin_session_check.php
+
+🐛 ERRORES CRÍTICOS RESUELTOS
+Error 1: Constraint Violation en JSON
+CONSTRAINT `bot_templates.configuracion_adicional` failed
+Solución: Función emptyToNull() convierte strings vacíos a NULL
+Error 2: 404 en APIs
+Causa: Router duplicaba .php
+Solución: Todas las URLs sin extensión .php
+Error 3: Deprecated warnings
+Causa: number_format(null) en PHP 8+
+Solución: Operador null coalescing ?? aplicado
+
+#

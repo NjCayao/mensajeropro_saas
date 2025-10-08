@@ -38,8 +38,8 @@ function crearSesion($empresa) {
     $_SESSION['empresa_nombre'] = $empresa['nombre_empresa'];
     $_SESSION['user_email'] = $empresa['email'];
     
-    // NUEVO: Definir rol según campo es_superadmin
-    if (isset($empresa['es_superadmin']) && $empresa['es_superadmin'] == 1) {
+    // ✅ CORREGIDO: Validar SuperAdmin por empresa_id = 1
+    if (isset($empresa['es_superadmin']) && $empresa['es_superadmin'] == 1 && $empresa['id'] == 1) {
         $_SESSION['user_rol'] = 'superadmin';
     } else {
         $_SESSION['user_rol'] = 'cliente';
@@ -125,6 +125,13 @@ function getUsuarioId(): ?int
     return $_SESSION['user_id'] ?? null;
 }
 
+/**
+ * Obtener empresa actual (para multi-tenancy)
+ */
+function getEmpresaActual(): ?int
+{
+    return $_SESSION['empresa_id'] ?? null;
+}
 
 /**
  * Verificar y forzar autenticación
@@ -135,4 +142,14 @@ function verificarSesion(): void
         header('Location: ' . url('login.php'));
         exit;
     }
+    
+    // ✅ AGREGADO: Verificar timeout de inactividad
+    if (isset($_SESSION['last_activity'])) {
+        if (time() - $_SESSION['last_activity'] > SESSION_LIFETIME) {
+            cerrarSesion();
+            header('Location: ' . url('login.php?error=timeout'));
+            exit;
+        }
+    }
+    $_SESSION['last_activity'] = time();
 }

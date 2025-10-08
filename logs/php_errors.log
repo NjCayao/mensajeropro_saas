@@ -6,3 +6,66 @@
 [07-Oct-2025 17:48:05 America/Lima] Error creando suscripción: PayPal no está configurado. Contacta al administrador.
 [07-Oct-2025 17:53:21 America/Lima] Error creando suscripción: MercadoPago no está configurado. Contacta al administrador.
 [07-Oct-2025 18:20:53 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\logout.php on line 3
+[07-Oct-2025 23:30:08 America/Lima] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'e.fecha_expiracion_trial' in 'field list' in C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\empresas.php:42
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\empresas.php(42): PDO->prepare('\r\n    SELECT \r\n...')
+#1 C:\xampp\htdocs\mensajeroprov2\web\app.php(93): require_once('C:\\xampp\\htdocs...')
+#2 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\empresas.php on line 42
+[07-Oct-2025 23:42:29 America/Lima] PHP Deprecated:  number_format(): Passing null to parameter #1 ($num) of type float is deprecated in C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\planes.php on line 85
+[07-Oct-2025 23:42:29 America/Lima] PHP Deprecated:  number_format(): Passing null to parameter #1 ($num) of type float is deprecated in C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\planes.php on line 89
+[07-Oct-2025 23:57:57 America/Lima] Error creando template: SQLSTATE[23000]: Integrity constraint violation: 4025 CONSTRAINT `bot_templates.configuracion_adicional` failed for `mensajeropro_saas`.`bot_templates`
+[08-Oct-2025 00:00:14 America/Lima] POST recibido en crear-template: Array
+(
+    [id] => 
+    [tipo_negocio] => ojo
+    [tipo_bot] => ventas
+    [nombre_template] => ojoi
+    [prompt_template] => ds
+    [instrucciones_ventas] => 
+    [instrucciones_citas] => 
+    [informacion_negocio_ejemplo] => 
+    [mensaje_notificacion_escalamiento] => 
+    [mensaje_notificacion_ventas] => 
+    [mensaje_notificacion_citas] => 
+    [configuracion_adicional] => 
+    [activo] => on
+)
+
+[08-Oct-2025 00:00:14 America/Lima] Error creando template: SQLSTATE[23000]: Integrity constraint violation: 4025 CONSTRAINT `bot_templates.configuracion_adicional` failed for `mensajeropro_saas`.`bot_templates`
+[08-Oct-2025 00:00:22 America/Lima] POST recibido en crear-template: Array
+(
+    [id] => 
+    [tipo_negocio] => asdasd
+    [tipo_bot] => ventas
+    [nombre_template] => sad
+    [prompt_template] => dsa
+    [instrucciones_ventas] => 
+    [instrucciones_citas] => 
+    [informacion_negocio_ejemplo] => 
+    [mensaje_notificacion_escalamiento] => 
+    [mensaje_notificacion_ventas] => 
+    [mensaje_notificacion_citas] => 
+    [configuracion_adicional] => 
+    [activo] => on
+)
+
+[08-Oct-2025 00:00:22 America/Lima] Error creando template: SQLSTATE[23000]: Integrity constraint violation: 4025 CONSTRAINT `bot_templates.configuracion_adicional` failed for `mensajeropro_saas`.`bot_templates`
+[08-Oct-2025 00:02:19 America/Lima] POST recibido en crear-template: Array
+(
+    [id] => 
+    [tipo_negocio] => ojo
+    [tipo_bot] => ventas
+    [nombre_template] => ojoi
+    [prompt_template] => sa
+    [instrucciones_ventas] => 
+    [instrucciones_citas] => 
+    [informacion_negocio_ejemplo] => 
+    [mensaje_notificacion_escalamiento] => 
+    [mensaje_notificacion_ventas] => 
+    [mensaje_notificacion_citas] => 
+    [configuracion_adicional] => 
+    [activo] => on
+)
+
+[08-Oct-2025 00:04:16 America/Lima] Intentando eliminar template ID: 11

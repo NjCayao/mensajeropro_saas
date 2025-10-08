@@ -12,4 +12,8 @@ chmod -R 775 web/uploads/*
 chmod -R 775 logs/*
 
 
-# el registro no envia mensaje de bienvenida 
+# para produccion eliminar estas lineas 
+ includes/security
+if (defined('IS_LOCALHOST') && IS_LOCALHOST) {
+    return ['bloqueado' => false];
+}

@@ -1,5 +1,8 @@
 <?php
 $current_page = 'bot-templates';
+require_once __DIR__ . '/../../../config/app.php';
+require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../../includes/superadmin_session_check.php';
 require_once __DIR__ . '/../layouts/header.php';
 require_once __DIR__ . '/../layouts/sidebar.php';
 
@@ -15,11 +18,11 @@ $templates = $stmt->fetchAll();
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1 class="m-0">Gestión de Templates de Bot</h1>
+                    <h1 class="m-0"><i class="fas fa-robot"></i> Gestión de Templates de Bot</h1>
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="<?php echo url('cliente/dashboard'); ?>">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="<?php echo url('superadmin/dashboard'); ?>">Dashboard</a></li>
                         <li class="breadcrumb-item active">Templates Bot</li>
                     </ol>
                 </div>
@@ -57,7 +60,7 @@ $templates = $stmt->fetchAll();
                                     <td><?= $template['id'] ?></td>
                                     <td><?= ucfirst($template['tipo_negocio']) ?></td>
                                     <td>
-                                        <span class="badge badge-<?= $template['tipo_bot'] == 'ventas' ? 'success' : 'info' ?>">
+                                        <span class="badge badge-<?= $template['tipo_bot'] == 'ventas' ? 'success' : ($template['tipo_bot'] == 'citas' ? 'info' : 'warning') ?>">
                                             <?= ucfirst($template['tipo_bot']) ?>
                                         </span>
                                     </td>
@@ -70,15 +73,17 @@ $templates = $stmt->fetchAll();
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-warning" onclick="editarTemplate(<?= $template['id'] ?>)">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-info" onclick="verTemplate(<?= $template['id'] ?>)">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-danger" onclick="eliminarTemplate(<?= $template['id'] ?>)">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-warning" onclick="editarTemplate(<?= $template['id'] ?>)">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-info" onclick="verTemplate(<?= $template['id'] ?>)">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-danger" onclick="eliminarTemplate(<?= $template['id'] ?>)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -116,6 +121,7 @@ $templates = $stmt->fetchAll();
                                 <select class="form-control" name="tipo_bot" required>
                                     <option value="ventas">Bot de Ventas</option>
                                     <option value="citas">Bot de Citas</option>
+                                    <option value="soporte">Bot de Soporte</option>
                                 </select>
                             </div>
                         </div>
@@ -127,28 +133,46 @@ $templates = $stmt->fetchAll();
                     </div>
 
                     <div class="form-group">
-                        <label>Prompt del Bot:</label>
+                        <label>Prompt del Bot (Personalidad):</label>
                         <textarea class="form-control" name="prompt_template" rows="8" required></textarea>
+                        <small class="text-muted">Este es el prompt principal que define la personalidad del bot</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Instrucciones de Ventas (opcional):</label>
+                        <textarea class="form-control" name="instrucciones_ventas" rows="4"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Instrucciones de Citas (opcional):</label>
+                        <textarea class="form-control" name="instrucciones_citas" rows="4"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Información de Negocio Ejemplo:</label>
+                        <textarea class="form-control" name="informacion_negocio_ejemplo" rows="4"></textarea>
+                        <small class="text-muted">Ejemplo de información que el cliente debe proporcionar</small>
                     </div>
 
                     <div class="form-group">
                         <label>Mensaje Notificación Escalamiento:</label>
-                        <textarea class="form-control" name="mensaje_notificacion_escalamiento" rows="4"></textarea>
+                        <textarea class="form-control" name="mensaje_notificacion_escalamiento" rows="3"></textarea>
                     </div>
 
                     <div class="form-group">
                         <label>Mensaje Notificación Ventas:</label>
-                        <textarea class="form-control" name="mensaje_notificacion_ventas" rows="4"></textarea>
+                        <textarea class="form-control" name="mensaje_notificacion_ventas" rows="3"></textarea>
                     </div>
 
                     <div class="form-group">
                         <label>Mensaje Notificación Citas:</label>
-                        <textarea class="form-control" name="mensaje_notificacion_citas" rows="4"></textarea>
+                        <textarea class="form-control" name="mensaje_notificacion_citas" rows="3"></textarea>
                     </div>
 
                     <div class="form-group">
                         <label>Configuración Adicional (JSON):</label>
                         <textarea class="form-control" name="configuracion_adicional" rows="4"></textarea>
+                        <small class="text-muted">Opcional. Formato JSON válido</small>
                     </div>
 
                     <div class="form-group">
@@ -178,7 +202,8 @@ $templates = $stmt->fetchAll();
     }
 
     function editarTemplate(id) {
-        $.get(API_URL + "/bot/obtener-template.php", {
+        // ✅ CORREGIDO: Sin .php
+        $.get(API_URL + "/bot/obtener-template", {
             id: id
         }, function(response) {
             if (response.success) {
@@ -188,19 +213,37 @@ $templates = $stmt->fetchAll();
                 $('input[name="tipo_negocio"]').val(template.tipo_negocio);
                 $('select[name="tipo_bot"]').val(template.tipo_bot);
                 $('input[name="nombre_template"]').val(template.nombre_template);
-                $('textarea[name="prompt_template"]').val(template.prompt_template);
+                
+                // personalidad_bot almacena el prompt_template
+                $('textarea[name="prompt_template"]').val(template.personalidad_bot || '');
+                $('textarea[name="instrucciones_ventas"]').val(template.instrucciones_ventas || '');
+                $('textarea[name="instrucciones_citas"]').val(template.instrucciones_citas || '');
+                $('textarea[name="informacion_negocio_ejemplo"]').val(template.informacion_negocio_ejemplo || '');
                 $('textarea[name="mensaje_notificacion_escalamiento"]').val(template.mensaje_notificacion_escalamiento || '');
                 $('textarea[name="mensaje_notificacion_ventas"]').val(template.mensaje_notificacion_ventas || '');
                 $('textarea[name="mensaje_notificacion_citas"]').val(template.mensaje_notificacion_citas || '');
-                $('textarea[name="configuracion_adicional"]').val(JSON.stringify(template.configuracion_adicional, null, 2));
+                
+                // Manejar JSON
+                if (template.configuracion_adicional) {
+                    const config = typeof template.configuracion_adicional === 'string' 
+                        ? template.configuracion_adicional 
+                        : JSON.stringify(template.configuracion_adicional, null, 2);
+                    $('textarea[name="configuracion_adicional"]').val(config);
+                }
+                
                 $('#activo').prop('checked', template.activo == 1);
                 $('#modalTemplate').modal('show');
+            } else {
+                mostrarError(response.message || 'Error al cargar template');
             }
+        }).fail(function() {
+            mostrarError('Error de conexión al cargar template');
         });
     }
 
     function verTemplate(id) {
-        $.get(API_URL + "/bot/obtener-template.php", {
+        // ✅ CORREGIDO: Sin .php
+        $.get(API_URL + "/bot/obtener-template", {
             id: id
         }, function(response) {
             if (response.success) {
@@ -212,7 +255,7 @@ $templates = $stmt->fetchAll();
                         <p><strong>Tipo:</strong> ${template.tipo_negocio} - ${template.tipo_bot}</p>
                         <hr>
                         <p><strong>Prompt:</strong></p>
-                        <pre style="background: #f8f9fa; padding: 10px; white-space: pre-wrap;">${template.prompt_template}</pre>
+                        <pre style="background: #f8f9fa; padding: 10px; white-space: pre-wrap;">${template.personalidad_bot || 'No configurado'}</pre>
                         <hr>
                         <p><strong>Mensajes de Notificación:</strong></p>
                         <p><strong>Escalamiento:</strong><br>${template.mensaje_notificacion_escalamiento || 'No configurado'}</p>
@@ -220,8 +263,11 @@ $templates = $stmt->fetchAll();
                         <p><strong>Citas:</strong><br>${template.mensaje_notificacion_citas || 'No configurado'}</p>
                     </div>
                 `,
-                    width: '800px'
+                    width: '800px',
+                    confirmButtonText: 'Cerrar'
                 });
+            } else {
+                mostrarError('Error al cargar template');
             }
         });
     }
@@ -229,10 +275,22 @@ $templates = $stmt->fetchAll();
     $('#formTemplate').on('submit', function(e) {
         e.preventDefault();
 
+        // Validar JSON si existe
+        const jsonConfig = $('textarea[name="configuracion_adicional"]').val().trim();
+        if (jsonConfig) {
+            try {
+                JSON.parse(jsonConfig);
+            } catch (e) {
+                mostrarError('La configuración adicional debe ser JSON válido');
+                return;
+            }
+        }
+
         const formData = $(this).serialize();
+        // ✅ CORREGIDO: Sin .php
         const url = $('#template_id').val() ?
-            API_URL + "/bot/actualizar-template.php" :
-            API_URL + "/bot/crear-template.php";
+            API_URL + "/bot/actualizar-template" :
+            API_URL + "/bot/crear-template";
 
         $.post(url, formData, function(response) {
             if (response.success) {
@@ -241,8 +299,10 @@ $templates = $stmt->fetchAll();
                     location.reload();
                 });
             } else {
-                Swal.fire('Error', response.message, 'error');
+                mostrarError(response.message || 'Error al guardar template');
             }
+        }).fail(function() {
+            mostrarError('Error de conexión al guardar');
         });
     });
 
@@ -254,10 +314,12 @@ $templates = $stmt->fetchAll();
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Sí, eliminar'
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                $.post(API_URL + "/bot/eliminar-template.php", {
+                // ✅ CORREGIDO: Sin .php
+                $.post(API_URL + "/bot/eliminar-template", {
                     id: id
                 }, function(response) {
                     if (response.success) {
@@ -265,8 +327,10 @@ $templates = $stmt->fetchAll();
                             location.reload();
                         });
                     } else {
-                        Swal.fire('Error', response.message, 'error');
+                        mostrarError(response.message || 'Error al eliminar');
                     }
+                }).fail(function() {
+                    mostrarError('Error de conexión al eliminar');
                 });
             }
         });

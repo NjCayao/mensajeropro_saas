@@ -13,9 +13,14 @@ require_once __DIR__ . '/auth.php';
 
 /**
  * Verificar si el usuario es SuperAdmin
+ * ✅ CORREGIDO: Valida también empresa_id = 1
  */
 function esSuperAdmin() {
-    return estaLogueado() && isset($_SESSION['user_rol']) && $_SESSION['user_rol'] === 'superadmin';
+    return estaLogueado() 
+        && isset($_SESSION['user_rol']) 
+        && $_SESSION['user_rol'] === 'superadmin'
+        && isset($_SESSION['empresa_id'])
+        && $_SESSION['empresa_id'] == 1;
 }
 
 /**
@@ -31,7 +36,7 @@ function checkSuperAdminSession() {
     // Verificar que sea superadmin
     if (!esSuperAdmin()) {
         $_SESSION['error'] = 'No tienes permisos de administrador';
-        header('Location: ' . url('login.php')); // CAMBIO: redirigir a login, no a cliente
+        header('Location: ' . url('login.php'));
         exit();
     }
     
@@ -46,6 +51,16 @@ function checkSuperAdminSession() {
         header('Location: ' . url('login.php?error=suspended'));
         exit();
     }
+    
+    // ✅ AGREGADO: Verificar timeout de inactividad
+    if (isset($_SESSION['last_activity'])) {
+        if (time() - $_SESSION['last_activity'] > SESSION_LIFETIME) {
+            cerrarSesion();
+            header('Location: ' . url('login.php?error=timeout'));
+            exit();
+        }
+    }
+    $_SESSION['last_activity'] = time();
 }
 
 // Regenerar ID de sesión cada 30 minutos

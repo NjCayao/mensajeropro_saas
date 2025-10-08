@@ -28,7 +28,7 @@ if ($search) {
     $params[] = "%$search%";
 }
 
-// Obtener empresas
+// ✅ CORREGIDO: Obtener días de trial desde tabla suscripciones
 $stmt = $pdo->prepare("
     SELECT 
         e.*,
@@ -36,9 +36,13 @@ $stmt = $pdo->prepare("
         p.precio_mensual,
         (SELECT COUNT(*) FROM contactos WHERE empresa_id = e.id) as total_contactos,
         (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id) as total_usuarios,
-        DATEDIFF(e.fecha_expiracion_trial, NOW()) as dias_trial_restantes
+        s.fecha_fin as trial_fecha_fin,
+        DATEDIFF(s.fecha_fin, NOW()) as dias_trial_restantes
     FROM empresas e
     LEFT JOIN planes p ON e.plan_id = p.id
+    LEFT JOIN suscripciones s ON s.empresa_id = e.id 
+        AND s.tipo = 'trial' 
+        AND s.estado = 'activa'
     $where
     ORDER BY e.fecha_registro DESC
 ");
@@ -134,7 +138,7 @@ $empresas = $stmt->fetchAll();
                                                 <i class="fas fa-clock"></i>
                                                 Trial: <?= $empresa['dias_trial_restantes'] ?> día(s)
                                             </small>
-                                        <?php elseif ($empresa['plan_id'] == 1 && $empresa['dias_trial_restantes'] <= 0): ?>
+                                        <?php elseif ($empresa['plan_id'] == 1 && $empresa['dias_trial_restantes'] !== null && $empresa['dias_trial_restantes'] <= 0): ?>
                                             <br>
                                             <small class="text-danger">
                                                 <i class="fas fa-exclamation-triangle"></i> Trial expirado
@@ -279,7 +283,7 @@ $empresas = $stmt->fetchAll();
         $('#modalDetalles').modal('show');
         $('#detallesContent').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-3x"></i></div>');
 
-        $.get(API_URL + '/superadmin/empresa-detalles.php', {
+        $.get(API_URL + '/superadmin/empresa-detalles', {
             id: id
         }, function(response) {
             if (response.success) {
@@ -295,6 +299,7 @@ $empresas = $stmt->fetchAll();
                     <tr><th>Último Acceso:</th><td>${e.ultimo_acceso || 'Nunca'}</td></tr>
                     <tr><th>Total Contactos:</th><td>${e.total_contactos}</td></tr>
                     <tr><th>Total Usuarios:</th><td>${e.total_usuarios}</td></tr>
+                    <tr><th>Mensajes del Mes:</th><td>${e.mensajes_mes || 0}</td></tr>
                     <tr><th>Estado:</th><td><span class="badge badge-${e.activo ? 'success' : 'danger'}">${e.activo ? 'Activo' : 'Suspendido'}</span></td></tr>
                 </table>
             `;
@@ -314,7 +319,7 @@ $empresas = $stmt->fetchAll();
     function confirmarCambioPlan() {
         const formData = $('#formCambiarPlan').serialize();
 
-        $.post(API_URL + '/superadmin/cambiar-plan.php', formData, function(response) {
+        $.post(API_URL + '/superadmin/cambiar-plan', formData, function(response) {
             if (response.success) {
                 mostrarExito('Plan cambiado correctamente');
                 $('#modalCambiarPlan').modal('hide');
@@ -336,7 +341,7 @@ $empresas = $stmt->fetchAll();
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                $.post(API_URL + '/superadmin/suspender-empresa.php', {
+                $.post(API_URL + '/superadmin/suspender-empresa', {
                     id: id
                 }, function(response) {
                     if (response.success) {
@@ -361,7 +366,7 @@ $empresas = $stmt->fetchAll();
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                $.post(API_URL + '/superadmin/activar-empresa.php', {
+                $.post(API_URL + '/superadmin/activar-empresa', {
                     id: id
                 }, function(response) {
                     if (response.success) {
@@ -382,19 +387,20 @@ $empresas = $stmt->fetchAll();
             input: 'number',
             inputAttributes: {
                 min: 1,
-                max: 30
+                max: 90
             },
+            inputValue: 30,
             showCancelButton: true,
             confirmButtonText: 'Extender',
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed && result.value) {
-                $.post(API_URL + '/superadmin/extender-trial.php', {
-                    id: id,
+                $.post(API_URL + '/superadmin/extender-trial', {
+                    empresa_id: id,
                     dias: result.value
                 }, function(response) {
                     if (response.success) {
-                        mostrarExito('Trial extendido');
+                        mostrarExito('Trial extendido correctamente');
                         setTimeout(() => location.reload(), 1500);
                     } else {
                         mostrarError(response.message);

@@ -70,23 +70,35 @@ $planes = $stmt->fetchAll();
                             <div class="card-body">
                                 <div class="text-center mb-3">
                                     <h2 class="text-primary">
-                                        $<?= number_format($plan['precio_mensual'], 2) ?>
+                                        $<?= number_format($plan['precio_mensual'] ?? 0, 2) ?>
                                     </h2>
                                     <small class="text-muted">por mes</small>
                                     <br>
                                     <small class="text-success">
-                                        $<?= number_format($plan['precio_anual'], 2) ?> al año
+                                        $<?= number_format($plan['precio_anual'] ?? 0, 2) ?> al año
                                     </small>
                                 </div>
 
                                 <table class="table table-sm">
                                     <tr>
                                         <th>Contactos:</th>
-                                        <td><?= number_format($plan['limite_contactos']) ?></td>
+                                        <td>
+                                            <?php if ($plan['limite_contactos'] === null || $plan['limite_contactos'] == 0): ?>
+                                                <span class="badge badge-success">Ilimitado</span>
+                                            <?php else: ?>
+                                                <?= number_format($plan['limite_contactos']) ?>
+                                            <?php endif; ?>
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th>Mensajes/mes:</th>
-                                        <td><?= number_format($plan['limite_mensajes_mes']) ?></td>
+                                        <td>
+                                            <?php if ($plan['limite_mensajes_mes'] === null || $plan['limite_mensajes_mes'] == 0): ?>
+                                                <span class="badge badge-success">Ilimitado</span>
+                                            <?php else: ?>
+                                                <?= number_format($plan['limite_mensajes_mes']) ?>
+                                            <?php endif; ?>
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th>Bot IA:</th>
@@ -98,17 +110,18 @@ $planes = $stmt->fetchAll();
                                     </tr>
                                 </table>
 
-                                <hr>
-
-                                <h6>Características:</h6>
-                                <ul class="list-unstyled small">
-                                    <?php foreach ($caracteristicas as $key => $value): ?>
-                                        <li>
-                                            <strong><?= ucfirst(str_replace('_', ' ', $key)) ?>:</strong> 
-                                            <?= is_bool($value) ? ($value ? 'Sí' : 'No') : $value ?>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
+                                <?php if (!empty($caracteristicas)): ?>
+                                    <hr>
+                                    <h6>Características:</h6>
+                                    <ul class="list-unstyled small">
+                                        <?php foreach ($caracteristicas as $key => $value): ?>
+                                            <li>
+                                                <strong><?= ucfirst(str_replace('_', ' ', $key)) ?>:</strong> 
+                                                <?= is_bool($value) ? ($value ? 'Sí' : 'No') : $value ?>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php endif; ?>
 
                                 <div class="btn-group w-100 mt-3">
                                     <button class="btn btn-sm btn-warning" 
@@ -180,14 +193,14 @@ $planes = $stmt->fetchAll();
                                 <label>Límite de Contactos:</label>
                                 <input type="number" class="form-control" name="limite_contactos" 
                                        min="0" required>
-                                <small class="text-muted">0 = Ilimitado</small>
+                                <small class="text-muted">0 o vacío = Ilimitado</small>
                             </div>
                             
                             <div class="form-group">
                                 <label>Límite Mensajes/Mes:</label>
                                 <input type="number" class="form-control" name="limite_mensajes_mes" 
                                        min="0" required>
-                                <small class="text-muted">0 = Ilimitado</small>
+                                <small class="text-muted">0 o vacío = Ilimitado</small>
                             </div>
                             
                             <div class="form-group">
@@ -239,19 +252,28 @@ $planes = $stmt->fetchAll();
 
 <script>
 function editarPlan(id) {
-    $.get(API_URL + '/superadmin/plan-detalles.php', {id: id}, function(response) {
+    $.get(API_URL + '/superadmin/plan-detalles', {id: id}, function(response) {
         if (response.success) {
             const plan = response.data;
             
             $('#plan_id').val(plan.id);
             $('input[name="nombre"]').val(plan.nombre);
-            $('input[name="precio_mensual"]').val(plan.precio_mensual);
-            $('input[name="precio_anual"]').val(plan.precio_anual);
-            $('input[name="limite_contactos"]').val(plan.limite_contactos);
-            $('input[name="limite_mensajes_mes"]').val(plan.limite_mensajes_mes);
+            $('input[name="precio_mensual"]').val(plan.precio_mensual || 0);
+            $('input[name="precio_anual"]').val(plan.precio_anual || 0);
+            $('input[name="limite_contactos"]').val(plan.limite_contactos || 0);
+            $('input[name="limite_mensajes_mes"]').val(plan.limite_mensajes_mes || 0);
             $('#bot_ia').prop('checked', plan.bot_ia == 1);
             $('#soporte_prioritario').prop('checked', plan.soporte_prioritario == 1);
-            $('#caracteristicas_json').val(JSON.stringify(JSON.parse(plan.caracteristicas_json || '{}'), null, 2));
+            
+            // Parsear JSON con manejo de errores
+            let caracteristicasJson = '{}';
+            try {
+                const parsed = JSON.parse(plan.caracteristicas_json || '{}');
+                caracteristicasJson = JSON.stringify(parsed, null, 2);
+            } catch (e) {
+                console.error('Error parseando JSON:', e);
+            }
+            $('#caracteristicas_json').val(caracteristicasJson);
             
             $('#modalEditarPlan').modal('show');
         } else {
@@ -265,8 +287,8 @@ function guardarPlan() {
     
     // Validar JSON
     try {
-        const jsonValue = $('#caracteristicas_json').val();
-        if (jsonValue) {
+        const jsonValue = $('#caracteristicas_json').val().trim();
+        if (jsonValue && jsonValue !== '') {
             JSON.parse(jsonValue);
         }
     } catch (e) {
@@ -274,7 +296,7 @@ function guardarPlan() {
         return;
     }
     
-    $.post(API_URL + '/superadmin/guardar-plan.php', formData, function(response) {
+    $.post(API_URL + '/superadmin/guardar-plan', formData, function(response) {
         if (response.success) {
             mostrarExito('Plan actualizado correctamente');
             $('#modalEditarPlan').modal('hide');
@@ -296,7 +318,7 @@ function desactivarPlan(id) {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post(API_URL + '/superadmin/toggle-plan.php', {
+            $.post(API_URL + '/superadmin/toggle-plan', {
                 id: id,
                 activo: 0
             }, function(response) {
@@ -312,7 +334,7 @@ function desactivarPlan(id) {
 }
 
 function activarPlan(id) {
-    $.post(API_URL + '/superadmin/toggle-plan.php', {
+    $.post(API_URL + '/superadmin/toggle-plan', {
         id: id,
         activo: 1
     }, function(response) {

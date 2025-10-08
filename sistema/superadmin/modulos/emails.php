@@ -313,7 +313,8 @@ function nuevaPlantilla() {
 }
 
 function editarPlantilla(id) {
-    $.get(API_URL + '/superadmin/email-detalles.php', {id: id}, function(response) {
+    // ✅ CORREGIDO: Sin .php
+    $.get(API_URL + '/superadmin/email-detalles', {id: id}, function(response) {
         if (response.success) {
             const p = response.data;
             $('#modalTitle').text('Editar Plantilla');
@@ -339,7 +340,8 @@ function editarPlantilla(id) {
 }
 
 function verPreview(id) {
-    $.get(API_URL + '/superadmin/email-detalles.php', {id: id}, function(response) {
+    // ✅ CORREGIDO: Sin .php
+    $.get(API_URL + '/superadmin/email-detalles', {id: id}, function(response) {
         if (response.success) {
             const p = response.data;
             $('#preview_asunto').text(p.asunto);
@@ -353,7 +355,8 @@ function verPreview(id) {
 }
 
 function togglePlantilla(id, activa) {
-    $.post(API_URL + '/superadmin/toggle-email.php', {
+    // ✅ CORREGIDO: Sin .php
+    $.post(API_URL + '/superadmin/toggle-email', {
         id: id,
         activa: activa
     }, function(response) {
@@ -377,7 +380,8 @@ function eliminarPlantilla(id) {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post(API_URL + '/superadmin/eliminar-email.php', {id: id}, function(response) {
+            // ✅ CORREGIDO: Sin .php
+            $.post(API_URL + '/superadmin/eliminar-email', {id: id}, function(response) {
                 if (response.success) {
                     mostrarExito('Plantilla eliminada');
                     setTimeout(() => location.reload(), 1000);
@@ -404,9 +408,10 @@ $('#formPlantilla').on('submit', function(e) {
     }
     
     const formData = $(this).serialize();
+    // ✅ CORREGIDO: Sin .php
     const url = $('#plantilla_id').val() ? 
-        API_URL + '/superadmin/guardar-email.php' : 
-        API_URL + '/superadmin/crear-email.php';
+        API_URL + '/superadmin/guardar-email' : 
+        API_URL + '/superadmin/crear-email';
     
     $.post(url, formData, function(response) {
         if (response.success) {
