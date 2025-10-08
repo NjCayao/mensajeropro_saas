@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         VALUES (?, ?, ?, ?, 'email', ?, NOW(), ?)
                     ");
                     $stmt->execute([$nombre_empresa, $email, $password_hash, $telefono, DEFAULT_PLAN_ID, $activo_inicial]);
-                    $empresa_id = $pdo->lastInsertId(); // ← AQUÍ SE DEFINE
+                    $empresa_id = $pdo->lastInsertId();
 
                     // Crear suscripción
                     $stmt = $pdo->prepare("
@@ -149,8 +149,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ");
                     $stmt->execute([$empresa_id, $nombre_empresa]);
 
-                    // Token verificación
-                    $codigo_verificacion = bin2hex(random_bytes(16));
+                    // Token verificación (6 dígitos)
+                    $codigo_verificacion = sprintf('%06d', mt_rand(0, 999999));
                     $stmt = $pdo->prepare("UPDATE empresas SET token_verificacion = ? WHERE id = ?");
                     $stmt->execute([$codigo_verificacion, $empresa_id]);
 
@@ -232,7 +232,6 @@ $trial_dias = $result ? (int)$result['valor'] : TRIAL_DAYS;
     <div class="register-container">
         <!-- Panel Izquierdo -->
         <div class="register-left">
-            <!-- <img src="<?php echo asset('img/logo1.png'); ?>" style="width: 80px; position: relative; left: 30%;"> -->
             <h1><img src="<?php echo asset('img/logo1.png'); ?>" width="50px"> <?php echo APP_NAME; ?></h1>
             <p>Empieza a automatizar tus ventas hoy mismo</p>
 

@@ -74,7 +74,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
 
     <section class="content">
         <div class="container-fluid">
-            
+
             <!-- Plan Actual -->
             <div class="row">
                 <div class="col-md-12">
@@ -85,28 +85,107 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                             </h3>
                         </div>
                         <div class="card-body">
-                            <?php if ($en_trial): ?>
-                                <?php if ($trial_activo): ?>
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-clock"></i> <strong>Periodo de Prueba Activo</strong><br>
-                                        Te quedan <strong><?php echo $dias_restantes_trial; ?> día(s)</strong> para probar TODAS las funciones.
-                                        <br>
-                                        <small>Después de este periodo, necesitarás elegir un plan de pago.</small>
+                            <?php if ($suscripcion):
+                                // Calcular días del plan (solo fechas, sin horas)
+                                $fecha_inicio = new DateTime($suscripcion['fecha_inicio']);
+                                $fecha_fin = new DateTime($suscripcion['fecha_fin']);
+                                $fecha_hoy = new DateTime('today'); // ← Solo fecha actual, sin hora
+
+                                // Cálculo correcto de días calendario
+                                $dias_totales = (int)$fecha_inicio->diff($fecha_fin)->format('%a');
+                                $dias_transcurridos = (int)$fecha_inicio->diff($fecha_hoy)->format('%a');
+
+                                // Calcular días restantes
+                                if ($fecha_hoy > $fecha_fin) {
+                                    $dias_restantes = 0;
+                                } else {
+                                    $dias_restantes = (int)$fecha_hoy->diff($fecha_fin)->format('%a');
+                                }
+
+                                // ✅ AGREGAR ESTA DETECCIÓN:
+                                $suscripcion_cancelada = ($suscripcion['auto_renovar'] == 0 && $suscripcion['tipo'] != 'trial');
+                            ?>
+                                <!-- Información del plan -->
+                                <div class="card mb-3" style="background-color: #f8f9fa;">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-9">
+                                                <h5 class="mb-3">
+                                                    <?php if ($suscripcion_cancelada): ?>
+                                                        <i class="fas fa-ban text-warning"></i> Suscripción Cancelada
+                                                    <?php elseif ($en_trial): ?>
+                                                        <i class="fas fa-clock"></i> Periodo de Prueba
+                                                    <?php else: ?>
+                                                        <i class="fas fa-check-circle text-success"></i> Suscripción <?php echo ucfirst($suscripcion['tipo']); ?>
+                                                    <?php endif; ?>
+                                                </h5>
+
+                                                <div class="row">
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted d-block">Fecha de inicio</small>
+                                                        <strong><?php echo $fecha_inicio->format('d/m/Y'); ?></strong>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted d-block">Fecha de vencimiento</small>
+                                                        <strong><?php echo $fecha_fin->format('d/m/Y'); ?></strong>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted d-block">Días transcurridos</small>
+                                                        <strong><?php echo $dias_transcurridos; ?> días</strong>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <small class="text-muted d-block">Días restantes</small>
+                                                        <strong class="<?php echo $dias_restantes <= 7 ? 'text-danger' : ''; ?>">
+                                                            <?php echo $dias_restantes; ?> día<?php echo $dias_restantes != 1 ? 's' : ''; ?>
+                                                        </strong>
+                                                    </div>
+                                                </div>
+
+                                                <?php if ($suscripcion_cancelada): ?>
+                                                    <div class="alert alert-warning mt-3 mb-0" style="padding: 8px 12px;">
+                                                        <small>
+                                                            <i class="fas fa-info-circle"></i>
+                                                            Tu suscripción no se renovará. Tendrás acceso hasta el <?php echo $fecha_fin->format('d/m/Y'); ?>.
+                                                        </small>
+                                                    </div>
+                                                <?php elseif ($dias_restantes <= 7 && $dias_restantes > 0): ?>
+                                                    <div class="alert alert-warning mt-3 mb-0" style="padding: 8px 12px;">
+                                                        <small>
+                                                            <i class="fas fa-exclamation-triangle"></i>
+                                                            <?php if ($en_trial): ?>
+                                                                Tu periodo de prueba está por vencer. Elige un plan para continuar.
+                                                            <?php else: ?>
+                                                                Tu suscripción vence pronto. Asegúrate de renovar a tiempo.
+                                                            <?php endif; ?>
+                                                        </small>
+                                                    </div>
+                                                <?php elseif ($dias_restantes == 0): ?>
+                                                    <div class="alert alert-danger mt-3 mb-0" style="padding: 8px 12px;">
+                                                        <small>
+                                                            <i class="fas fa-times-circle"></i>
+                                                            Tu <?php echo $en_trial ? 'periodo de prueba' : 'suscripción'; ?> ha vencido.
+                                                        </small>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+
+                                            <?php if ($en_trial || $suscripcion_cancelada): ?>
+                                                <div class="col-md-3 text-center border-left">
+                                                    <a href="#" onclick="event.preventDefault(); $('html, body').animate({scrollTop: $('#planes-section').offset().top - 100}, 500);"
+                                                        class="btn btn-success btn-block mt-4">
+                                                        <i class="fas fa-arrow-up"></i>
+                                                        <?php echo $suscripcion_cancelada ? 'Reactivar Suscripción' : 'Mejorar Plan'; ?>
+                                                    </a>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
-                                <?php else: ?>
-                                    <div class="alert alert-warning">
-                                        <i class="fas fa-exclamation-triangle"></i> <strong>Periodo de Prueba Expirado</strong><br>
-                                        Tu trial ha finalizado. Selecciona un plan para continuar usando el servicio.
-                                    </div>
-                                <?php endif; ?>
-                            <?php elseif ($suscripcion): ?>
-                                <div class="alert alert-success">
-                                    <i class="fas fa-check-circle"></i> <strong>Suscripción Activa</strong><br>
-                                    <?php if ($suscripcion['tipo'] == 'mensual'): ?>
-                                        Próxima renovación: <strong><?php echo date('d/m/Y', strtotime($suscripcion['fecha_fin'])); ?></strong>
-                                    <?php else: ?>
-                                        Válido hasta: <strong><?php echo date('d/m/Y', strtotime($suscripcion['fecha_fin'])); ?></strong>
-                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <!-- Sin suscripción activa -->
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-circle"></i> <strong>Sin Suscripción Activa</strong><br>
+                                    No tienes un plan activo. Selecciona un plan para continuar usando el servicio.
                                 </div>
                             <?php endif; ?>
 
@@ -125,7 +204,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                                     <span class="badge badge-success badge-pill">Ilimitados</span>
                                                 <?php else: ?>
                                                     <span class="text-muted">
-                                                        <?php echo number_format($resumen['contactos']['actual']); ?> / 
+                                                        <?php echo number_format($resumen['contactos']['actual']); ?> /
                                                     </span>
                                                     <span class="badge badge-<?php echo $resumen['contactos']['alcanzado'] ? 'danger' : 'primary'; ?> badge-pill">
                                                         <?php echo number_format($resumen['contactos']['limite']); ?>
@@ -134,7 +213,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                                 <?php endif; ?>
                                             </div>
                                         </li>
-                                        
+
                                         <!-- Mensajes -->
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             <span>
@@ -145,7 +224,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                                     <span class="badge badge-success badge-pill">Ilimitados</span>
                                                 <?php else: ?>
                                                     <span class="text-muted">
-                                                        <?php echo number_format($resumen['mensajes']['actual']); ?> / 
+                                                        <?php echo number_format($resumen['mensajes']['actual']); ?> /
                                                     </span>
                                                     <span class="badge badge-<?php echo $resumen['mensajes']['alcanzado'] ? 'danger' : 'primary'; ?> badge-pill">
                                                         <?php echo number_format($resumen['mensajes']['limite']); ?>
@@ -154,7 +233,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                                 <?php endif; ?>
                                             </div>
                                         </li>
-                                        
+
                                         <!-- Bot IA -->
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             <span>
@@ -164,7 +243,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                                 <?php echo $plan_actual['bot_ia'] ? 'Incluido' : 'No incluido'; ?>
                                             </span>
                                         </li>
-                                        
+
                                         <!-- Soporte -->
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             <span>
@@ -176,7 +255,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                         </li>
                                     </ul>
                                 </div>
-                                
+
                                 <!-- Módulos Disponibles -->
                                 <div class="col-md-6">
                                     <h5><i class="fas fa-puzzle-piece"></i> Módulos Disponibles</h5>
@@ -189,7 +268,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                                 <?php echo ($caracteristicas['bot_ventas'] ?? false) ? 'Activo' : 'No disponible'; ?>
                                             </span>
                                         </li>
-                                        
+
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             <span>
                                                 <i class="fas fa-calendar-check"></i> Bot de Citas
@@ -198,7 +277,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                                 <?php echo ($caracteristicas['bot_citas'] ?? false) ? 'Activo' : 'No disponible'; ?>
                                             </span>
                                         </li>
-                                        
+
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             <span>
                                                 <i class="fas fa-user-tie"></i> Escalamiento a Humano
@@ -207,13 +286,13 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                                 <?php echo $resumen['modulos']['escalamiento'] ? 'Activo' : 'No disponible'; ?>
                                             </span>
                                         </li>
-                                        
+
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             <span>
                                                 <i class="fas fa-book"></i> Catálogo de Productos
                                             </span>
                                             <span class="badge badge-<?php echo $resumen['modulos']['catalogo_bot'] ? 'success' : 'secondary'; ?>">
-                                                <?php 
+                                                <?php
                                                 if ($resumen['modulos']['catalogo_bot']) {
                                                     echo 'Hasta ' . $resumen['limites_especiales']['catalogo_mb'] . ' MB';
                                                 } else {
@@ -222,7 +301,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                                 ?>
                                             </span>
                                         </li>
-                                        
+
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             <span>
                                                 <i class="fas fa-clock"></i> Horarios y Citas
@@ -231,7 +310,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                                 <?php echo $resumen['modulos']['horarios_bot'] ? 'Activo' : 'No disponible'; ?>
                                             </span>
                                         </li>
-                                        
+
                                         <li class="list-group-item d-flex justify-content-between align-items-center">
                                             <span>
                                                 <i class="fab fa-google"></i> Google Calendar
@@ -260,16 +339,16 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
             </div>
 
             <!-- Planes Disponibles -->
-            <div class="row mt-4">
+            <div class="row mt-4" id="planes-section">
                 <div class="col-md-12">
                     <h3><i class="fas fa-store"></i> Planes Disponibles</h3>
                     <p class="text-muted">Elige el plan que mejor se adapte a tu negocio</p>
                 </div>
             </div>
-            
+
             <!-- ✅ COLUMNAS DE 4 (col-lg-3) -->
             <div class="row mt-3">
-                <?php foreach ($planes as $plan): 
+                <?php foreach ($planes as $plan):
                     $plan_caract = json_decode($plan['caracteristicas_json'] ?? '{}', true);
                     $es_plan_actual = ($plan['id'] == $plan_actual['id']);
                 ?>
@@ -306,7 +385,7 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                         <?php if ($plan['precio_anual'] > 0): ?>
                                             <br>
                                             <small class="text-success">
-                                                <i class="fas fa-piggy-bank"></i> 
+                                                <i class="fas fa-piggy-bank"></i>
                                                 Ahorra $<?php echo number_format(($plan['precio_mensual'] * 12) - $plan['precio_anual'], 2); ?> al año
                                             </small>
                                         <?php endif; ?>
@@ -315,16 +394,16 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                         <small class="text-muted">por tiempo limitado</small>
                                     <?php endif; ?>
                                 </div>
-                                
+
                                 <p class="text-center text-muted">
                                     <small><?php echo $plan_caract['descripcion'] ?? ''; ?></small>
                                 </p>
 
                                 <ul class="list-unstyled">
                                     <li class="mb-2">
-                                        <i class="fas fa-check text-success"></i> 
+                                        <i class="fas fa-check text-success"></i>
                                         <strong>
-                                            <?php 
+                                            <?php
                                             if ($plan['limite_contactos'] === null || $plan['limite_contactos'] == 0) {
                                                 echo 'Ilimitados';
                                             } else {
@@ -334,9 +413,9 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                         </strong> contactos
                                     </li>
                                     <li class="mb-2">
-                                        <i class="fas fa-check text-success"></i> 
+                                        <i class="fas fa-check text-success"></i>
                                         <strong>
-                                            <?php 
+                                            <?php
                                             if ($plan['limite_mensajes_mes'] === null || $plan['limite_mensajes_mes'] == 0) {
                                                 echo 'Ilimitados';
                                             } else {
@@ -346,22 +425,22 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                         </strong> mensajes/mes
                                     </li>
                                     <li class="mb-2">
-                                        <i class="fas fa-<?php echo ($plan_caract['escalamiento'] ?? false) ? 'check text-success' : 'times text-danger'; ?>"></i> 
+                                        <i class="fas fa-<?php echo ($plan_caract['escalamiento'] ?? false) ? 'check text-success' : 'times text-danger'; ?>"></i>
                                         Escalamiento a humano
                                     </li>
                                     <li class="mb-2">
-                                        <i class="fas fa-<?php echo ($plan_caract['catalogo_bot'] ?? false) ? 'check text-success' : 'times text-danger'; ?>"></i> 
+                                        <i class="fas fa-<?php echo ($plan_caract['catalogo_bot'] ?? false) ? 'check text-success' : 'times text-danger'; ?>"></i>
                                         Catálogo de productos
                                         <?php if (($plan_caract['catalogo_mb'] ?? 0) > 0): ?>
                                             <small class="text-muted">(<?php echo $plan_caract['catalogo_mb']; ?> MB)</small>
                                         <?php endif; ?>
                                     </li>
                                     <li class="mb-2">
-                                        <i class="fas fa-<?php echo ($plan_caract['horarios_bot'] ?? false) ? 'check text-success' : 'times text-danger'; ?>"></i> 
+                                        <i class="fas fa-<?php echo ($plan_caract['horarios_bot'] ?? false) ? 'check text-success' : 'times text-danger'; ?>"></i>
                                         Horarios y citas
                                     </li>
                                     <li class="mb-2">
-                                        <i class="fas fa-<?php echo ($plan_caract['google_calendar'] ?? false) ? 'check text-success' : 'times text-danger'; ?>"></i> 
+                                        <i class="fas fa-<?php echo ($plan_caract['google_calendar'] ?? false) ? 'check text-success' : 'times text-danger'; ?>"></i>
                                         Google Calendar
                                     </li>
                                 </ul>
@@ -375,9 +454,9 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                 <?php elseif ($plan['id'] == 5): ?>
                                     <!-- ✅ Plan Empresarial: Botón de WhatsApp -->
                                     <div class="text-center mt-3">
-                                        <a href="https://wa.me/51982226835?text=Hola, necesito una cotización del Plan Empresarial para mi negocio" 
-                                           target="_blank"
-                                           class="btn btn-success btn-block">
+                                        <a href="https://wa.me/51982226835?text=Hola, necesito una cotización del Plan Empresarial para mi negocio"
+                                            target="_blank"
+                                            class="btn btn-success btn-block">
                                             <i class="fab fa-whatsapp"></i> Contactar por WhatsApp
                                         </a>
                                     </div>
@@ -386,9 +465,9 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                                 <?php else: ?>
                                     <!-- Planes de pago normales -->
                                     <div class="text-center mt-3">
-                                        <button class="btn btn-primary btn-block" 
-                                                onclick="seleccionarPlan(<?php echo $plan['id']; ?>)">
-                                            <i class="fas fa-arrow-up"></i> 
+                                        <button class="btn btn-primary btn-block"
+                                            onclick="seleccionarPlan(<?php echo $plan['id']; ?>)">
+                                            <i class="fas fa-arrow-up"></i>
                                             <?php echo ($plan['id'] > $plan_actual['id']) ? 'Mejorar Plan' : 'Cambiar Plan'; ?>
                                         </button>
                                     </div>
@@ -478,16 +557,16 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                     <label>Tipo de pago:</label>
                     <div class="btn-group btn-group-toggle w-100" data-toggle="buttons">
                         <label class="btn btn-outline-primary active">
-                            <input type="radio" name="tipo_pago" value="mensual" checked> 
+                            <input type="radio" name="tipo_pago" value="mensual" checked>
                             <i class="fas fa-calendar-alt"></i> Mensual
                         </label>
                         <label class="btn btn-outline-success">
-                            <input type="radio" name="tipo_pago" value="anual"> 
+                            <input type="radio" name="tipo_pago" value="anual">
                             <i class="fas fa-piggy-bank"></i> Anual (Ahorra 2 meses)
                         </label>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Método de pago:</label>
                     <div class="row">
@@ -513,194 +592,194 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
 <?php require_once __DIR__ . '/../layouts/footer.php'; ?>
 
 <script>
-let planSeleccionado = 0;
+    let planSeleccionado = 0;
 
-function seleccionarPlan(planId) {
-    planSeleccionado = planId;
-    $('#modalPago').modal('show');
-}
+    function seleccionarPlan(planId) {
+        planSeleccionado = planId;
+        $('#modalPago').modal('show');
+    }
 
-function procesarPago(metodo) {
-    const tipoPago = $('input[name="tipo_pago"]:checked').val();
-    
-    // Cerrar modal
-    $('#modalPago').modal('hide');
-    
-    // Mostrar loading
-    Swal.fire({
-        title: 'Procesando pago...',
-        html: 'Conectando con ' + (metodo === 'mercadopago' ? 'MercadoPago' : 'PayPal') + '...',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
-    // Debug en consola
-    console.log('Procesando pago:', {
-        plan_id: planSeleccionado,
-        tipo_pago: tipoPago,
-        metodo: metodo,
-        url: API_URL + '/cliente/pagos/crear-suscripcion'
-    });
-    
-    $.ajax({
-        url: API_URL + '/cliente/pagos/crear-suscripcion',
-        type: 'POST',
-        data: JSON.stringify({
+    function procesarPago(metodo) {
+        const tipoPago = $('input[name="tipo_pago"]:checked').val();
+
+        // Cerrar modal
+        $('#modalPago').modal('hide');
+
+        // Mostrar loading
+        Swal.fire({
+            title: 'Procesando pago...',
+            html: 'Conectando con ' + (metodo === 'mercadopago' ? 'MercadoPago' : 'PayPal') + '...',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        // Debug en consola
+        console.log('Procesando pago:', {
             plan_id: planSeleccionado,
             tipo_pago: tipoPago,
-            metodo: metodo
-        }),
-        contentType: 'application/json',
-        dataType: 'json',
-        success: function(response) {
-            console.log('Respuesta del servidor:', response);
-            
-            Swal.close();
-            
-            // Si es exitoso, redirigir a pasarela
-            if (response.success) {
-                if (metodo === 'mercadopago' && response.init_point) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Redirigiendo...',
-                        text: 'Serás redirigido a MercadoPago',
-                        timer: 2000,
-                        showConfirmButton: false
-                    }).then(() => {
-                        window.location.href = response.init_point;
-                    });
-                } else if (metodo === 'paypal' && response.approval_url) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Redirigiendo...',
-                        text: 'Serás redirigido a PayPal',
-                        timer: 2000,
-                        showConfirmButton: false
-                    }).then(() => {
-                        window.location.href = response.approval_url;
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'No se recibió URL de pago. Intenta de nuevo.'
-                    });
-                }
-            } else {
-                // Mostrar mensaje de error del servidor
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Configuración Requerida',
-                    html: response.message || 'Error al procesar el pago',
-                    confirmButtonText: 'Entendido'
-                });
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error AJAX:', {
-                status: status,
-                error: error,
-                responseText: xhr.responseText,
-                statusCode: xhr.status
-            });
-            
-            Swal.close();
-            
-            // Intentar parsear la respuesta como JSON
-            let errorMessage = 'Error al conectar con el servidor';
-            
-            try {
-                const response = JSON.parse(xhr.responseText);
-                if (response.message) {
-                    errorMessage = response.message;
-                }
-            } catch (e) {
-                // No es JSON válido
-                if (xhr.status === 404) {
-                    errorMessage = 'Servicio no encontrado (Error 404)';
-                } else if (xhr.status === 500) {
-                    errorMessage = 'Error interno del servidor (Error 500)';
-                } else if (xhr.status === 0) {
-                    errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión.';
-                }
-            }
-            
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                html: errorMessage,
-                footer: xhr.status > 0 ? 'Código de error: ' + xhr.status : ''
-            });
-        }
-    });
-}
+            metodo: metodo,
+            url: API_URL + '/cliente/pagos/crear-suscripcion'
+        });
 
-function cancelarSuscripcion() {
-    Swal.fire({
-        title: '¿Cancelar suscripción?',
-        html: 'Tu suscripción se cancelará al final del periodo actual.<br>Mantendrás acceso hasta el final del periodo pagado.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, cancelar',
-        cancelButtonText: 'No, mantener'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            Swal.fire({
-                title: 'Cancelando...',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-            
-            $.ajax({
-                url: API_URL + '/cliente/pagos/cancelar-suscripcion',
-                type: 'POST',
-                dataType: 'json',
-                success: function(response) {
-                    Swal.close();
-                    
-                    if (response.success) {
+        $.ajax({
+            url: API_URL + '/cliente/pagos/crear-suscripcion',
+            type: 'POST',
+            data: JSON.stringify({
+                plan_id: planSeleccionado,
+                tipo_pago: tipoPago,
+                metodo: metodo
+            }),
+            contentType: 'application/json',
+            dataType: 'json',
+            success: function(response) {
+                console.log('Respuesta del servidor:', response);
+
+                Swal.close();
+
+                // Si es exitoso, redirigir a pasarela
+                if (response.success) {
+                    if (metodo === 'mercadopago' && response.init_point) {
                         Swal.fire({
                             icon: 'success',
-                            title: 'Cancelada',
-                            text: response.message || 'Tu suscripción ha sido cancelada'
-                        }).then(() => location.reload());
+                            title: 'Redirigiendo...',
+                            text: 'Serás redirigido a MercadoPago',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = response.init_point;
+                        });
+                    } else if (metodo === 'paypal' && response.approval_url) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Redirigiendo...',
+                            text: 'Serás redirigido a PayPal',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = response.approval_url;
+                        });
                     } else {
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: response.message || 'No se pudo cancelar la suscripción'
+                            text: 'No se recibió URL de pago. Intenta de nuevo.'
                         });
                     }
-                },
-                error: function(xhr) {
-                    Swal.close();
-                    
-                    let errorMessage = 'Error al cancelar la suscripción';
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        if (response.message) {
-                            errorMessage = response.message;
-                        }
-                    } catch (e) {}
-                    
+                } else {
+                    // Mostrar mensaje de error del servidor
                     Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: errorMessage
+                        icon: 'warning',
+                        title: 'Configuración Requerida',
+                        html: response.message || 'Error al procesar el pago',
+                        confirmButtonText: 'Entendido'
                     });
                 }
-            });
-        }
-    });
-}
+            },
+            error: function(xhr, status, error) {
+                console.error('Error AJAX:', {
+                    status: status,
+                    error: error,
+                    responseText: xhr.responseText,
+                    statusCode: xhr.status
+                });
 
-// Debug: Verificar que API_URL esté definida
-console.log('API_URL:', API_URL);
+                Swal.close();
+
+                // Intentar parsear la respuesta como JSON
+                let errorMessage = 'Error al conectar con el servidor';
+
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.message) {
+                        errorMessage = response.message;
+                    }
+                } catch (e) {
+                    // No es JSON válido
+                    if (xhr.status === 404) {
+                        errorMessage = 'Servicio no encontrado (Error 404)';
+                    } else if (xhr.status === 500) {
+                        errorMessage = 'Error interno del servidor (Error 500)';
+                    } else if (xhr.status === 0) {
+                        errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión.';
+                    }
+                }
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    html: errorMessage,
+                    footer: xhr.status > 0 ? 'Código de error: ' + xhr.status : ''
+                });
+            }
+        });
+    }
+
+    function cancelarSuscripcion() {
+        Swal.fire({
+            title: '¿Cancelar suscripción?',
+            html: 'Tu suscripción se cancelará al final del periodo actual.<br>Mantendrás acceso hasta el final del periodo pagado.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, cancelar',
+            cancelButtonText: 'No, mantener'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Cancelando...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: API_URL + '/cliente/pagos/cancelar-suscripcion',
+                    type: 'POST',
+                    dataType: 'json',
+                    success: function(response) {
+                        Swal.close();
+
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Cancelada',
+                                text: response.message || 'Tu suscripción ha sido cancelada'
+                            }).then(() => location.reload());
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: response.message || 'No se pudo cancelar la suscripción'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.close();
+
+                        let errorMessage = 'Error al cancelar la suscripción';
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.message) {
+                                errorMessage = response.message;
+                            }
+                        } catch (e) {}
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: errorMessage
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    // Debug: Verificar que API_URL esté definida
+    console.log('API_URL:', API_URL);
 </script>

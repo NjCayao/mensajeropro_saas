@@ -49,6 +49,12 @@ if (in_array($path_extension, $static_extensions)) {
 
 // Rutas de API
 if (strpos($path, 'api/') === 0) {
+    // ✅ Verificar sesión ANTES de ejecutar APIs (excepto auth)
+    if (strpos($path, 'api/v1/auth/') !== 0 && 
+        strpos($path, 'api/v1/webhooks/') !== 0) {
+        require_once __DIR__ . '/../includes/session_check.php';
+    }
+    
     $api_path = str_replace('api/', '', $path);
     $api_file = __DIR__ . '/../sistema/api/' . $api_path . '.php';
 

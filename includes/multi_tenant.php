@@ -2,15 +2,8 @@
 // includes/multi_tenant.php
 // Funciones para manejar múltiples empresas en el sistema SaaS
 
-/**
- * Obtener el ID de la empresa actual desde la sesión
- */
-function getEmpresaActual() {
-    if (!isset($_SESSION['empresa_id'])) {
-        throw new Exception('No hay empresa en la sesión');
-    }
-    return $_SESSION['empresa_id'];
-}
+// ✅ Usar getEmpresaActual() de auth.php
+require_once __DIR__ . '/auth.php';
 
 /**
  * Verificar si el usuario pertenece a la empresa
@@ -26,6 +19,9 @@ function verificarAccesoEmpresa($usuario_id, $empresa_id) {
 
 /**
  * Agregar filtro de empresa a una consulta
+ * 
+ * @deprecated Usar prepared statements en su lugar para evitar SQL injection
+ * Esta función usa concatenación directa y debe evitarse en código nuevo
  */
 function addEmpresaFilter($query, $empresa_id = null) {
     if ($empresa_id === null) {
@@ -109,4 +105,3 @@ function prepareInsertWithEmpresa($table, $data) {
     $data['empresa_id'] = getEmpresaActual();
     return $data;
 }
-?>

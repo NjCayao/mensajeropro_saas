@@ -39,7 +39,7 @@ function crearSesion($empresa) {
     $_SESSION['user_email'] = $empresa['email'];
     
     // ✅ CORREGIDO: Validar SuperAdmin por empresa_id = 1
-    if (isset($empresa['es_superadmin']) && $empresa['es_superadmin'] == 1 && $empresa['id'] == 1) {
+    if (isset($empresa['es_superadmin']) && $empresa['es_superadmin'] == 1) {
         $_SESSION['user_rol'] = 'superadmin';
     } else {
         $_SESSION['user_rol'] = 'cliente';

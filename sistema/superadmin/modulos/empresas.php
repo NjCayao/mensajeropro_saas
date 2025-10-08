@@ -15,11 +15,15 @@ $where = "WHERE 1=1";
 $params = [];
 
 if ($filter === 'activas') {
-    $where .= " AND e.activo = 1";
+    $where .= " AND e.activo = 1 AND s.estado = 'activa'";
 } elseif ($filter === 'suspendidas') {
     $where .= " AND e.activo = 0";
 } elseif ($filter === 'trial') {
-    $where .= " AND e.plan_id = 1";
+    $where .= " AND s.tipo = 'trial'";
+} elseif ($filter === 'canceladas') {
+    $where .= " AND s.auto_renovar = 0 AND s.estado = 'activa'";
+} elseif ($filter === 'vencidas') {
+    $where .= " AND s.fecha_fin < NOW()";
 }
 
 if ($search) {
@@ -28,20 +32,25 @@ if ($search) {
     $params[] = "%$search%";
 }
 
-// ✅ CORREGIDO: Obtener días de trial desde tabla suscripciones
+// ✅ Query mejorada con información de suscripción
 $stmt = $pdo->prepare("
     SELECT 
         e.*,
         p.nombre as plan_nombre,
         p.precio_mensual,
+        p.precio_anual,
         (SELECT COUNT(*) FROM contactos WHERE empresa_id = e.id) as total_contactos,
-        (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id) as total_usuarios,
-        s.fecha_fin as trial_fecha_fin,
-        DATEDIFF(s.fecha_fin, NOW()) as dias_trial_restantes
+        s.id as suscripcion_id,
+        s.tipo as suscripcion_tipo,
+        s.fecha_inicio,
+        s.fecha_fin,
+        s.estado as suscripcion_estado,
+        s.auto_renovar,
+        DATEDIFF(s.fecha_fin, NOW()) as dias_restantes,
+        (SELECT fecha_pago FROM pagos WHERE empresa_id = e.id AND estado = 'aprobado' ORDER BY fecha_pago DESC LIMIT 1) as ultimo_pago
     FROM empresas e
     LEFT JOIN planes p ON e.plan_id = p.id
     LEFT JOIN suscripciones s ON s.empresa_id = e.id 
-        AND s.tipo = 'trial' 
         AND s.estado = 'activa'
     $where
     ORDER BY e.fecha_registro DESC
@@ -82,6 +91,8 @@ $empresas = $stmt->fetchAll();
                                 <option value="activas" <?= $filter === 'activas' ? 'selected' : '' ?>>Activas</option>
                                 <option value="suspendidas" <?= $filter === 'suspendidas' ? 'selected' : '' ?>>Suspendidas</option>
                                 <option value="trial" <?= $filter === 'trial' ? 'selected' : '' ?>>En Trial</option>
+                                <option value="canceladas" <?= $filter === 'canceladas' ? 'selected' : '' ?>>Canceladas</option>
+                                <option value="vencidas" <?= $filter === 'vencidas' ? 'selected' : '' ?>>Vencidas</option>
                             </select>
                         </div>
 
@@ -119,84 +130,155 @@ $empresas = $stmt->fetchAll();
                                 <th>Empresa</th>
                                 <th>Email</th>
                                 <th>Plan</th>
+                                <th>Suscripción</th>
+                                <th>Inicio/Fin</th>
+                                <th>Días</th>
                                 <th>Contactos</th>
-                                <th>Usuarios</th>
                                 <th>Registro</th>
                                 <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($empresas as $empresa): ?>
+                            <?php foreach ($empresas as $empresa):
+                                // Determinar estado visual
+                                $dias = $empresa['dias_restantes'] ?? 0;
+                                $es_trial = ($empresa['suscripcion_tipo'] == 'trial');
+                                $es_cancelada = ($empresa['auto_renovar'] == 0 && !$es_trial);
+                                $esta_vencida = ($dias <= 0);
+
+                                // Badge de estado
+                                if ($esta_vencida) {
+                                    $badge_estado = 'danger';
+                                    $icono_estado = 'fa-times-circle';
+                                    $texto_estado = 'Vencida';
+                                } elseif ($es_cancelada) {
+                                    $badge_estado = 'warning';
+                                    $icono_estado = 'fa-ban';
+                                    $texto_estado = 'Cancelada';
+                                } elseif ($es_trial) {
+                                    $badge_estado = 'info';
+                                    $icono_estado = 'fa-gift';
+                                    $texto_estado = 'Trial';
+                                } else {
+                                    $badge_estado = 'success';
+                                    $icono_estado = 'fa-check-circle';
+                                    $texto_estado = 'Activa';
+                                }
+
+                                // Color de días restantes
+                                if ($dias <= 3) {
+                                    $color_dias = 'text-danger font-weight-bold';
+                                } elseif ($dias <= 7) {
+                                    $color_dias = 'text-warning font-weight-bold';
+                                } else {
+                                    $color_dias = '';
+                                }
+                            ?>
                                 <tr>
                                     <td><?= $empresa['id'] ?></td>
                                     <td>
                                         <strong><?= htmlspecialchars($empresa['nombre_empresa']) ?></strong>
-                                        <?php if ($empresa['plan_id'] == 1 && $empresa['dias_trial_restantes'] > 0): ?>
-                                            <br>
-                                            <small class="text-warning">
-                                                <i class="fas fa-clock"></i>
-                                                Trial: <?= $empresa['dias_trial_restantes'] ?> día(s)
-                                            </small>
-                                        <?php elseif ($empresa['plan_id'] == 1 && $empresa['dias_trial_restantes'] !== null && $empresa['dias_trial_restantes'] <= 0): ?>
-                                            <br>
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-triangle"></i> Trial expirado
-                                            </small>
-                                        <?php endif; ?>
                                     </td>
                                     <td><?= htmlspecialchars($empresa['email']) ?></td>
                                     <td>
-                                        <span class="badge badge-<?= $empresa['plan_id'] == 1 ? 'warning' : ($empresa['plan_id'] == 2 ? 'info' : 'success') ?>">
+                                        <span class="badge badge-<?= $es_trial ? 'warning' : ($empresa['plan_id'] == 2 ? 'info' : 'primary') ?>">
                                             <?= $empresa['plan_nombre'] ?>
                                         </span>
-                                        <?php if ($empresa['precio_mensual'] > 0): ?>
-                                            <br><small>$<?= number_format($empresa['precio_mensual'], 2) ?>/mes</small>
+                                        <br>
+                                        <small class="text-muted">
+                                            <?= ucfirst($empresa['suscripcion_tipo'] ?? 'N/A') ?>
+                                            <?php if (!$es_trial && $empresa['precio_mensual'] > 0): ?>
+                                                - $<?= number_format($empresa['precio_mensual'], 2) ?>/mes
+                                            <?php endif; ?>
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-<?= $badge_estado ?>">
+                                            <i class="fas <?= $icono_estado ?>"></i>
+                                            <?= $texto_estado ?>
+                                        </span>
+                                        <?php if (!$es_trial): ?>
+                                            <br>
+                                            <small>
+                                                <?php if ($empresa['auto_renovar']): ?>
+                                                    <i class="fas fa-sync-alt text-success" title="Auto-renovar activo"></i> Renueva
+                                                <?php else: ?>
+                                                    <i class="fas fa-ban text-warning" title="No renovará"></i> No renueva
+                                                <?php endif; ?>
+                                            </small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($empresa['fecha_inicio']): ?>
+                                            <small>
+                                                <i class="fas fa-play text-success"></i> <?= date('d/m/Y', strtotime($empresa['fecha_inicio'])) ?>
+                                                <br>
+                                                <i class="fas fa-stop text-danger"></i> <?= date('d/m/Y', strtotime($empresa['fecha_fin'])) ?>
+                                            </small>
+                                        <?php else: ?>
+                                            <small class="text-muted">Sin suscripción</small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="<?= $color_dias ?>">
+                                        <?php if ($dias > 0): ?>
+                                            <?= $dias ?> día<?= $dias != 1 ? 's' : '' ?>
+                                        <?php elseif ($dias == 0): ?>
+                                            <span class="badge badge-danger">Hoy vence</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-dark">Vencido</span>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= number_format($empresa['total_contactos']) ?></td>
-                                    <td><?= $empresa['total_usuarios'] ?></td>
-                                    <td><?= date('d/m/Y', strtotime($empresa['fecha_registro'])) ?></td>
+                                    <td>
+                                        <small><?= date('d/m/Y', strtotime($empresa['fecha_registro'])) ?></small>
+                                    </td>
                                     <td>
                                         <span class="badge badge-<?= $empresa['activo'] ? 'success' : 'danger' ?>">
                                             <?= $empresa['activo'] ? 'Activo' : 'Suspendido' ?>
                                         </span>
                                     </td>
                                     <td>
-                                        <div class="btn-group">
-                                            <button type="button" class="btn btn-sm btn-info"
-                                                onclick="verDetalles(<?= $empresa['id'] ?>)">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-warning"
-                                                onclick="cambiarPlan(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')">
-                                                <i class="fas fa-exchange-alt"></i>
-                                            </button>
-                                            <?php if ($empresa['activo']): ?>
-                                                <?php if ($empresa['id'] != 1): ?>
+                                        <?php if ($empresa['es_superadmin']): ?>
+                                            <!-- SuperAdmin: Solo badge sin acciones -->
+                                            <span class="badge badge-dark" title="Cuenta SuperAdmin protegida">
+                                                <i class="fas fa-shield-alt"></i> SuperAdmin
+                                            </span>
+                                        <?php else: ?>
+                                            <!-- Empresas normales: Botones de acción -->
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-sm btn-info"
+                                                    onclick="verDetalles(<?= $empresa['id'] ?>)"
+                                                    title="Ver detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-warning"
+                                                    onclick="cambiarPlan(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')"
+                                                    title="Cambiar plan">
+                                                    <i class="fas fa-exchange-alt"></i>
+                                                </button>
+                                                <?php if ($empresa['activo']): ?>
                                                     <button type="button" class="btn btn-sm btn-danger"
-                                                        onclick="suspenderEmpresa(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')">
+                                                        onclick="suspenderEmpresa(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')"
+                                                        title="Suspender">
                                                         <i class="fas fa-ban"></i>
                                                     </button>
                                                 <?php else: ?>
-                                                    <button type="button" class="btn btn-sm btn-secondary" disabled
-                                                        title="No se puede suspender la cuenta SuperAdmin">
-                                                        <i class="fas fa-shield-alt"></i>
+                                                    <button type="button" class="btn btn-sm btn-success"
+                                                        onclick="activarEmpresa(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')"
+                                                        title="Activar">
+                                                        <i class="fas fa-check"></i>
                                                     </button>
                                                 <?php endif; ?>
-                                            <?php else: ?>
-                                                <button type="button" class="btn btn-sm btn-success"
-                                                    onclick="activarEmpresa(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')">
-                                                    <i class="fas fa-check"></i>
-                                                </button>
-                                            <?php endif; ?>
-                                            <?php if ($empresa['plan_id'] == 1): ?>
-                                                <button type="button" class="btn btn-sm btn-primary"
-                                                    onclick="extenderTrial(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')">
-                                                    <i class="fas fa-clock"></i>
-                                                </button>
-                                            <?php endif; ?>
-                                        </div>
+                                                <?php if ($es_trial): ?>
+                                                    <button type="button" class="btn btn-sm btn-primary"
+                                                        onclick="extenderTrial(<?= $empresa['id'] ?>, '<?= addslashes($empresa['nombre_empresa']) ?>')"
+                                                        title="Extender trial">
+                                                        <i class="fas fa-clock"></i>
+                                                    </button>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -298,7 +380,6 @@ $empresas = $stmt->fetchAll();
                     <tr><th>Fecha Registro:</th><td>${e.fecha_registro}</td></tr>
                     <tr><th>Último Acceso:</th><td>${e.ultimo_acceso || 'Nunca'}</td></tr>
                     <tr><th>Total Contactos:</th><td>${e.total_contactos}</td></tr>
-                    <tr><th>Total Usuarios:</th><td>${e.total_usuarios}</td></tr>
                     <tr><th>Mensajes del Mes:</th><td>${e.mensajes_mes || 0}</td></tr>
                     <tr><th>Estado:</th><td><span class="badge badge-${e.activo ? 'success' : 'danger'}">${e.activo ? 'Activo' : 'Suspendido'}</span></td></tr>
                 </table>
@@ -321,11 +402,11 @@ $empresas = $stmt->fetchAll();
 
         $.post(API_URL + '/superadmin/cambiar-plan', formData, function(response) {
             if (response.success) {
-                mostrarExito('Plan cambiado correctamente');
+                Swal.fire('Éxito', 'Plan cambiado correctamente', 'success');
                 $('#modalCambiarPlan').modal('hide');
                 setTimeout(() => location.reload(), 1500);
             } else {
-                mostrarError(response.message);
+                Swal.fire('Error', response.message, 'error');
             }
         });
     }
@@ -345,10 +426,10 @@ $empresas = $stmt->fetchAll();
                     id: id
                 }, function(response) {
                     if (response.success) {
-                        mostrarExito('Empresa suspendida');
+                        Swal.fire('Suspendida', 'Empresa suspendida correctamente', 'success');
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        mostrarError(response.message);
+                        Swal.fire('Error', response.message, 'error');
                     }
                 });
             }
@@ -370,10 +451,10 @@ $empresas = $stmt->fetchAll();
                     id: id
                 }, function(response) {
                     if (response.success) {
-                        mostrarExito('Empresa activada');
+                        Swal.fire('Activada', 'Empresa activada correctamente', 'success');
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        mostrarError(response.message);
+                        Swal.fire('Error', response.message, 'error');
                     }
                 });
             }
@@ -400,10 +481,10 @@ $empresas = $stmt->fetchAll();
                     dias: result.value
                 }, function(response) {
                     if (response.success) {
-                        mostrarExito('Trial extendido correctamente');
+                        Swal.fire('Éxito', 'Trial extendido correctamente', 'success');
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        mostrarError(response.message);
+                        Swal.fire('Error', response.message, 'error');
                     }
                 });
             }

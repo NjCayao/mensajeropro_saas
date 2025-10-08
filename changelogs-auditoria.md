@@ -1429,4 +1429,75 @@ Error 3: Deprecated warnings
 Causa: number_format(null) en PHP 8+
 Solución: Operador null coalescing ?? aplicado
 
-#
+# 📝 CHANGELOG - FASE 9: SEGURIDAD Y PERMISOS
+Fecha: 08 Octubre 2025
+
+✅ CORRECCIONES CRÍTICAS
+1. Eliminado bypass de Rate Limit en producción
+
+Archivo: includes/security.php
+Cambio: Comentadas líneas 48-51 que desactivaban límites en localhost
+Impacto: Sistema protegido contra ataques de fuerza bruta en producción
+
+2. APIs con verificación centralizada de sesión
+
+Archivo: web/app.php
+Cambio: Router ahora verifica sesión antes de ejecutar APIs (excepto auth/webhooks)
+Impacto: Imposible acceder a APIs sin autenticación
+
+3. SuperAdmin sin hardcodeo a empresa_id=1
+
+Archivos: includes/auth.php, includes/superadmin_session_check.php
+Cambio: Validación solo por columna es_superadmin (no por ID)
+Impacto: Más flexible para múltiples SuperAdmins futuros
+
+4. Función helper para prevención XSS
+
+Archivo: includes/functions.php
+Agregado: Función e($string) para sanitizar outputs
+Impacto: Disponible para uso en módulos sin protección
+
+5. Índice de performance
+
+SQL ejecutado: ALTER TABLE empresas ADD INDEX idx_superadmin
+Impacto: Búsquedas de SuperAdmin instantáneas
+
+# 📝 CHANGELOG - FASE 10: CRON JOBS Y AUTOMATIZACIÓN
+Fecha: 08 Octubre 2025
+
+✅ CORRECCIONES APLICADAS
+1. Columna SQL faltante
+
+Tabla: mensajes_programados
+Agregada: Columna fecha_procesado (DATETIME NULL)
+Impacto: procesar_programados.php ahora registra cuándo se procesó cada mensaje
+
+2. Protección SuperAdmin en limpieza
+
+Archivo: cron/clean-sessions.php (línea 52)
+Cambio: Agregada validación && $empresa_id != 1
+Impacto: Carpetas y sesiones del SuperAdmin nunca se eliminan
+
+
+📊 CRONS VERIFICADOS (6 archivos)
+CronFunciónEstadocerrar-sesiones-vencidas.phpCierra WhatsApp de cuentas vencidas✅check-payments.phpSuspende empresas sin pago✅clean-sessions.phpLimpia archivos antiguos✅procesar_cola.phpEnvía mensajes por WhatsApp✅procesar_programados.phpProcesa mensajes programados✅send-reminders.phpEnvía recordatorios de pago✅
+
+# REGULARIDADES EXTRAS 
+📝 CHANGELOG - Corrección Sistema de Registro
+Fecha: 08 Octubre 2025
+🔴 Problema Encontrado
+
+Variables de sesión con nombres inconsistentes entre registro.php y verificar-email.php
+Token de verificación generaba 32 caracteres pero formulario esperaba 6 dígitos
+
+✅ Correcciones Aplicadas
+1. web/registro.php
+
+Línea 176: Token cambiado de bin2hex(random_bytes(16)) a sprintf('%06d', mt_rand(0, 999999))
+Línea 181: Variable de sesión unificada a $_SESSION['email_verificar']
+
+2. web/verificar-email.php
+
+Línea 7: Cambiado $_SESSION['email_registro'] → $_SESSION['email_verificar']
+Línea 12: Cambiado $_SESSION['email_registro'] → $_SESSION['email_verificar']
+Línea 43: Actualizado unset() con nombres correctos

@@ -1,6 +1,11 @@
 <?php
 // sistema/api/v1/cliente/pagos/cancelar-suscripcion.php
-session_start();
+
+// ✅ Verificar si ya hay sesión antes de iniciar
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../../../../config/app.php';
@@ -14,7 +19,7 @@ if (!estaLogueado()) {
     exit;
 }
 
-// ✅ Función para leer config
+// Función para leer config
 function getPaymentConfig($clave) {
     global $pdo;
     $stmt = $pdo->prepare("SELECT valor FROM configuracion_plataforma WHERE clave = ?");
@@ -24,10 +29,12 @@ function getPaymentConfig($clave) {
 }
 
 try {
-    // ✅ Obtener suscripción activa (tabla correcta)
+    // Obtener suscripción activa
     $stmt = $pdo->prepare("
         SELECT * FROM suscripciones 
-        WHERE empresa_id = ? AND estado = 'activa'
+        WHERE empresa_id = ? 
+        AND estado = 'activa'
+        AND tipo != 'trial'
         ORDER BY fecha_fin DESC
         LIMIT 1
     ");
@@ -35,25 +42,43 @@ try {
     $suscripcion = $stmt->fetch();
     
     if (!$suscripcion) {
-        echo json_encode(['success' => false, 'message' => 'No tienes una suscripción activa']);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'No tienes una suscripción de pago activa para cancelar'
+        ]);
         exit;
     }
     
-    // Cancelar en la pasarela
+    // Verificar si ya está cancelada
+    if ($suscripcion['auto_renovar'] == 0) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Tu suscripción ya está cancelada. Tendrás acceso hasta ' . 
+                        date('d/m/Y', strtotime($suscripcion['fecha_fin']))
+        ]);
+        exit;
+    }
+    
+    // Cancelar en la pasarela (evitar cobros futuros)
     if (!empty($suscripcion['suscripcion_externa_id'])) {
-        if ($suscripcion['metodo_pago'] === 'mercadopago') {
-            cancelarMercadoPago($suscripcion['suscripcion_externa_id']);
-        } elseif ($suscripcion['metodo_pago'] === 'paypal') {
-            cancelarPayPal($suscripcion['suscripcion_externa_id']);
+        try {
+            if ($suscripcion['metodo_pago'] === 'mercadopago') {
+                cancelarMercadoPago($suscripcion['suscripcion_externa_id']);
+            } elseif ($suscripcion['metodo_pago'] === 'paypal') {
+                cancelarPayPal($suscripcion['suscripcion_externa_id']);
+            }
+        } catch (Exception $e) {
+            // Log pero continuar (puede que ya esté cancelada en pasarela)
+            error_log("Advertencia cancelando en pasarela: " . $e->getMessage());
         }
     }
     
-    // Actualizar BD
+    // ✅ CORRECTO: Solo marcar auto_renovar = 0, NO cambiar estado
     $pdo->beginTransaction();
     
     $stmt = $pdo->prepare("
         UPDATE suscripciones 
-        SET auto_renovar = 0, estado = 'cancelada'
+        SET auto_renovar = 0
         WHERE id = ?
     ");
     $stmt->execute([$suscripcion['id']]);
@@ -66,14 +91,16 @@ try {
     $stmt->execute([
         $_SESSION['empresa_id'],
         $_SESSION['user_id'] ?? null,
-        'Suscripción cancelada: ' . ($suscripcion['suscripcion_externa_id'] ?? 'N/A')
+        'Suscripción cancelada (no renovará). Acceso hasta: ' . $suscripcion['fecha_fin']
     ]);
     
     $pdo->commit();
     
     echo json_encode([
         'success' => true,
-        'message' => 'Suscripción cancelada. Tendrás acceso hasta: ' . date('d/m/Y', strtotime($suscripcion['fecha_fin']))
+        'message' => 'Suscripción cancelada exitosamente. Tendrás acceso completo hasta el ' . 
+                    date('d/m/Y', strtotime($suscripcion['fecha_fin'])) . 
+                    '. Después de esa fecha, tu cuenta será suspendida.'
     ]);
     
 } catch (Exception $e) {
@@ -82,7 +109,10 @@ try {
     }
     
     error_log("Error cancelando suscripción: " . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    echo json_encode([
+        'success' => false, 
+        'message' => 'Error al cancelar: ' . $e->getMessage()
+    ]);
 }
 
 function cancelarMercadoPago($subscription_id) {

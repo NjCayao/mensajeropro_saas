@@ -5,12 +5,12 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 // Verificar que venga del registro
-if (!isset($_SESSION['email_registro'])) {
+if (!isset($_SESSION['email_verificar'])) {
     header('Location: ' . url('login.php'));
     exit;
 }
 
-$email = $_SESSION['email_registro'];
+$email = $_SESSION['email_verificar'];
 $error = '';
 $success = '';
 

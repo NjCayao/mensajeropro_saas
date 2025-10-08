@@ -298,3 +298,10 @@ function enviarWhatsApp(int $empresa_id, string $numero, string $mensaje, ?strin
         'error' => 'Respuesta JSON inválida'
     ];
 }
+
+/**
+ * Sanitizar output para prevenir XSS
+ */
+function e($string) {
+    return htmlspecialchars($string ?? '', ENT_QUOTES, 'UTF-8');
+}
