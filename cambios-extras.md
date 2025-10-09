@@ -38,3 +38,41 @@ Modificados:
 /var/www/mensajeropro/whatsapp-service/src/index.js
 /var/www/mensajeropro/whatsapp-service/src/whatsapp-wppconnect.js
 /var/www/mensajeropro/sistema/cliente/modulos/whatsapp.php
+
+# 📋 Changelog - Correcciones PayPal y Sistema
+✅ Correcciones Implementadas
+🔧 Pagos PayPal
+
+Duplicación eliminada: Agregado índice único en pagos.referencia_externa
+Detección anual/mensual: Ahora detecta automáticamente si la suscripción es mensual o anual comparando monto pagado vs precios del plan
+Emails funcionando: Corregido envío de emails de bienvenida y renovación
+Sincronización de tablas: empresas.plan_id y suscripciones.plan_id siempre sincronizados
+
+🕐 Timezone
+
+MySQL en UTC: Configurado timezone global a +00:00 para evitar conflictos
+Consistencia: Eliminado timezone hardcodeado en código PHP
+
+🗄️ Base de Datos
+
+Índice único en suscripciones: (empresa_id, estado) - Solo 1 suscripción activa por empresa
+Índice único en pagos: referencia_externa - Previene duplicados de webhooks
+
+🔄 Sincronización de Planes
+
+SuperAdmin cambio de plan: Ahora actualiza tanto empresas como suscripciones
+Cliente cambio de plan: Ya funcionaba, mantiene sincronización
+
+📧 Sistema de Emails
+
+Wrapper creado: includes/email.php para compatibilidad con webhooks
+Logs detallados: Agregados logs para debugging de envío
+
+
+📂 Archivos Modificados
+
+/var/www/mensajeropro/config/database.php (timezone eliminado)
+/var/www/mensajeropro/sistema/api/v1/webhooks/paypal.php (detección anual/mensual)
+/var/www/mensajeropro/sistema/api/v1/superadmin/cambiar-plan.php (sincronización)
+/var/www/mensajeropro/includes/email.php (creado)
+/etc/mysql/mysql.conf.d/mysqld.cnf (timezone UTC)

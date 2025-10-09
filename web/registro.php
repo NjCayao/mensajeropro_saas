@@ -232,7 +232,7 @@ $trial_dias = $result ? (int)$result['valor'] : TRIAL_DAYS;
     <div class="register-container">
         <!-- Panel Izquierdo -->
         <div class="register-left">
-            <h1><img src="<?php echo asset('img/logo1.png'); ?>" width="50px"> <?php echo APP_NAME; ?></h1>
+            <a href="<?php echo url('index.php'); ?>"><h1><img src="<?php echo asset('img/logo1.png'); ?>" width="50px"> <?php echo APP_NAME; ?></h1></a>
             <p>Empieza a automatizar tus ventas hoy mismo</p>
 
             <ul class="benefit-list">

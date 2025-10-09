@@ -83,7 +83,7 @@ try {
     <div class="login-container">
         <!-- Panel Izquierdo -->
         <div class="login-left">
-            <h1><img src="<?php echo asset('img/logo1.png'); ?>" width="50px"> <?php echo APP_NAME; ?></h1>
+            <a href="<?php echo url('index.php'); ?>"><h1><img src="<?php echo asset('img/logo1.png'); ?>" width="50px"> <?php echo APP_NAME; ?></h1></a>
             <p>Sistema de automatización de mensajería empresarial</p>
             
             <ul class="feature-list">
