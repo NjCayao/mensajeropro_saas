@@ -571,9 +571,9 @@ $caracteristicas = json_decode($plan_actual['caracteristicas_json'] ?? '{}', tru
                     <label>Método de pago:</label>
                     <div class="row">
                         <div class="col-6">
-                            <button class="btn btn-block btn-outline-info" onclick="procesarPago('mercadopago')">
-                                <i class="fas fa-credit-card"></i><br>
-                                MercadoPago
+                            <button class="btn btn-block btn-outline-success" onclick="procesarPago('mercadopago')">
+                                <i class="fas fa-mobile-alt"></i><br>
+                                Yape / Plin
                             </button>
                         </div>
                         <div class="col-6">

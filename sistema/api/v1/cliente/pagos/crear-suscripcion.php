@@ -70,7 +70,7 @@ try {
 }
 
 /**
- * Crear suscripción en MercadoPago
+ * Crear suscripción en MercadoPago Yape
  */
 function crearSuscripcionMercadoPago($empresa, $plan, $tipo_pago, $monto) {
     global $pdo;
@@ -81,41 +81,67 @@ function crearSuscripcionMercadoPago($empresa, $plan, $tipo_pago, $monto) {
         throw new Exception("MercadoPago no está configurado");
     }
     
+    // ✅ CONVERTIR USD → PEN para Yape
+    $tipo_cambio = obtenerTipoCambio();
+    $monto_pen = round($monto * $tipo_cambio, 2);
+    
+    // Calcular días según tipo
+    $dias = ($tipo_pago === 'anual') ? 365 : 30;
+    
+    error_log("💱 Pago Yape: $" . $monto . " USD × " . $tipo_cambio . " = S/ " . $monto_pen . " PEN por {$dias} días");
+    
     $success_url = url('cliente/pago-exitoso');
     $failure_url = url('cliente/pago-fallido');
+    $pending_url = url('cliente/pago-pendiente');
     
-    // ✅ ESTRUCTURA CORRECTA PARA SUSCRIPCIONES CON USD
-    $plan_data = [
-        "reason" => $plan['nombre'] . " - " . ucfirst($tipo_pago),
-        "auto_recurring" => [
-            "frequency" => ($tipo_pago === 'anual') ? 12 : 1,
-            "frequency_type" => "months",
-            "transaction_amount" => (float)$monto,
-            "currency_id" => "USD"
+    // ✅ PREFERENCE (pago único) en lugar de PREAPPROVAL (suscripción)
+    $preference_data = [
+        "items" => [
+            [
+                "title" => $plan['nombre'] . " - " . ucfirst($tipo_pago),
+                "description" => "Acceso por {$dias} días al plan " . $plan['nombre'],
+                "quantity" => 1,
+                "unit_price" => (float)$monto_pen,
+                "currency_id" => "PEN"
+            ]
         ],
-        "back_url" => $success_url,
-        "payer_email" => $empresa['email'],
-        "external_reference" => "empresa_" . $empresa['id'] . "_plan_" . $plan['id'],
-        "status" => "pending"
+        "payer" => [
+            "email" => $empresa['email'],
+            "name" => $empresa['nombre_empresa']
+        ],
+        "back_urls" => [
+            "success" => $success_url,
+            "failure" => $failure_url,
+            "pending" => $pending_url
+        ],
+        "auto_return" => "approved",
+        "external_reference" => "empresa_" . $empresa['id'] . "_plan_" . $plan['id'] . "_" . $tipo_pago,
+        "statement_descriptor" => "MENSAJEROPRO",
+        "payment_methods" => [
+            "excluded_payment_types" => [],
+            "installments" => 1
+        ],
+        "notification_url" => APP_URL . "/api/v1/webhooks/mercadopago"
     ];
     
-    error_log("MercadoPago Request: " . json_encode($plan_data));
+    error_log("MercadoPago Preference Request: " . json_encode($preference_data));
     
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, "https://api.mercadopago.com/preapproval");
+    curl_setopt($ch, CURLOPT_URL, "https://api.mercadopago.com/checkout/preferences");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($plan_data));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($preference_data));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Authorization: Bearer " . $access_token,
-        "Content-Type: application/json"
+        "Content-Type: application/json",
+        "X-meli-site-id: MPE"
     ]);
     
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     
-    error_log("MercadoPago Response (HTTP $http_code): " . $response);
+    error_log("MercadoPago Preference Response (HTTP $http_code): " . $response);
     
     if ($http_code !== 201) {
         throw new Exception("Error en MercadoPago (HTTP $http_code): " . $response);
@@ -123,7 +149,7 @@ function crearSuscripcionMercadoPago($empresa, $plan, $tipo_pago, $monto) {
     
     $result = json_decode($response, true);
     
-    // Guardar intento
+    // Guardar intento (monto original en USD)
     $stmt = $pdo->prepare("
         INSERT INTO pagos (empresa_id, plan_id, monto, metodo, referencia_externa, estado, respuesta_gateway)
         VALUES (?, ?, ?, 'mercadopago', ?, 'pendiente', ?)
@@ -131,7 +157,7 @@ function crearSuscripcionMercadoPago($empresa, $plan, $tipo_pago, $monto) {
     $stmt->execute([
         $empresa['id'],
         $plan['id'],
-        $monto,
+        $monto,  // Monto en USD
         $result['id'],
         json_encode($result)
     ]);
@@ -139,7 +165,7 @@ function crearSuscripcionMercadoPago($empresa, $plan, $tipo_pago, $monto) {
     return [
         'success' => true,
         'init_point' => $result['init_point'],
-        'subscription_id' => $result['id']
+        'preference_id' => $result['id']
     ];
 }
 
@@ -203,7 +229,8 @@ function crearSuscripcionPayPal($empresa, $plan, $tipo_pago, $monto)
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($product_data));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Authorization: Bearer " . $access_token,
-        "Content-Type: application/json"
+        "Content-Type: application/json",
+        // "X-meli-site-id: MPE"
     ]);
 
     $response = curl_exec($ch);

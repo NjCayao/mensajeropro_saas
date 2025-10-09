@@ -76,3 +76,33 @@ Logs detallados: Agregados logs para debugging de envío
 /var/www/mensajeropro/sistema/api/v1/superadmin/cambiar-plan.php (sincronización)
 /var/www/mensajeropro/includes/email.php (creado)
 /etc/mysql/mysql.conf.d/mysqld.cnf (timezone UTC)
+
+# 📝 CHANGELOG - Integración Yape/MercadoPago
+Archivos modificados (3):
+
+sistema/api/v1/cliente/pagos/crear-suscripcion.php
+
+Cambiado de preapproval (suscripciones) a preference (pagos únicos)
+Agregada conversión automática USD → PEN
+Header X-meli-site-id: MPE agregado
+
+
+sistema/api/v1/webhooks/mercadopago.php
+
+Agregado case payment en switch
+Nueva función procesarPagoUnico() para pagos Yape
+Procesa pagos mensuales (30 días) y anuales (365 días)
+
+
+sistema/cliente/modulos/mi-plan.php
+
+Botón cambiado de "MercadoPago" a "Yape / Plin"
+Icono y color actualizados
+
+
+
+Configuración MercadoPago:
+
+Webhook configurado: https://mensajeropro.com/api/v1/webhooks/mercadopago
+Evento activo: payment
+Credenciales: Producción (Perú)
