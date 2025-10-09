@@ -8,14 +8,23 @@
  * Si no tiene puerto asignado, le asigna uno automáticamente
  */
 function obtenerPuertoEmpresa($pdo, $empresa_id) {
+    error_log("=== obtenerPuertoEmpresa LLAMADA ===");
+    error_log("Empresa ID recibida: " . $empresa_id);
+    error_log("PDO válido: " . (is_object($pdo) ? 'SI' : 'NO'));
+    
     // Buscar puerto asignado
     $stmt = $pdo->prepare("SELECT puerto FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
     $stmt->execute([$empresa_id]);
     $result = $stmt->fetch();
     
+    error_log("Resultado fetch: " . print_r($result, true));
+    
     if ($result && $result['puerto']) {
+        error_log("Puerto encontrado: " . $result['puerto']);
         return $result['puerto'];
     }
+    
+    error_log("Puerto NO encontrado, asignando nuevo...");
     
     // Si no tiene puerto, asignar uno nuevo
     // Puerto base 3001, incrementar según empresa_id
@@ -35,6 +44,8 @@ function obtenerPuertoEmpresa($pdo, $empresa_id) {
     // Asignar el puerto a la empresa
     $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET puerto = ? WHERE empresa_id = ?");
     $stmt->execute([$puerto, $empresa_id]);
+    
+    error_log("Puerto asignado: " . $puerto);
     
     return $puerto;
 }

@@ -326,7 +326,8 @@ $puerto = $whatsapp['puerto'] ?? 3001;
     $puerto_empresa = $stmt->fetchColumn() ?: 3001;
     ?>
 
-    const WHATSAPP_API_URL = '<?php echo IS_LOCALHOST ? "http://localhost:" . $puerto_empresa : APP_URL . ":" . $puerto_empresa; ?>';
+    const WHATSAPP_API_URL = '<?php echo IS_LOCALHOST ? "http://localhost:" . $puerto_empresa : APP_URL . "/whatsapp-port-" . $puerto_empresa; ?>';
+    // const WHATSAPP_API_URL = '<?php echo IS_LOCALHOST ? "http://localhost:" . $puerto_empresa : APP_URL . ":" . $puerto_empresa; ?>';
     const EMPRESA_ID = <?php echo $_SESSION['empresa_id'] ?? 0; ?>;
     const PUERTO_EMPRESA = <?php echo $puerto_empresa; ?>;
     const IS_PRODUCTION = <?php echo IS_LOCALHOST ? 'false' : 'true'; ?>;
@@ -603,6 +604,13 @@ $puerto = $whatsapp['puerto'] ?? 3001;
             // Si se acaba el tiempo
             if (timeLeft <= 0) {
                 clearInterval(qrCountdown);
+
+                // DETENER EL INTERVAL DE VERIFICACIÓN
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                    checkInterval = null;
+                }
+
                 $('#qrTimer').hide();
 
                 // Mostrar mensaje de expiración
@@ -610,17 +618,25 @@ $puerto = $whatsapp['puerto'] ?? 3001;
                     <div class="alert alert-danger">
                         <h4><i class="fas fa-times-circle"></i> Código QR Expirado</h4>
                         <p>No se escaneó el código a tiempo.</p>
-                        <p>El servicio se detuvo automáticamente.</p>
+                        <p>Haz clic en "Iniciar" para generar un nuevo código.</p>
                         <button class="btn btn-primary mt-2" onclick="location.reload()">
-                            <i class="fas fa-sync"></i> Reintentar
+                            <i class="fas fa-sync"></i> Recargar Página
                         </button>
                     </div>
                 `);
 
-                // El servicio se detiene automáticamente en el backend
-                setTimeout(() => {
-                    mostrarServicioNoIniciado();
-                }, 3000);
+                // Detener el servicio automáticamente
+                fetch(API_URL + '/whatsapp/control-servicio', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'accion=detener'
+                }).then(() => {
+                    setTimeout(() => {
+                        mostrarServicioNoIniciado();
+                    }, 2000);
+                });
             }
         }, 1000);
     }

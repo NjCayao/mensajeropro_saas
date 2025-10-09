@@ -59,8 +59,7 @@ npm install moment
 . src/database.js en la funcion getDBConfig() poner manualmente por si falle la lectura de base de datos php
 
 # NO USAR whatsapp-service / scripts (scripst de mantenimiento para fallas de puertos NO USAR EN OPERACIÓN NORMAL)
-# ejecutar por unica vez en produccion solo linux
-chmod +x whatsapp-service/start.sh
+
 # ejecutar por unica vez si es windows o local
 - por cmd
 cd whatsapp-service

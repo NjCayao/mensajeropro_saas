@@ -6,3 +6,4 @@ logs/
 sistema/uploads/
 web/uploads/
 whatsapp-service/uploads/
+whatsapp-service/.env

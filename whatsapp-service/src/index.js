@@ -56,8 +56,7 @@ async function main() {
     // Iniciar servidor en el puerto especificado
     const app = createAPI(whatsappClient);
 
-    const HOST =
-      process.env.NODE_ENV === "production" ? "127.0.0.1" : "0.0.0.0";
+    const HOST = process.env.NODE_ENV === "production" ? "127.0.0.1" : "0.0.0.0";
 
     // AQUÍ USAS LA IMPLEMENTACIÓN SIMPLE (sin startServer)
     app

@@ -9,7 +9,7 @@ const config = {
     },
     production: {
         host: '127.0.0.1',
-        corsOrigin: ['https://tudominio.com', 'https://www.tudominio.com'],
+        corsOrigin: ['https://mensajeropro.com', 'https://www.mensajeropro.com'],
         logLevel: 'info'
     }
 };

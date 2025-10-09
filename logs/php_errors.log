@@ -1,8 +1,21 @@
-[08-Oct-2025 09:10:43 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\cliente\pagos\cancelar-suscripcion.php on line 3
-[08-Oct-2025 09:13:58 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\api\v1\cliente\pagos\cancelar-suscripcion.php on line 3
-[08-Oct-2025 09:53:16 America/Lima] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '(SELECT fecha_pago FROM pagos WHERE empresa_id = e.id AND estado = 'aprobado'...' at line 14 in C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\empresas.php:55
-Stack trace:
-#0 C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\empresas.php(55): PDO->prepare('\r\n    SELECT \r\n...')
-#1 C:\xampp\htdocs\mensajeroprov2\web\app.php(99): require_once('C:\\xampp\\htdocs...')
-#2 {main}
-  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\superadmin\modulos\empresas.php on line 55
+[08-Oct-2025 11:24:39 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\logout.php on line 3
+[09-Oct-2025 04:19:23 America/Lima] === CONTROL SERVICIO ===
+[09-Oct-2025 04:19:23 America/Lima] Acción: iniciar
+[09-Oct-2025 04:19:23 America/Lima] Empresa: 1
+[09-Oct-2025 04:19:23 America/Lima] === obtenerPuertoEmpresa LLAMADA ===
+[09-Oct-2025 04:19:23 America/Lima] Empresa ID recibida: 1
+[09-Oct-2025 04:19:23 America/Lima] PDO válido: SI
+[09-Oct-2025 04:19:23 America/Lima] Resultado fetch: Array
+(
+    [puerto] => 3001
+)
+
+[09-Oct-2025 04:19:23 America/Lima] Puerto encontrado: 3001
+[09-Oct-2025 04:20:02 America/Lima] === CONTROL SERVICIO ===
+[09-Oct-2025 04:20:02 America/Lima] Acción: detener
+[09-Oct-2025 04:20:02 America/Lima] Empresa: 1
+[09-Oct-2025 04:20:02 America/Lima] === INICIANDO DETENCIÓN ===
+[09-Oct-2025 04:20:02 America/Lima] Puerto obtenido: 3001
+[09-Oct-2025 04:20:02 America/Lima] Estado actualizado a deteniendo
+[09-Oct-2025 04:20:02 America/Lima] Esperando 2 segundos...
+[09-Oct-2025 04:20:04 America/Lima] Limpiando sesión...

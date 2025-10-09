@@ -22,6 +22,11 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $accion = $_POST['accion'] ?? '';
+// LOG CRÍTICO
+error_log("=== CONTROL SERVICIO ===");
+error_log("Acción: " . $accion);
+error_log("Empresa: " . $empresa_id);
+
 $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
 $servicePath = dirname(dirname(dirname(dirname(__DIR__)))) . DIRECTORY_SEPARATOR . 'whatsapp-service';
 
@@ -34,23 +39,21 @@ try {
             // Buscar procesos que usen este puerto
             $output = shell_exec("netstat -ano | findstr :$puerto");
             if ($output) {
-                // Extraer PIDs
                 preg_match_all('/\s+(\d+)\s*$/m', $output, $matches);
                 if (!empty($matches[1])) {
                     $pids = array_unique($matches[1]);
                     foreach ($pids as $pid) {
                         @exec("taskkill /PID $pid /F 2>&1");
                     }
-                    sleep(1); // Esperar un segundo para que se libere el puerto
+                    sleep(1);
                 }
             }
         } else {
-            // Linux/Mac
             @exec("lsof -t -i:$puerto | xargs kill -9 2>&1");
             sleep(1);
         }
 
-        // Verificar si ya está corriendo en ese puerto (después de limpieza)
+        // Verificar si ya está corriendo
         if (verificarPuertoActivo($puerto)) {
             $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'verificando' WHERE empresa_id = ?");
             $stmt->execute([$empresa_id]);
@@ -58,87 +61,53 @@ try {
             exit;
         }
 
-        // Limpiar sesiones anteriores
-        // Limpiar SOLO la sesión de esta empresa (multi-tenant)
-        $sessionEmpresa = $servicePath . DIRECTORY_SEPARATOR . 'tokens' . DIRECTORY_SEPARATOR . 'empresa-' . $empresa_id;
-
-        if (file_exists($sessionEmpresa)) {
-            // echo "Limpiando sesión de empresa $empresa_id...\n";
-            if ($isWindows) {
-                @exec("rmdir /s /q \"$sessionEmpresa\" 2>&1");
-            } else {
-                @exec("rm -rf \"$sessionEmpresa\" 2>&1");
-            }
-        } else {
-            // echo "📂 No hay sesión previa para empresa $empresa_id\n";
-        }
+        // Limpiar sesión anterior
+        // Limpiar sesión anterior usando script con privilegios
+        error_log("Limpiando tokens de empresa " . $empresa_id);
+        $output = [];
+        exec("sudo /var/www/mensajeropro/whatsapp-service/clean-tokens.sh $empresa_id 2>&1", $output);
+        error_log("Clean tokens output: " . print_r($output, true));
 
         // Actualizar estado
         $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'iniciando', qr_code = NULL, numero_conectado = NULL WHERE empresa_id = ?");
         $stmt->execute([$empresa_id]);
 
-        // Crear carpeta logs si no existe
+        // Crear carpeta logs
         $logsDir = $servicePath . DIRECTORY_SEPARATOR . 'logs';
         if (!file_exists($logsDir)) {
             mkdir($logsDir, 0777, true);
         }
 
-        // Limpiar logs antiguos (más de 7 días)
-        $logFiles = glob($logsDir . DIRECTORY_SEPARATOR . '*.log');
-        if (is_array($logFiles)) {
-            foreach ($logFiles as $logFile) {
-                if (file_exists($logFile) && filemtime($logFile) < strtotime('-7 days')) {
-                    @unlink($logFile);
-                }
-            }
-        }
-
-        // Limitar tamaño del log actual
-        $currentLog = $logsDir . DIRECTORY_SEPARATOR . 'service.log';
-        if (file_exists($currentLog) && filesize($currentLog) > 10 * 1024 * 1024) { // 10MB
-            @unlink($currentLog);
-        }
-
         if ($isWindows) {
-            // CREAR ARCHIVO VBS DINÁMICAMENTE
+            // Windows con Task Scheduler
             $vbsPath = $servicePath . '\\start-whatsapp-service.vbs';
             $vbsContent = 'Set objShell = CreateObject("WScript.Shell")' . "\r\n";
             $vbsContent .= 'objShell.CurrentDirectory = "' . $servicePath . '"' . "\r\n";
             $nodeEnv = IS_LOCALHOST ? 'development' : 'production';
             $vbsContent .= 'objShell.Run "cmd /c set NODE_ENV=' . $nodeEnv . ' && node src\index.js ' . $puerto . ' ' . $empresa_id . ' > logs\empresa-' . $empresa_id . '.log 2>&1", 0, False' . "\r\n";
-            // Escribir el archivo VBS
             file_put_contents($vbsPath, $vbsContent);
 
-            // Usar Task Scheduler
             $taskName = "MensajeroPro_WhatsApp_Empresa_" . $empresa_id;
-
-            // Eliminar tarea si existe
             @exec('schtasks /delete /tn "' . $taskName . '" /f 2>&1');
-
-            // Crear nueva tarea
             $createTask = 'schtasks /create /tn "' . $taskName . '" /tr "wscript.exe \"' . $vbsPath . '\"" /sc once /st 00:00 /f /rl highest';
             @exec($createTask, $output, $returnCode);
-
             if ($returnCode !== 0) {
-                // Si falla, intentar sin privilegios elevados
                 $createTask = 'schtasks /create /tn "' . $taskName . '" /tr "wscript.exe \"' . $vbsPath . '\"" /sc once /st 00:00 /f';
                 @exec($createTask);
             }
-
-            // Ejecutar la tarea
             @exec('schtasks /run /tn "' . $taskName . '"');
         } else {
-            // Linux/Mac - usar PM2 si está instalado, sino nohup
+            // Linux/Mac con PM2
             $pm2Check = shell_exec('which pm2');
 
             if ($pm2Check) {
-                // Usar PM2
                 chdir($servicePath);
                 $processName = "mensajeropro-whatsapp-empresa-" . $empresa_id;
                 $nodeEnv = IS_LOCALHOST ? 'development' : 'production';
-                @exec("NODE_ENV=$nodeEnv pm2 start src/index.js --name $processName -- $puerto $empresa_id 2>&1");
+                $cmd = "sudo /var/www/mensajeropro/whatsapp-service/start-pm2.sh $nodeEnv $processName $puerto $empresa_id 2>&1";
+                exec($cmd, $output, $returnCode);
             } else {
-                // Usar nohup
+                // Nohup como fallback
                 $nodeEnv = IS_LOCALHOST ? 'development' : 'production';
                 $cmd = "cd $servicePath && NODE_ENV=$nodeEnv nohup node src/index.js $puerto $empresa_id > logs/empresa-$empresa_id.log 2>&1 &";
                 @exec($cmd);
@@ -147,63 +116,69 @@ try {
 
         echo json_encode(['success' => true, 'message' => 'Servicio iniciándose...']);
     } elseif ($accion == 'detener') {
-        // Obtener puerto de la empresa
+        error_log("=== INICIANDO DETENCIÓN ===");
+        // Obtener puerto
         $stmt = $pdo->prepare("SELECT puerto FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
         $stmt->execute([$empresa_id]);
         $result = $stmt->fetch();
         $puerto = $result['puerto'] ?? 3001;
 
+        error_log("Puerto obtenido: " . $puerto);
+
         // Actualizar estado
         $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'deteniendo' WHERE empresa_id = ?");
         $stmt->execute([$empresa_id]);
 
+        error_log("Estado actualizado a deteniendo");
+
         if ($isWindows) {
-            // Detener tarea programada
             $taskName = "MensajeroPro_WhatsApp_Empresa_" . $empresa_id;
             @exec('schtasks /end /tn "' . $taskName . '" 2>&1');
             @exec('schtasks /delete /tn "' . $taskName . '" /f 2>&1');
-
-            // Matar procesos node que estén usando ese puerto
-            // En Windows es más complicado, por ahora matamos todos los node
             @exec('taskkill /F /IM node.exe 2>&1');
 
-            // Eliminar archivo VBS
             $vbsPath = $servicePath . '\\start-whatsapp-service.vbs';
             if (file_exists($vbsPath)) {
                 @unlink($vbsPath);
             }
         } else {
-            // Linux/Mac
+            error_log("Sistema Linux detectado");
             $pm2Check = shell_exec('which pm2');
+            error_log("PM2 check: " . ($pm2Check ? "encontrado" : "no encontrado"));
 
             if ($pm2Check) {
                 $processName = "mensajeropro-whatsapp-empresa-" . $empresa_id;
-                @exec("pm2 stop $processName 2>&1");
-                @exec("pm2 delete $processName 2>&1");
-            } else {
-                // Buscar proceso por puerto y matarlo
-                @exec("lsof -t -i:$puerto | xargs kill -9 2>&1");
+                error_log("Deteniendo proceso: " . $processName);
+
+                $output = [];
+                exec("sudo /var/www/mensajeropro/whatsapp-service/stop-pm2.sh $processName 2>&1", $output);
+                error_log("Stop script output: " . print_r($output, true));
             }
         }
+
+        error_log("Esperando 2 segundos...");
 
         sleep(2);
+        error_log("Limpiando sesión...");
 
-        // Limpiar sesión específica de la empresa
+        // Limpiar sesión
         $sessionEmpresa = $servicePath . DIRECTORY_SEPARATOR . 'tokens' . DIRECTORY_SEPARATOR . 'empresa-' . $empresa_id;
-        if (file_exists($sessionEmpresa)) {  
+        if (file_exists($sessionEmpresa)) {
             if ($isWindows) {
-                @exec("rmdir /s /q \"$sessionEmpresa\" 2>&1");  
+                @exec("rmdir /s /q \"$sessionEmpresa\" 2>&1");
             } else {
-                @exec("rm -rf \"$sessionEmpresa\" 2>&1");  
+                @exec("rm -rf \"$sessionEmpresa\" 2>&1");
             }
         }
 
+        // ACTUALIZAR A DESCONECTADO
         $stmt = $pdo->prepare("UPDATE whatsapp_sesiones_empresa SET estado = 'desconectado', qr_code = NULL, numero_conectado = NULL WHERE empresa_id = ?");
         $stmt->execute([$empresa_id]);
 
+        error_log("Estado actualizado a desconectado");
+
         echo json_encode(['success' => true, 'message' => 'Servicio detenido']);
     } elseif ($accion == 'verificar') {
-        // Obtener puerto de la empresa
         $stmt = $pdo->prepare("SELECT puerto FROM whatsapp_sesiones_empresa WHERE empresa_id = ?");
         $stmt->execute([$empresa_id]);
         $result = $stmt->fetch();

@@ -65,12 +65,43 @@ class WhatsAppClient {
           "--disable-accelerated-2d-canvas",
           "--no-first-run",
           "--disable-gpu",
+
+          "--aggressive-cache-discard",
+          "--disable-cache",
+          "--disable-application-cache",
+          "--disable-offline-load-stale-cache",
+          "--disk-cache-size=0",
+          "--disable-background-networking",
+          "--disable-default-apps",
+          "--disable-extensions",
+          "--disable-sync",
+          "--disable-translate",
+          "--hide-scrollbars",
+          "--metrics-recording-only",
+          "--mute-audio",
+          "--safebrowsing-disable-auto-update",
+          "--disable-web-security",
+          "--no-zygote",
+          "--single-process",
         ],
+
         refreshQR: 15000, // Regenerar QR cada 15 segundos
         autoClose: 60000, // Cerrar después de 60 segundos sin escanear
         disableSpins: true,
         puppeteerOptions: {
-          args: ["--disable-logging", "--log-level=3"], // AGREGAR ESTO
+          args: [
+            "--disable-logging",
+            "--log-level=3",
+            "--max-old-space-size=350",
+            "--js-flags=--max-old-space-size=350",
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-accelerated-2d-canvas",
+            "--no-first-run",
+            "--no-zygote",
+            "--disable-gpu",
+          ],
         },
       });
 
@@ -190,9 +221,9 @@ class WhatsAppClient {
           error.message.includes("Failed to authenticate"))
       ) {
         console.log("⏱️ Timeout: QR no fue escaneado");
-        await db.updateWhatsAppStatus("timeout_qr");
+        await db.updateWhatsAppStatus("desconectado");
       } else {
-        await db.updateWhatsAppStatus("error");
+        await db.updateWhatsAppStatus("desconectado");
       }
 
       // Limpiar recursos
@@ -228,7 +259,7 @@ class WhatsAppClient {
       this.cancelQrTimeout();
 
       // Actualizar estado en BD
-      await db.updateWhatsAppStatus("timeout_qr", null, null);
+      await db.updateWhatsAppStatus("desconectado", null, null);
 
       // Intentar cerrar el cliente si existe
       if (this.client) {

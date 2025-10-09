@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 define('APP_NAME', 'MensajeroPro');
-define('APP_VERSION', '2.0.0');
+define('APP_VERSION', '5.0.0');
 
 // Detección de entorno mejorada
 $isLocalhost = (
