@@ -27,3 +27,35 @@ chmod -R 775 logs/*
 if (defined('IS_LOCALHOST') && IS_LOCALHOST) {
     return ['bloqueado' => false];
 }
+
+____________________________________________
+
+# PARA EL ML DE BOT DE VENTAS 
+# 1. Instalar pip3
+sudo apt update
+sudo apt install python3-pip -y
+
+# 2. Verificar instalación
+pip3 --version
+
+# 3. Instalar dependencias del sistema
+sudo apt install python3-venv python3-dev build-essential -y
+
+# 4. Ir a la carpeta del proyecto
+cd /var/www/mensajeropro
+
+# 5. Crear estructura ml-engine
+mkdir -p ml-engine/{models,training,src,logs}
+cd ml-engine
+
+# 6. Crear entorno virtual
+python3 -m venv venv
+
+# 7. Activar entorno virtual
+source venv/bin/activate
+
+# 8. Instalar dependencias Python
+pip install --upgrade pip
+pip install -r requirements.txt
+
+_______________

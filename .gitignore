@@ -7,3 +7,6 @@ sistema/uploads/
 web/uploads/
 whatsapp-service/uploads/
 whatsapp-service/.env
+node_modules
+ml-engine/venv/
+

@@ -1,0 +1,33 @@
+{
+  "version": 7,
+  "accuracy": 0.7631578947368421,
+  "precision": 0.8564194577352473,
+  "recall": 0.7631578947368421,
+  "f1_score": 0.7599206349206348,
+  "total_samples": 376,
+  "train_samples": 300,
+  "test_samples": 76,
+  "intents": [
+    "consultar_horario",
+    "despedida",
+    "confirmar_pedido",
+    "queja_reclamo",
+    "saludo",
+    "consultar_promociones",
+    "consultar_precio",
+    "ver_carrito",
+    "consultar_catalogo",
+    "solicitar_humano",
+    "consultar_delivery",
+    "consultar_pago",
+    "conversacion_general",
+    "agregar_producto",
+    "cancelar_pedido",
+    "consultar_disponibilidad",
+    "confirmar_pago",
+    "problema_pago",
+    "consultar_ubicacion",
+    "agradecimiento"
+  ],
+  "trained_at": "2025-10-10T05:34:13.094407"
+}

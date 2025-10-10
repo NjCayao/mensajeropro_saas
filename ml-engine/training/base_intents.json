@@ -1,0 +1,1506 @@
+[
+  {
+    "texto": "hola",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "buenos días",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "buenas tardes",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "qué tal",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "hola causa",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "qué tal bro",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "buenas hermano",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "qué fue pata",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "hola compa",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "qué onda",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "buenas noches",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "cómo estás",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "qué hay",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "hola amigo",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "qué tal mi rey",
+    "intencion": "saludo"
+  },
+  {
+    "texto": "gracias",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "muchas gracias",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "mil gracias",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "gracias bro",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "gracias causa",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "te pasaste",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "agradecido",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "gracias por todo",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "bacán gracias",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "chévere gracias",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "de lujo gracias",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "gracias maestro",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "muy amable",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "gracias por la ayuda",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "te agradezco",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "chao",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "adiós",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "nos vemos",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "hasta luego",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "cuídate",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "chau causa",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "nos estamos viendo",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "ya bro gracias",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "hasta la próxima",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "ya me voy",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "me retiro",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "ahí nos vemos",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "ya hablamos",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "bye",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "gracias chau",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "cuánto cuesta",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "precio",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "cuánto está",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "cuánto vale",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "a cuánto",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "cuánto sale",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "me das el precio",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "cuál es el precio",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "cuánto me cobras",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "a cuánto lo dejas",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "cuánto sería",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "cuánto es",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "precios",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "me indicas el precio",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "cuánto me sale",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "qué tienes",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "qué vendes",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "muéstrame el menú",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "catálogo",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "menú",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "productos",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "qué ofreces",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "opciones",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "qué hay para hoy",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "pásame el menú",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "qué puedo pedir",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "me enseñas el catálogo",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "qué me recomiendas",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "lista de productos",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "tienes",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "hay",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "hay stock",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "te queda",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "todavía tienes",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "queda",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "está disponible",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "tienes disponible",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "hay todavía",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "aún tienes",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "queda alguno",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "tienen en stock",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "lo tienes",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "queda disponible",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "puedo conseguirlo",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "hacen delivery",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "tienen delivery",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "envíos",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "hacen envíos",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "me lo traen",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "entregan a domicilio",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "me lo pueden enviar",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "cuánto cuesta el delivery",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "llegan a mi zona",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "me lo mandan",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "reparten",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "cómo es el delivery",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "envío a domicilio",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "me lo dejan en casa",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "tienen moto propia",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "cómo pago",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "formas de pago",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "aceptan yape",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "tienes yape",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "cuál es tu yape",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "pasame tu yape",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "aceptan plin",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "aceptan transferencia",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "puedo pagar con tarjeta",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "efectivo",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "me pasas tu cuenta",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "cómo te pago",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "métodos de pago",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "tienes cuenta bancaria",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "número de cuenta",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "quiero",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "quiero comprar",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "me das",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "ponme",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "agrega",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "añade",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "dame",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "necesito",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "quisiera",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "me llevo",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "me interesa",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "agrega al pedido",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "ponme uno",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "me lo apuntas",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "añádelo",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "mi pedido",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "qué llevo",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "qué pedí",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "mi carrito",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "qué tengo",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "ver pedido",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "muéstrame mi pedido",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "qué agregué",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "resumen",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "mi orden",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "qué llevo hasta ahora",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "ver carrito",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "muéstrame mi carrito",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "qué tengo en mi pedido",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "revisa mi pedido",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "confirmo",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "listo",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "ok",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "sí",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "dale",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "adelante",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "perfecto",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "está bien",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "confirmar",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "confirmo el pedido",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "va",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "sale",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "dale nomás",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "todo bien",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "procede",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "ya pagué",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "listo con el pago",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "ya hice el yape",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "ya transferí",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "ya mandé el dinero",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "ya aboné",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "ya cancelé",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "te envié el dinero",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "ya está pagado",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "te mandé el yape",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "pago hecho",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "ya deposité",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "transferencia lista",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "ya te yapeé",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "te mandé el comprobante",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "cancela",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "ya no",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "ya no quiero",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "anula",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "mejor no",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "cancela el pedido",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "borra todo",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "no lo mandes",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "ya no lo necesito",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "olvídalo",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "mejor después",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "anula todo",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "no lo envíes",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "me arrepentí",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "mejor otro día",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "quiero hablar con alguien",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "pásame con una persona",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "necesito un asesor",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "operador",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "quiero un humano",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "me atiende una persona",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "hablar con alguien",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "soporte",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "atención al cliente",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "hay alguien ahí",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "quiero un agente",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "puedo hablar con alguien",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "necesito ayuda de una persona",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "quiero asistencia humana",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "háblame con alguien",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "no tengo yape",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "no puedo pagar",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "no me deja transferir",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "no tengo saldo",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "el pago no pasó",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "no me deja pagar",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "mi app no funciona",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "no puedo yappear",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "error en el pago",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "no me acepta",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "tengo problema con el pago",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "el sistema falló",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "no puedo completar el pago",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "me salió error",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "no se hizo el pago",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "tengo un problema",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "queja",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "reclamo",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "me salió mal",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "está malo",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "no me gusta",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "está frío",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "demora mucho",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "no llega",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "devolución",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "quiero devolver",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "mal servicio",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "no me llegó",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "problema con el pedido",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "no está completo",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "horario",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "a qué hora abren",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "a qué hora cierran",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "están abiertos",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "hasta qué hora",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "desde qué hora",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "atienden hoy",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "horarios de atención",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "abren los domingos",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "qué horario tienen",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "cuando abren",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "están abierto ahora",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "horarios",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "a qué hora atienden",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "abren hoy",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "donde están",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "dirección",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "cómo llego",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "ubicación",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "dónde quedan",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "dónde los encuentro",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "qué dirección tienen",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "dónde es el local",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "dónde se ubican",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "cuál es su dirección",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "en qué calle están",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "cómo llegar",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "ubicación del local",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "su dirección",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "dónde queda",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "promociones",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "ofertas",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "descuentos",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "qué promociones hay",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "hay ofertas",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "promos",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "tienen descuento",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "hay algo en oferta",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "combos",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "paquetes",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "hay 2x1",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "descuento",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "qué ofertas hay",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "hay promoción",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "ofertas del día",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "oye",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "disculpa",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "una consulta",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "info",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "una pregunta",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "duda",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "tengo una duda",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "me puedes ayudar",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "necesito información",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "hola me ayudas",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "consulta rápida",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "qué haces",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "qué tal el servicio",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "oye muy amable",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "disculpa gracias causa",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "de lujo gracias amigo",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "oye te pasaste",
+    "intencion": "agradecimiento"
+  },
+  {
+    "texto": "gracias chau compa pues",
+    "intencion": "despedida"
+  },
+  {
+    "texto": "disculpa cuánto me cobras",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "precios pata",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "cuál es el precio compa",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "oye cuánto sale",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "disculpa cuánto me sale",
+    "intencion": "consultar_precio"
+  },
+  {
+    "texto": "oye qué ofreces",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "disculpa qué ofreces",
+    "intencion": "consultar_catalogo"
+  },
+  {
+    "texto": "tienen en stock nomás",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "oye tienen en stock",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "puedo conseguirlo mi rey nomás",
+    "intencion": "consultar_disponibilidad"
+  },
+  {
+    "texto": "oye cómo es el delivery",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "disculpa hacen envíos",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "disculpa hacen delivery",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "cómo es el delivery causa",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "disculpa cuánto cuesta el delivery pata",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "disculpa envíos",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "tienen moto propia pues",
+    "intencion": "consultar_delivery"
+  },
+  {
+    "texto": "cómo pago nomás",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "disculpa tienes yape",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "oye aceptan transferencia causa pe",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "número de cuenta bro porfa",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "disculpa número de cuenta",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "número de cuenta causa nomás",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "métodos de pago hermano",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "aceptan yape mi rey pues",
+    "intencion": "consultar_pago"
+  },
+  {
+    "texto": "disculpa me llevo",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "quiero pata porfa",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "oye me llevo",
+    "intencion": "agregar_producto"
+  },
+  {
+    "texto": "ver carrito pata pe",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "muéstrame mi carrito pata porfa",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "disculpa revisa mi pedido compa nomás",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "disculpa ver carrito",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "qué agregué amigo",
+    "intencion": "ver_carrito"
+  },
+  {
+    "texto": "disculpa sale",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "confirmar mi rey",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "disculpa listo",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "va hermano",
+    "intencion": "confirmar_pedido"
+  },
+  {
+    "texto": "disculpa ya deposité",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "oye te envié el dinero pata pues",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "oye transferencia lista",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "disculpa transferencia lista",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "oye pago hecho hermano",
+    "intencion": "confirmar_pago"
+  },
+  {
+    "texto": "cancela el pedido bro pues",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "ya no causa pues",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "olvídalo hermano pe",
+    "intencion": "cancelar_pedido"
+  },
+  {
+    "texto": "hablar con alguien causa pe",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "atención al cliente amigo",
+    "intencion": "solicitar_humano"
+  },
+  {
+    "texto": "tengo problema con el pago mi rey",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "oye tengo problema con el pago",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "el sistema falló compa pe",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "no puedo pagar compa pe",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "disculpa no puedo yappear bro pues",
+    "intencion": "problema_pago"
+  },
+  {
+    "texto": "oye está frío amigo nomás",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "disculpa no llega",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "disculpa está malo",
+    "intencion": "queja_reclamo"
+  },
+  {
+    "texto": "están abiertos pata pues",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "oye a qué hora atienden",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "están abiertos amigo pues",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "horarios de atención amigo",
+    "intencion": "consultar_horario"
+  },
+  {
+    "texto": "su dirección compa pe",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "disculpa dónde queda bro nomás",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "en qué calle están pata pues",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "en qué calle están pata nomás",
+    "intencion": "consultar_ubicacion"
+  },
+  {
+    "texto": "disculpa descuento",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "descuento pues",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "disculpa ofertas del día",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "oye promociones",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "hay promoción hermano pe",
+    "intencion": "consultar_promociones"
+  },
+  {
+    "texto": "necesito información causa pe",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "info causa",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "qué haces porfa",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "oye una pregunta",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "oye tengo una duda",
+    "intencion": "conversacion_general"
+  },
+  {
+    "texto": "disculpa info",
+    "intencion": "conversacion_general"
+  }
+]

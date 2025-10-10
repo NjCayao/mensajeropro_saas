@@ -58,6 +58,35 @@ npm install moment
 
 . src/database.js en la funcion getDBConfig() poner manualmente por si falle la lectura de base de datos php
 
+___________________________
+
+# INSTALACION ML EN WINDOWS
+
+# 1. Abrir PowerShell como Administrador
+# 2. Verificar Python
+python --version
+
+# 3. Ir a la carpeta del proyecto
+cd C:\xampp\htdocs\mensajeropro  # o donde tengas el proyecto
+
+# 4. Crear estructura ml-engine
+mkdir ml-engine\models, ml-engine\training, ml-engine\src, ml-engine\logs
+
+# 5. Ir a ml-engine
+cd ml-engine
+
+# 6. Crear entorno virtual
+python -m venv venv
+
+# 7. Activar entorno virtual
+venv\Scripts\activate
+
+# 8. Instalar dependencias
+python -m pip install --upgrade pip --force-reinstall
+pip install -r requirements.txt
+
+___________________________________
+
 # NO USAR whatsapp-service / scripts (scripst de mantenimiento para fallas de puertos NO USAR EN OPERACIÓN NORMAL)
 
 # ejecutar por unica vez si es windows o local
@@ -92,6 +121,8 @@ Actualmente:
 
 
 - agregar un input cuando el humano habla el bot espera unos 10 segundos para poder responder mientras no haya hablado el humano. 
+
+- el boton de probar con numero solo funciona con el puerto 3001 
 
 - si no cuenta con la activacion del catalogo citas que la informacion del negocio sirva solo para brindar informacion nada mas .
 
