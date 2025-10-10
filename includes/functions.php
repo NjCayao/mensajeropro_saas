@@ -305,3 +305,20 @@ function enviarWhatsApp(int $empresa_id, string $numero, string $mensaje, ?strin
 function e($string) {
     return htmlspecialchars($string ?? '', ENT_QUOTES, 'UTF-8');
 }
+
+/**
+ * Convertir fecha UTC a timezone del cliente
+ */
+function formatearFechaUsuario(string $fecha_utc, string $formato = 'd/m/Y H:i'): string
+{
+    $timezone_cliente = $_SESSION['timezone'] ?? 'America/Lima';
+    
+    try {
+        $dt = new DateTime($fecha_utc, new DateTimeZone('UTC'));
+        $dt->setTimezone(new DateTimeZone($timezone_cliente));
+        return $dt->format($formato);
+    } catch (Exception $e) {
+        error_log("Error formateando fecha: " . $e->getMessage());
+        return $fecha_utc; // Fallback
+    }
+}

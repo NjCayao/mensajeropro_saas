@@ -1,4 +1,4 @@
-# 📋 Changelog - WhatsApp Multi-Tenant
+# 📋 Changelog 01 - WhatsApp Multi-Tenant
 ✅ Cambios Implementados
 🔧 Infraestructura
 
@@ -39,7 +39,7 @@ Modificados:
 /var/www/mensajeropro/whatsapp-service/src/whatsapp-wppconnect.js
 /var/www/mensajeropro/sistema/cliente/modulos/whatsapp.php
 
-# 📋 Changelog - Correcciones PayPal y Sistema
+# 📋 Changelog 02 - Correcciones PayPal y Sistema
 ✅ Correcciones Implementadas
 🔧 Pagos PayPal
 
@@ -77,7 +77,7 @@ Logs detallados: Agregados logs para debugging de envío
 /var/www/mensajeropro/includes/email.php (creado)
 /etc/mysql/mysql.conf.d/mysqld.cnf (timezone UTC)
 
-# 📝 CHANGELOG - Integración Yape/MercadoPago
+# 📝 CHANGELOG 03 - Integración Yape/MercadoPago
 Archivos modificados (3):
 
 sistema/api/v1/cliente/pagos/crear-suscripcion.php
@@ -106,3 +106,63 @@ Configuración MercadoPago:
 Webhook configurado: https://mensajeropro.com/api/v1/webhooks/mercadopago
 Evento activo: payment
 Credenciales: Producción (Perú)
+
+# 📝 CHANGELOG 04 - Sistema de Timezone y Recuperación de Contraseña
+Fecha: 10 Octubre 2025✅ CAMBIOS IMPLEMENTADOS🌍 Sistema de Timezone Multi-Regional1. Base de Datos:
+sqlALTER TABLE empresas 
+ADD COLUMN timezone VARCHAR(50) DEFAULT 'America/Lima' 
+AFTER direccion;2. Backend - Sincronización UTC:
+
+config/app.php: Cambiado de America/Lima a UTC
+Servidor y BD ahora trabajan en UTC para evitar conflictos
+3. Detección Automática de Timezone:
+
+web/registro.php: JavaScript detecta timezone del cliente automáticamente
+sistema/api/v1/auth/google-oauth.php: Timezone por defecto en OAuth
+includes/auth.php: Timezone guardado en sesión al login
+4. Función Helper Creada:
+php// includes/functions.php
+formatearFechaUsuario($fecha_utc, $formato)
+Convierte fechas UTC a timezone del cliente automáticamente.🔒 Sistema de Seguridad - reCAPTCHA v3Configuración Implementada:
+
+Site Key: 6Lc86eMrAAAAAGZ8LwIO5UpbLPXfGWwTF8te7I1d
+Secret Key: 6Lc86eMrAAAAACVTpygB7o0xK3EJC1nc9Se1I4cL
+Score mínimo: 0.5
+Tipo: reCAPTCHA v3 (sin checkbox, invisible)
+Archivos Modificados:
+
+web/registro.php: Flujo de validaciones corregido
+sistema/superadmin/modulos/configuracion.php: Panel de configuración
+sistema/api/v1/superadmin/guardar-configuracion.php: Validación de sesión corregida
+🔑 Recuperación de ContraseñaFuncionalidades:
+
+Token con expiración de 1 hora (UTC sincronizado)
+Email con enlace directo para resetear
+Rate limiting: 3 intentos por hora por IP
+Mensajes genéricos para seguridad
+Archivos Corregidos:
+
+web/recuperar-password.php: Activado envío de emails
+web/resetear-password.php: Validación de token en UTC
+Plantilla email: recuperacion_password
+📧 Sistema de EmailsConfiguración SMTP:
+
+Host: mail.devcayao.com
+Puerto: 587 (TLS)
+Usuario: ncayao@devcayao.com
+Remitente: ncayao@devcayao.com
+Plantillas Activas:
+
+verificacion_email: Código de 6 dígitos
+recuperacion_password: Link de reseteo
+🛠️ Correcciones Técnicas1. Router (web/app.php):
+php// Quitar .php duplicado en rutas API
+$api_path = preg_replace('/\.php$/', '', $api_path);2. Registro (web/registro.php):
+
+Flujo de validaciones anidadas corregido
+Email enviado ANTES del commit para evitar error de transacción
+Rate limit limpiable desde SQL
+3. SuperAdmin API:
+
+guardar-configuracion.php: Session check directo en lugar de include
+Retorna JSON correcto sin redirección a login

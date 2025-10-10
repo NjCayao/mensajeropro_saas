@@ -52,6 +52,7 @@ function crearSesion($empresa) {
     $_SESSION['logged_in'] = true;
     $_SESSION['login_time'] = time();
     $_SESSION['last_activity'] = time();
+    $_SESSION['timezone'] = $empresa['timezone'] ?? 'America/Lima';
     
     // Actualizar último acceso
     global $pdo;

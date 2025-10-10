@@ -58,115 +58,138 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
                 $recaptcha_data = json_decode($recaptcha_response);
 
+                error_log("reCAPTCHA Response: " . json_encode($recaptcha_data));
+
                 if (!$recaptcha_data->success || ($recaptcha_data->score ?? 0) < 0.5) {
-                    error_log("reCAPTCHA fallido: score " . ($recaptcha_data->score ?? 'N/A'));
+                    error_log("reCAPTCHA fallido: " . json_encode($recaptcha_data));
                     $error = 'Verificación de seguridad fallida. Intenta nuevamente.';
                 }
             }
-        }
-        // 5. Validaciones de campos
-        elseif (empty($nombre_empresa) || empty($email) || empty($password)) {
-            $error = 'Todos los campos obligatorios deben completarse';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error = 'Email inválido';
-        }
-        // 6. Validar emails temporales
-        elseif (($configs_seguridad['bloquear_emails_temporales'] ?? '1') == '1') {
-            $dominios_bloqueados = array_map('trim', explode(',', $configs_seguridad['dominios_temporales'] ?? ''));
-            $dominio_email = strtolower(substr(strrchr($email, "@"), 1));
 
-            if (in_array($dominio_email, $dominios_bloqueados)) {
-                $error = 'No se permiten emails temporales o desechables';
+            // 5. Validaciones de campos (SOLO si no hay error previo)
+            if (empty($error) && (empty($nombre_empresa) || empty($email) || empty($password))) {
+                error_log("DEBUG: Campos vacíos");
+                $error = 'Todos los campos obligatorios deben completarse';
             }
-        }
-        // 7. Resto de validaciones
-        elseif (strlen($password) < 8) {
-            $error = 'La contraseña debe tener al menos 8 caracteres';
-        } elseif ($password !== $password_confirm) {
-            $error = 'Las contraseñas no coinciden';
-        } elseif (!$aceptar_terminos) {
-            $error = 'Debes aceptar los Términos y Condiciones';
-        }
-        // 8. Procesar registro
-        else {
-            try {
-                $stmt = $pdo->prepare("SELECT id FROM empresas WHERE email = ?");
-                $stmt->execute([$email]);
 
-                if ($stmt->fetch()) {
-                    $error = 'Este email ya está registrado';
-                } else {
-                    $pdo->beginTransaction();
+            if (empty($error) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                error_log("DEBUG: Email inválido");
+                $error = 'Email inválido';
+            }
 
-                    $password_hash = password_hash($password, PASSWORD_DEFAULT);
-                    $requiere_verificacion = ($configs_seguridad['verificacion_email_obligatoria'] ?? '1') == '1';
-                    $activo_inicial = $requiere_verificacion ? 0 : 1;
+            // 6. Validar emails temporales
+            if (empty($error) && ($configs_seguridad['bloquear_emails_temporales'] ?? '1') == '1') {
+                error_log("DEBUG: Validando emails temporales");
+                $dominios_bloqueados = array_map('trim', explode(',', $configs_seguridad['dominios_temporales'] ?? ''));
+                $dominio_email = strtolower(substr(strrchr($email, "@"), 1));
 
-                    // Insertar empresa
-                    $stmt = $pdo->prepare("
-                        INSERT INTO empresas 
-                        (nombre_empresa, email, password_hash, telefono, metodo_registro, 
-                        plan_id, fecha_registro, activo) 
-                        VALUES (?, ?, ?, ?, 'email', ?, NOW(), ?)
-                    ");
-                    $stmt->execute([$nombre_empresa, $email, $password_hash, $telefono, DEFAULT_PLAN_ID, $activo_inicial]);
-                    $empresa_id = $pdo->lastInsertId();
-
-                    // Crear suscripción
-                    $stmt = $pdo->prepare("
-                        INSERT INTO suscripciones 
-                        (empresa_id, plan_id, tipo, fecha_inicio, fecha_fin, estado) 
-                        VALUES (?, ?, 'trial', NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 'activa')
-                    ");
-                    $stmt->execute([$empresa_id, DEFAULT_PLAN_ID, TRIAL_DAYS]);
-
-                    // Categoría por defecto
-                    $stmt = $pdo->prepare("
-                        INSERT INTO categorias (nombre, descripcion, color, activo, empresa_id) 
-                        VALUES ('General', 'Categoría por defecto', '#17a2b8', 1, ?)
-                    ");
-                    $stmt->execute([$empresa_id]);
-
-                    // WhatsApp - Asignar puerto automáticamente
-                    $puerto_asignado = 3001 + ($empresa_id - 1);
-                    $stmt = $pdo->prepare("
-                        INSERT INTO whatsapp_sesiones_empresa (empresa_id, estado, puerto) 
-                        VALUES (?, 'desconectado', ?)
-                    ");
-                    $stmt->execute([$empresa_id, $puerto_asignado]);
-
-                    // Bot
-                    $stmt = $pdo->prepare("
-                        INSERT INTO configuracion_bot (empresa_id, activo) 
-                        VALUES (?, 0)
-                    ");
-                    $stmt->execute([$empresa_id]);
-
-                    // Negocio
-                    $stmt = $pdo->prepare("
-                        INSERT INTO configuracion_negocio (empresa_id, nombre_negocio) 
-                        VALUES (?, ?)
-                    ");
-                    $stmt->execute([$empresa_id, $nombre_empresa]);
-
-                    // Token verificación (6 dígitos)
-                    $codigo_verificacion = sprintf('%06d', mt_rand(0, 999999));
-                    $stmt = $pdo->prepare("UPDATE empresas SET token_verificacion = ? WHERE id = ?");
-                    $stmt->execute([$codigo_verificacion, $empresa_id]);
-
-                    $pdo->commit();
-
-                    $_SESSION['registro_exitoso'] = true;
-                    $_SESSION['email_verificar'] = $email;
-                    header('Location: ' . url('verificar-email.php'));
-                    exit;
+                if (in_array($dominio_email, $dominios_bloqueados)) {
+                    error_log("DEBUG: Email temporal bloqueado: " . $dominio_email);
+                    $error = 'No se permiten emails temporales o desechables';
                 }
-            } catch (Exception $e) {
-                if ($pdo->inTransaction()) {
-                    $pdo->rollBack();
+            }
+
+            // 7. Validar password
+            if (empty($error) && strlen($password) < 8) {
+                error_log("DEBUG: Password muy corto");
+                $error = 'La contraseña debe tener al menos 8 caracteres';
+            }
+
+            if (empty($error) && $password !== $password_confirm) {
+                error_log("DEBUG: Passwords no coinciden");
+                $error = 'Las contraseñas no coinciden';
+            }
+
+            if (empty($error) && !$aceptar_terminos) {
+                error_log("DEBUG: Términos no aceptados");
+                $error = 'Debes aceptar los Términos y Condiciones';
+            }
+
+            // 8. Procesar registro
+            if (empty($error)) {
+                error_log("DEBUG: Todas las validaciones OK, iniciando registro para: " . $email);
+                try {
+                    $stmt = $pdo->prepare("SELECT id FROM empresas WHERE email = ?");
+                    $stmt->execute([$email]);
+
+                    if ($stmt->fetch()) {
+                        $error = 'Este email ya está registrado';
+                    } else {
+                        $pdo->beginTransaction();
+                        $timezone = $_POST['timezone'] ?? 'America/Lima';
+
+                        $password_hash = password_hash($password, PASSWORD_DEFAULT);
+                        $requiere_verificacion = ($configs_seguridad['verificacion_email_obligatoria'] ?? '1') == '1';
+                        $activo_inicial = $requiere_verificacion ? 0 : 1;
+
+                        // Insertar empresa
+                        $stmt = $pdo->prepare("
+                            INSERT INTO empresas 
+                            (nombre_empresa, email, password_hash, telefono, timezone, metodo_registro, 
+                            plan_id, fecha_registro, activo) 
+                            VALUES (?, ?, ?, ?, ?, 'email', ?, NOW(), ?)
+                        ");
+                        $stmt->execute([$nombre_empresa, $email, $password_hash, $telefono, $timezone, DEFAULT_PLAN_ID, $activo_inicial]);
+                        $empresa_id = $pdo->lastInsertId();
+
+                        // Crear suscripción
+                        $stmt = $pdo->prepare("
+                            INSERT INTO suscripciones 
+                            (empresa_id, plan_id, tipo, fecha_inicio, fecha_fin, estado) 
+                            VALUES (?, ?, 'trial', NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 'activa')
+                        ");
+                        $stmt->execute([$empresa_id, DEFAULT_PLAN_ID, TRIAL_DAYS]);
+
+                        // Categoría por defecto
+                        $stmt = $pdo->prepare("
+                            INSERT INTO categorias (nombre, descripcion, color, activo, empresa_id) 
+                            VALUES ('General', 'Categoría por defecto', '#17a2b8', 1, ?)
+                        ");
+                        $stmt->execute([$empresa_id]);
+
+                        // WhatsApp - Asignar puerto automáticamente
+                        $puerto_asignado = 3001 + ($empresa_id - 1);
+                        $stmt = $pdo->prepare("
+                            INSERT INTO whatsapp_sesiones_empresa (empresa_id, estado, puerto) 
+                            VALUES (?, 'desconectado', ?)
+                        ");
+                        $stmt->execute([$empresa_id, $puerto_asignado]);
+
+                        // Bot
+                        $stmt = $pdo->prepare("
+                            INSERT INTO configuracion_bot (empresa_id, activo) 
+                            VALUES (?, 0)
+                        ");
+                        $stmt->execute([$empresa_id]);
+
+                        // Negocio
+                        $stmt = $pdo->prepare("
+                            INSERT INTO configuracion_negocio (empresa_id, nombre_negocio) 
+                            VALUES (?, ?)
+                        ");
+                        $stmt->execute([$empresa_id, $nombre_empresa]);
+
+                        // Token verificación (6 dígitos)
+                        $codigo_verificacion = sprintf('%06d', mt_rand(0, 999999));
+                        $stmt = $pdo->prepare("UPDATE empresas SET token_verificacion = ? WHERE id = ?");
+                        $stmt->execute([$codigo_verificacion, $empresa_id]);
+
+                        enviarEmailVerificacion($email, $nombre_empresa, $codigo_verificacion);
+
+                        $pdo->commit();
+
+                        $_SESSION['registro_exitoso'] = true;
+                        $_SESSION['email_verificar'] = $email;
+                        header('Location: ' . url('verificar-email.php'));
+                        exit;
+                    }
+                } catch (Exception $e) {
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+                    error_log("Error en registro: " . $e->getMessage());
+                    $error = 'Error en el registro: ' . $e->getMessage();
                 }
-                error_log("Error en registro: " . $e->getMessage());
-                $error = 'Error en el registro. Intenta nuevamente.';
             }
         }
     }
@@ -232,7 +255,9 @@ $trial_dias = $result ? (int)$result['valor'] : TRIAL_DAYS;
     <div class="register-container">
         <!-- Panel Izquierdo -->
         <div class="register-left">
-            <a href="<?php echo url('index.php'); ?>"><h1><img src="<?php echo asset('img/logo1.png'); ?>" width="50px"> <?php echo APP_NAME; ?></h1></a>
+            <a href="<?php echo url('index.php'); ?>">
+                <h1><img src="<?php echo asset('img/logo1.png'); ?>" width="50px"> <?php echo APP_NAME; ?></h1>
+            </a>
             <p>Empieza a automatizar tus ventas hoy mismo</p>
 
             <ul class="benefit-list">
@@ -336,6 +361,8 @@ $trial_dias = $result ? (int)$result['valor'] : TRIAL_DAYS;
                     <input type="hidden" name="recaptcha_token" id="recaptcha_token">
                 <?php endif; ?>
 
+                <input type="hidden" name="timezone" id="timezone" value="">
+
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-rocket"></i> Comenzar Prueba Gratuita
                 </button>
@@ -350,6 +377,7 @@ $trial_dias = $result ? (int)$result['valor'] : TRIAL_DAYS;
                         <span>Continuar con Google</span>
                     </a>
                 <?php endif; ?>
+
             </form>
 
             <div class="login-link">
@@ -375,3 +403,10 @@ $trial_dias = $result ? (int)$result['valor'] : TRIAL_DAYS;
 <?php endif; ?>
 
 </html>
+
+<script>
+    // Detectar timezone del cliente automáticamente
+    if (document.getElementById('timezone')) {
+        document.getElementById('timezone').value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    }
+</script>

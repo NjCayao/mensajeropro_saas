@@ -88,8 +88,15 @@ Actualmente:
 ✅ Seguridad implementada (CSRF, rate limit, fuerza bruta)
 ✅ Control de suscripciones vencidas
 
-- en la base de datos suscripciones  si esta vencido el plan que se cambie el plan a vencido 
+
+
 
 - agregar un input cuando el humano habla el bot espera unos 10 segundos para poder responder mientras no haya hablado el humano. 
 
-- cuando vence el plan no se cierra sesion el qr de whatsapp
+- si no cuenta con la activacion del catalogo citas que la informacion del negocio sirva solo para brindar informacion nada mas .
+
+- solo el puerto 30001 esta o cuenta con bot para que pueda responder y
+por mas que tenga informacion de negocio; solo se bugea diciendo mi espcialidad es ayudarte  con nuestros productos y servicios .  hay algo en que pueda asistirte  en ese sentido?
+
+- si finalizo sesion desde el dispositivo en la base de datos me sale qr_pendiente y muestra el qr para escanear 
+(cuando se sierra sesion desde el dispositivo ya no debe de conectar o de tratar de mostrar el qr solo tiene que matar el proceso el servidor y poner en modo desconectado, solo estu sucede con los demas puertos que no pertenecen al 3001)

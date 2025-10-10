@@ -105,11 +105,11 @@ try {
     $pdo->beginTransaction();
 
     $stmt = $pdo->prepare("
-    INSERT INTO empresas 
-    (nombre_empresa, email, google_id, metodo_registro, 
-     email_verificado, plan_id, fecha_registro, activo) 
-    VALUES (?, ?, ?, 'google', 1, ?, NOW(), 1)
-");
+        INSERT INTO empresas 
+        (nombre_empresa, email, google_id, timezone, metodo_registro, 
+        email_verificado, plan_id, fecha_registro, activo) 
+        VALUES (?, ?, ?, 'America/Lima', 'google', 1, ?, NOW(), 1)
+    ");
 
     $nombre_empresa = $google_user['name'] ?? 'Mi Empresa';
 

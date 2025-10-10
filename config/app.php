@@ -63,7 +63,7 @@ foreach ($requiredDirs as $dir) {
     }
 }
 
-date_default_timezone_set('America/Lima');
+date_default_timezone_set('UTC');
 
 // Configuración de sesión
 if (session_status() === PHP_SESSION_NONE) {

@@ -50,12 +50,15 @@ if (in_array($path_extension, $static_extensions)) {
 // Rutas de API
 if (strpos($path, 'api/') === 0) {
     // ✅ Verificar sesión ANTES de ejecutar APIs (excepto auth)
-    if (strpos($path, 'api/v1/auth/') !== 0 && 
-        strpos($path, 'api/v1/webhooks/') !== 0) {
+    if (
+        strpos($path, 'api/v1/auth/') !== 0 &&
+        strpos($path, 'api/v1/webhooks/') !== 0
+    ) {
         require_once __DIR__ . '/../includes/session_check.php';
     }
-    
+
     $api_path = str_replace('api/', '', $path);
+    $api_path = preg_replace('/\.php$/', '', $api_path);
     $api_file = __DIR__ . '/../sistema/api/' . $api_path . '.php';
 
     if (file_exists($api_file)) {
@@ -121,9 +124,9 @@ if (strpos($path, 'cliente/') === 0) {
         'bot-config' => '/modulos/bot-config.php',
         'catalogo-bot' => '/modulos/catalogo-bot.php',
         'mi-plan' => '/modulos/mi-plan.php',
-        'pago-exitoso' => '/pago-exitoso.php',  
-        'pago-fallido' => '/pago-fallido.php',  
-        'pago-pendiente' => '/pago-pendiente.php', 
+        'pago-exitoso' => '/pago-exitoso.php',
+        'pago-fallido' => '/pago-fallido.php',
+        'pago-pendiente' => '/pago-pendiente.php',
         'logout' => '/logout.php'
     ];
 
