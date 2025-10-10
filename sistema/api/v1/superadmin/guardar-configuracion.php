@@ -83,6 +83,21 @@ try {
             guardarConfig('verificacion_email_obligatoria', isset($_POST['verificacion_email_obligatoria']) ? '1' : '0');
             break;
 
+        case 'ml':
+            // ML Engine
+            if (isset($_POST['ml_engine_port'])) {
+                guardarConfig('ml_engine_port', $_POST['ml_engine_port']);
+            }
+            if (isset($_POST['ml_umbral_confianza'])) {
+                guardarConfig('ml_umbral_confianza', $_POST['ml_umbral_confianza']);
+            }
+            if (isset($_POST['ml_auto_retrain_examples'])) {
+                guardarConfig('ml_auto_retrain_examples', $_POST['ml_auto_retrain_examples']);
+            }
+
+            jsonResponse(true, 'Configuración de ML Engine guardada correctamente');
+            break;
+
         default:
             throw new Exception('Sección inválida');
     }

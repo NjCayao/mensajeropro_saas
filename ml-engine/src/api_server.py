@@ -31,6 +31,7 @@ db = Database()
 class ClassifyRequest(BaseModel):
     texto: str
     contexto: Optional[List[str]] = []
+    empresa_id: Optional[int] = None
 
 class ClassifyResponse(BaseModel):
     success: bool

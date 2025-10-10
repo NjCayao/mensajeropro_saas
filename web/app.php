@@ -90,6 +90,7 @@ if (strpos($path, 'superadmin/') === 0) {
         'emails' => '/modulos/emails.php',
         'bot-templates' => '/modulos/bot-templates.php',
         'logs' => '/modulos/logs.php',
+        'ml-config' => '/modulos/ml-config.php',
     ];
 
     if (isset($route_mapping[$module_path])) {

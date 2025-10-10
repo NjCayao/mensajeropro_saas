@@ -20,3 +20,27 @@
 [09-Oct-2025 04:20:02 America/Lima] Esperando 2 segundos...
 [09-Oct-2025 04:20:04 America/Lima] Limpiando sesión...
 [09-Oct-2025 07:51:27 America/Lima] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\logout.php on line 3
+[10-Oct-2025 15:51:40 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_general_ci,IMPLICIT) and (utf8mb4_unicode_ci,IMPLICIT) for operation '=' in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php:31
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php(31): PDO->prepare('\r\n    SELECT \r\n...')
+#1 C:\xampp\htdocs\mensajeroprov2\web\app.php(141): require_once('C:\\xampp\\htdocs...')
+#2 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php on line 31
+[10-Oct-2025 15:54:32 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_general_ci,IMPLICIT) and (utf8mb4_unicode_ci,IMPLICIT) for operation '=' in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php:31
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php(31): PDO->prepare('\r\n    SELECT \r\n...')
+#1 C:\xampp\htdocs\mensajeroprov2\web\app.php(141): require_once('C:\\xampp\\htdocs...')
+#2 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php on line 31
+[10-Oct-2025 15:55:34 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_general_ci,IMPLICIT) and (utf8mb4_unicode_ci,IMPLICIT) for operation '=' in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php:34
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php(34): PDO->prepare('\r\n    SELECT \r\n...')
+#1 C:\xampp\htdocs\mensajeroprov2\web\app.php(141): require_once('C:\\xampp\\htdocs...')
+#2 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php on line 34
+[10-Oct-2025 15:55:37 UTC] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_general_ci,IMPLICIT) and (utf8mb4_unicode_ci,IMPLICIT) for operation '=' in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php:34
+Stack trace:
+#0 C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php(34): PDO->prepare('\r\n    SELECT \r\n...')
+#1 C:\xampp\htdocs\mensajeroprov2\web\app.php(141): require_once('C:\\xampp\\htdocs...')
+#2 {main}
+  thrown in C:\xampp\htdocs\mensajeroprov2\sistema\cliente\modulos\escalados.php on line 34

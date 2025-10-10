@@ -31,7 +31,7 @@ $notificaciones = $stmt->fetch();
 if (!$notificaciones) {
     $stmt = $pdo->prepare("INSERT INTO notificaciones_bot (empresa_id) VALUES (?)");
     $stmt->execute([$empresa_id]);
-    
+
     $stmt = $pdo->prepare("SELECT * FROM notificaciones_bot WHERE empresa_id = ?");
     $stmt->execute([$empresa_id]);
     $notificaciones = $stmt->fetch();
@@ -257,7 +257,7 @@ $tokens_usados_hoy = $stmt->fetchColumn();
                                                             <h5 class="mt-2">Soporte</h5>
                                                             <p class="text-muted small">ISP, tickets, SaaS</p>
                                                             <div class="form-check">
-                                                                <label  class="form-check-label">Muy pronto</label>
+                                                                <label class="form-check-label">Muy pronto</label>
                                                                 <!-- <input class="form-check-input" type="radio" name="tipo_bot" id="tipo_bot_soporte" value="soporte"
                                                                     <?= $config['tipo_bot'] == 'soporte' ? 'checked' : '' ?>>
                                                                 <label class="form-check-label" for="tipo_bot_soporte">
@@ -576,8 +576,106 @@ Hora: {hora_cita}
                                     <i class="fas fa-info-circle"></i>
                                     Cuando se escala a humano, el bot deja de responder automáticamente hasta que un operador marque la conversación como resuelta.
                                 </div>
+
+
+                                <div class="col-md-12 mt-4">
+                                    <div class="card card-info">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="fas fa-user-shield"></i> Detección de Intervención Humana
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle"></i>
+                                                <strong>¿Cómo funciona?</strong>
+                                                <ol class="mb-0 mt-2">
+                                                    <li>Bot responde normalmente a los clientes</li>
+                                                    <li><strong>Tú (operador) respondes</strong> al cliente desde tu WhatsApp</li>
+                                                    <li>El bot <strong>detecta tu intervención</strong> automáticamente</li>
+                                                    <li>Bot se <strong>pausa</strong> y espera</li>
+                                                    <li>Si sigues respondiendo → Bot sigue pausado</li>
+                                                    <li>Si pasas <strong>X segundos sin responder</strong> → Bot se reactiva solo</li>
+                                                </ol>
+                                            </div>
+
+                                            <div class="alert alert-info">
+                                                <h6><i class="fas fa-info-circle"></i> ¿Cuándo usar esta función?</h6>
+                                                <ul class="mb-0">
+                                                    <li><strong>SI tienes múltiples operadores</strong> con números diferentes → ✅ Activar</li>
+                                                    <li><strong>SI usas 1 solo número</strong> (tu WhatsApp Business) → ❌ NO activar</li>
+                                                </ul>
+                                                <p class="mt-2 mb-0">
+                                                    <strong>Si tienes 1 solo número:</strong> Usa solo el escalamiento por palabras clave.
+                                                    El bot se pausará cuando el cliente escriba una palabra clave, tú respondes manualmente,
+                                                    y luego marcas como "resuelto" en el panel.
+                                                </p>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <div class="custom-control custom-switch">
+                                                    <input type="checkbox" class="custom-control-input"
+                                                        id="detectar_intervencion_humana"
+                                                        name="detectar_intervencion_humana"
+                                                        <?= ($escalamiento_config['detectar_intervencion_humana'] ?? false) ? 'checked' : '' ?>>
+                                                    <label class="custom-control-label" for="detectar_intervencion_humana">
+                                                        <strong>Activar detección automática de intervención humana</strong>
+                                                    </label>
+                                                </div>
+                                                <small class="text-muted">
+                                                    El bot detectará cuando tú o un operador respondan y se pausará automáticamente
+                                                </small>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label>
+                                                            <i class="fas fa-clock"></i>
+                                                            Tiempo de espera antes de reactivar bot (segundos):
+                                                        </label>
+                                                        <input type="number" class="form-control"
+                                                            name="timeout_intervencion_humana"
+                                                            value="<?= $escalamiento_config['timeout_intervencion_humana'] ?? 120 ?>"
+                                                            min="30" max="600">
+                                                        <small class="text-muted">
+                                                            Si no respondes en este tiempo, el bot se reactiva automáticamente (default: 120s = 2 min)
+                                                        </small>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label>
+                                                            <i class="fas fa-users"></i>
+                                                            Números de operadores/humanos (separados por coma):
+                                                        </label>
+                                                        <input type="text" class="form-control"
+                                                            name="numeros_operadores"
+                                                            value="<?= implode(', ', $escalamiento_config['numeros_operadores'] ?? []) ?>"
+                                                            placeholder="+51999999999, +51888888888">
+                                                        <small class="text-muted">
+                                                            Números de WhatsApp de personas que pueden intervenir. Incluye código de país.
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="alert alert-warning mt-3 mb-0">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                <strong>Importante:</strong> Para que esto funcione correctamente:
+                                                <ul class="mb-0 mt-2">
+                                                    <li>Los operadores deben responder <strong>desde su WhatsApp personal</strong></li>
+                                                    <li>NO desde la cuenta del bot (esa es para envíos automáticos)</li>
+                                                    <li>Agrega tu número y el de tus operadores en el campo de arriba</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         <?php endif; ?>
+
 
                         <!-- Tab Modo Prueba -->
                         <div class="tab-pane fade" id="pruebas" role="tabpanel">
@@ -722,79 +820,79 @@ Hora: {hora_cita}
 <?php require_once __DIR__ . '/../layouts/footer.php'; ?>
 
 <script>
-// DATOS DE TEMPLATES (PHP → JavaScript)
-const ALL_TEMPLATES = <?= json_encode($templates) ?>;
-const TIPO_BOT_ACTUAL = '<?= $config['tipo_bot'] ?? 'ventas' ?>';
+    // DATOS DE TEMPLATES (PHP → JavaScript)
+    const ALL_TEMPLATES = <?= json_encode($templates) ?>;
+    const TIPO_BOT_ACTUAL = '<?= $config['tipo_bot'] ?? 'ventas' ?>';
 
-$(document).ready(function() {
-    // Inicializar UI según tipo de bot
-    actualizarUISegunTipo(TIPO_BOT_ACTUAL);
-    
-    // Cambio de tipo de bot
-    $('input[name="tipo_bot"]').on('change', function() {
-        const tipo = $(this).val();
-        actualizarUISegunTipo(tipo);
-        
-        Swal.fire({
-            icon: 'info',
-            title: 'Tipo de bot cambiado',
-            text: `Mostrando plantillas y notificaciones para bot de ${tipo}. Recuerda guardar los cambios.`,
-            timer: 3000,
-            showConfirmButton: false
+    $(document).ready(function() {
+        // Inicializar UI según tipo de bot
+        actualizarUISegunTipo(TIPO_BOT_ACTUAL);
+
+        // Cambio de tipo de bot
+        $('input[name="tipo_bot"]').on('change', function() {
+            const tipo = $(this).val();
+            actualizarUISegunTipo(tipo);
+
+            Swal.fire({
+                icon: 'info',
+                title: 'Tipo de bot cambiado',
+                text: `Mostrando plantillas y notificaciones para bot de ${tipo}. Recuerda guardar los cambios.`,
+                timer: 3000,
+                showConfirmButton: false
+            });
+        });
+
+        // Mostrar/ocultar número de prueba
+        $('#modo_prueba').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#numero_prueba_group').slideDown();
+            } else {
+                $('#numero_prueba_group').slideUp();
+            }
+        });
+
+        // Permitir enviar con Enter en chat de prueba
+        $('#mensajePrueba').on('keypress', function(e) {
+            if (e.which === 13) {
+                enviarMensajePrueba();
+            }
+        });
+
+        $('#btnVerificarConfig').on('click', function() {
+            verificarConfiguracion();
         });
     });
 
-    // Mostrar/ocultar número de prueba
-    $('#modo_prueba').on('change', function() {
-        if ($(this).is(':checked')) {
-            $('#numero_prueba_group').slideDown();
-        } else {
-            $('#numero_prueba_group').slideUp();
-        }
-    });
+    // Actualizar UI completa según tipo de bot
+    function actualizarUISegunTipo(tipo) {
+        // 1. Actualizar descripción del tipo
+        const descripciones = {
+            'ventas': '<i class="fas fa-shopping-cart"></i> Mostrando plantillas para vender productos y tomar pedidos',
+            'citas': '<i class="fas fa-calendar-check"></i> Mostrando plantillas para agendar citas y reservas',
+            'soporte': '<i class="fas fa-headset"></i> Mostrando plantillas para soporte técnico, ISP y SaaS'
+        };
 
-    // Permitir enviar con Enter en chat de prueba
-    $('#mensajePrueba').on('keypress', function(e) {
-        if (e.which === 13) {
-            enviarMensajePrueba();
-        }
-    });
+        $('#tipoActual').text(tipo.charAt(0).toUpperCase() + tipo.slice(1));
+        $('#descripcionTipo').html(descripciones[tipo]);
 
-    $('#btnVerificarConfig').on('click', function() {
-        verificarConfiguracion();
-    });
-});
+        // 2. Filtrar y mostrar templates
+        cargarTemplatesSegunTipo(tipo);
 
-// Actualizar UI completa según tipo de bot
-function actualizarUISegunTipo(tipo) {
-    // 1. Actualizar descripción del tipo
-    const descripciones = {
-        'ventas': '<i class="fas fa-shopping-cart"></i> Mostrando plantillas para vender productos y tomar pedidos',
-        'citas': '<i class="fas fa-calendar-check"></i> Mostrando plantillas para agendar citas y reservas',
-        'soporte': '<i class="fas fa-headset"></i> Mostrando plantillas para soporte técnico, ISP y SaaS'
-    };
-    
-    $('#tipoActual').text(tipo.charAt(0).toUpperCase() + tipo.slice(1));
-    $('#descripcionTipo').html(descripciones[tipo]);
-    
-    // 2. Filtrar y mostrar templates
-    cargarTemplatesSegunTipo(tipo);
-    
-    // 3. Actualizar sección de instrucciones
-    actualizarInstrucciones(tipo);
-    
-    // 4. Mostrar/ocultar tarjetas de notificaciones según tipo
-    actualizarNotificacionesSegunTipo(tipo);
-}
+        // 3. Actualizar sección de instrucciones
+        actualizarInstrucciones(tipo);
 
-// Filtrar templates por tipo
-function cargarTemplatesSegunTipo(tipo) {
-    const templatesFiltrados = ALL_TEMPLATES.filter(t => t.tipo_bot === tipo);
-    
-    let html = '';
-    
-    if (templatesFiltrados.length === 0) {
-        html = `
+        // 4. Mostrar/ocultar tarjetas de notificaciones según tipo
+        actualizarNotificacionesSegunTipo(tipo);
+    }
+
+    // Filtrar templates por tipo
+    function cargarTemplatesSegunTipo(tipo) {
+        const templatesFiltrados = ALL_TEMPLATES.filter(t => t.tipo_bot === tipo);
+
+        let html = '';
+
+        if (templatesFiltrados.length === 0) {
+            html = `
             <div class="col-12">
                 <div class="alert alert-warning">
                     <i class="fas fa-exclamation-triangle"></i>
@@ -802,24 +900,24 @@ function cargarTemplatesSegunTipo(tipo) {
                 </div>
             </div>
         `;
-    } else {
-        const iconos = {
-            'restaurante': 'fa-utensils',
-            'tienda': 'fa-store',
-            'farmacia': 'fa-pills',
-            'ferreteria': 'fa-tools',
-            'clinica': 'fa-hospital',
-            'salon': 'fa-cut',
-            'dental': 'fa-tooth',
-            'isp': 'fa-wifi',
-            'soporte_tecnico': 'fa-headset',
-            'saas': 'fa-laptop-code'
-        };
-        
-        templatesFiltrados.forEach(template => {
-            const icono = iconos[template.tipo_negocio] || 'fa-building';
-            
-            html += `
+        } else {
+            const iconos = {
+                'restaurante': 'fa-utensils',
+                'tienda': 'fa-store',
+                'farmacia': 'fa-pills',
+                'ferreteria': 'fa-tools',
+                'clinica': 'fa-hospital',
+                'salon': 'fa-cut',
+                'dental': 'fa-tooth',
+                'isp': 'fa-wifi',
+                'soporte_tecnico': 'fa-headset',
+                'saas': 'fa-laptop-code'
+            };
+
+            templatesFiltrados.forEach(template => {
+                const icono = iconos[template.tipo_negocio] || 'fa-building';
+
+                html += `
                 <div class="col-md-6 mb-3">
                     <div class="card h-100">
                         <div class="card-body">
@@ -839,18 +937,18 @@ function cargarTemplatesSegunTipo(tipo) {
                     </div>
                 </div>
             `;
-        });
-    }
-    
-    $('#contenedorTemplates').html(html);
-}
+            });
+        }
 
-// Actualizar instrucciones según tipo
-function actualizarInstrucciones(tipo) {
-    let html = '';
-    
-    if (tipo === 'ventas') {
-        html = `
+        $('#contenedorTemplates').html(html);
+    }
+
+    // Actualizar instrucciones según tipo
+    function actualizarInstrucciones(tipo) {
+        let html = '';
+
+        if (tipo === 'ventas') {
+            html = `
             <div class="card card-success mb-3">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -868,8 +966,8 @@ function actualizarInstrucciones(tipo) {
                 </div>
             </div>
         `;
-    } else if (tipo === 'citas') {
-        html = `
+        } else if (tipo === 'citas') {
+            html = `
             <div class="card card-info mb-3">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -887,8 +985,8 @@ function actualizarInstrucciones(tipo) {
                 </div>
             </div>
         `;
-    } else if (tipo === 'soporte') {
-        html = `
+        } else if (tipo === 'soporte') {
+            html = `
             <div class="card card-warning mb-3">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -913,33 +1011,33 @@ function actualizarInstrucciones(tipo) {
                 </div>
             </div>
         `;
-    }
-    
-    $('#instruccionesEspecificas').html(html);
-}
+        }
 
-// Controlar visibilidad de notificaciones según tipo de bot
-function actualizarNotificacionesSegunTipo(tipo) {
-    // Escalamiento siempre visible
-    $('#card-escalamiento').show();
-    
-    if (tipo === 'ventas') {
-        $('#card-ventas').show();
-        $('#card-citas').hide();
-    } else if (tipo === 'citas') {
-        $('#card-ventas').hide();
-        $('#card-citas').show();
-    } else if (tipo === 'soporte') {
-        // Soporte usa los 3
-        $('#card-ventas').show();
-        $('#card-citas').show();
+        $('#instruccionesEspecificas').html(html);
     }
-}
 
-function cargarTemplate(templateId) {
-    Swal.fire({
-        title: '¿Cargar template?',
-        html: `
+    // Controlar visibilidad de notificaciones según tipo de bot
+    function actualizarNotificacionesSegunTipo(tipo) {
+        // Escalamiento siempre visible
+        $('#card-escalamiento').show();
+
+        if (tipo === 'ventas') {
+            $('#card-ventas').show();
+            $('#card-citas').hide();
+        } else if (tipo === 'citas') {
+            $('#card-ventas').hide();
+            $('#card-citas').show();
+        } else if (tipo === 'soporte') {
+            // Soporte usa los 3
+            $('#card-ventas').show();
+            $('#card-citas').show();
+        }
+    }
+
+    function cargarTemplate(templateId) {
+        Swal.fire({
+            title: '¿Cargar template?',
+            html: `
         <p>Esto cargará la configuración del template en los siguientes campos:</p>
         <ul style="text-align: left;">
             <li>✅ Personalidad del Bot</li>
@@ -949,55 +1047,57 @@ function cargarTemplate(templateId) {
         </ul>
         <p class="text-warning"><small>Los cambios NO se guardarán hasta que hagas clic en "Guardar Configuración"</small></p>
     `,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, cargar template',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: API_URL + "/bot/cargar-template",
-                method: 'GET',
-                data: {id: templateId},
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success && response.data) {
-                        const template = response.data;
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, cargar template',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: API_URL + "/bot/cargar-template",
+                    method: 'GET',
+                    data: {
+                        id: templateId
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success && response.data) {
+                            const template = response.data;
 
-                        // Cambiar a pestaña de personalización
-                        $('#prompts-tab').tab('show');
+                            // Cambiar a pestaña de personalización
+                            $('#prompts-tab').tab('show');
 
-                        // Cargar personalidad
-                        $('#system_prompt').val(template.personalidad_bot);
+                            // Cargar personalidad
+                            $('#system_prompt').val(template.personalidad_bot);
 
-                        // Cargar instrucciones según tipo
-                        if (template.instrucciones_ventas) {
-                            $('#prompt_ventas').val(template.instrucciones_ventas);
-                        }
-                        if (template.instrucciones_citas) {
-                            $('#prompt_citas').val(template.instrucciones_citas);
-                        }
+                            // Cargar instrucciones según tipo
+                            if (template.instrucciones_ventas) {
+                                $('#prompt_ventas').val(template.instrucciones_ventas);
+                            }
+                            if (template.instrucciones_citas) {
+                                $('#prompt_citas').val(template.instrucciones_citas);
+                            }
 
-                        // Cargar información del negocio
-                        if (template.informacion_negocio_ejemplo) {
-                            $('#business_info').val(template.informacion_negocio_ejemplo);
-                        }
+                            // Cargar información del negocio
+                            if (template.informacion_negocio_ejemplo) {
+                                $('#business_info').val(template.informacion_negocio_ejemplo);
+                            }
 
-                        // Cargar mensajes de notificación (cambiar a tab de notificaciones)
-                        if (template.mensaje_notificacion_escalamiento) {
-                            $('textarea[name="mensaje_escalamiento"]').val(template.mensaje_notificacion_escalamiento);
-                        }
-                        if (template.mensaje_notificacion_ventas) {
-                            $('textarea[name="mensaje_ventas"]').val(template.mensaje_notificacion_ventas);
-                        }
-                        if (template.mensaje_notificacion_citas) {
-                            $('textarea[name="mensaje_citas"]').val(template.mensaje_notificacion_citas);
-                        }
+                            // Cargar mensajes de notificación (cambiar a tab de notificaciones)
+                            if (template.mensaje_notificacion_escalamiento) {
+                                $('textarea[name="mensaje_escalamiento"]').val(template.mensaje_notificacion_escalamiento);
+                            }
+                            if (template.mensaje_notificacion_ventas) {
+                                $('textarea[name="mensaje_ventas"]').val(template.mensaje_notificacion_ventas);
+                            }
+                            if (template.mensaje_notificacion_citas) {
+                                $('textarea[name="mensaje_citas"]').val(template.mensaje_notificacion_citas);
+                            }
 
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Template cargado',
-                            html: `
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Template cargado',
+                                html: `
                             <p>✅ Se ha cargado el template <strong>"${template.nombre_template}"</strong></p>
                             <div class="alert alert-warning mt-3">
                                 <i class="fas fa-exclamation-triangle"></i> 
@@ -1010,65 +1110,68 @@ function cargarTemplate(templateId) {
                                 <li>Hacer clic en "Guardar Configuración" cuando termines</li>
                             </ol>
                         `,
-                            confirmButtonText: 'Entendido'
-                        });
+                                confirmButtonText: 'Entendido'
+                            });
 
-                    } else {
-                        Swal.fire('Error', 'No se pudo cargar el template', 'error');
+                        } else {
+                            Swal.fire('Error', 'No se pudo cargar el template', 'error');
+                        }
+                    },
+                    error: function() {
+                        Swal.fire('Error', 'Error al cargar el template', 'error');
                     }
-                },
-                error: function() {
-                    Swal.fire('Error', 'Error al cargar el template', 'error');
-                }
-            });
-        }
-    });
-}
+                });
+            }
+        });
+    }
 
-function guardarConfiguracion() {
-    // Recopilar datos
-    const formData = {
-        activo: $('#activo').is(':checked') ? 1 : 0,
-        tipo_bot: $('input[name="tipo_bot"]:checked').val(),
-        templates_activo: $('#templates_activo').is(':checked') ? 1 : 0,
-        delay_respuesta: $('input[name="delay_respuesta"]').val(),
-        horario_inicio: $('input[name="horario_inicio"]').val(),
-        horario_fin: $('input[name="horario_fin"]').val(),
-        mensaje_fuera_horario: $('textarea[name="mensaje_fuera_horario"]').val(),
-        responder_no_registrados: $('#responder_no_registrados').is(':checked') ? 1 : 0,
-        palabras_activacion: $('input[name="palabras_activacion"]').val(),
-        system_prompt: $('#system_prompt').val(),
-        business_info: $('#business_info').val(),
-        prompt_ventas: $('#prompt_ventas').val(),
-        prompt_citas: $('#prompt_citas').val(),
-        max_mensajes_sin_resolver: $('input[name="max_mensajes_sin_resolver"]').val(),
-        palabras_escalamiento: $('textarea[name="palabras_escalamiento"]').val(),
-        mensaje_escalamiento: $('textarea[name="mensaje_escalamiento"]').val(),
-        modo_prueba: $('#modo_prueba').is(':checked') ? 1 : 0,
-        numero_prueba: $('input[name="numero_prueba"]').val()
-    };
+    function guardarConfiguracion() {
+        // Recopilar datos
+        const formData = {
+            activo: $('#activo').is(':checked') ? 1 : 0,
+            tipo_bot: $('input[name="tipo_bot"]:checked').val(),
+            templates_activo: $('#templates_activo').is(':checked') ? 1 : 0,
+            delay_respuesta: $('input[name="delay_respuesta"]').val(),
+            horario_inicio: $('input[name="horario_inicio"]').val(),
+            horario_fin: $('input[name="horario_fin"]').val(),
+            mensaje_fuera_horario: $('textarea[name="mensaje_fuera_horario"]').val(),
+            responder_no_registrados: $('#responder_no_registrados').is(':checked') ? 1 : 0,
+            palabras_activacion: $('input[name="palabras_activacion"]').val(),
+            system_prompt: $('#system_prompt').val(),
+            business_info: $('#business_info').val(),
+            prompt_ventas: $('#prompt_ventas').val(),
+            prompt_citas: $('#prompt_citas').val(),
+            max_mensajes_sin_resolver: $('input[name="max_mensajes_sin_resolver"]').val(),
+            palabras_escalamiento: $('textarea[name="palabras_escalamiento"]').val(),
+            mensaje_escalamiento: $('textarea[name="mensaje_escalamiento"]').val(),
+            detectar_intervencion_humana: $('#detectar_intervencion_humana').is(':checked') ? 1 : 0,
+            timeout_intervencion_humana: $('input[name="timeout_intervencion_humana"]').val(),
+            numeros_operadores: $('input[name="numeros_operadores"]').val(),
+            modo_prueba: $('#modo_prueba').is(':checked') ? 1 : 0,
+            numero_prueba: $('input[name="numero_prueba"]').val()
+        };
 
-    Swal.fire({
-        title: 'Guardando configuración...',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+        Swal.fire({
+            title: 'Guardando configuración...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
 
-    $.ajax({
-        url: API_URL + "/bot/configurar",
-        method: 'POST',
-        data: formData,
-        success: function(response) {
-            if (response.success) {
-                // Guardar notificaciones también
-                guardarNotificaciones().then(() => {
-                    Swal.close();
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Configuración guardada',
-                        html: `
+        $.ajax({
+            url: API_URL + "/bot/configurar",
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                if (response.success) {
+                    // Guardar notificaciones también
+                    guardarNotificaciones().then(() => {
+                        Swal.close();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Configuración guardada',
+                            html: `
                             <div style="text-align: left;">
                                 <p><strong>✅ Configuración guardada correctamente</strong></p>
                                 <hr>
@@ -1079,56 +1182,56 @@ function guardarConfiguracion() {
                                 </ul>
                             </div>
                         `,
-                        confirmButtonText: 'Entendido'
-                    }).then(() => {
-                        location.reload();
+                            confirmButtonText: 'Entendido'
+                        }).then(() => {
+                            location.reload();
+                        });
                     });
-                });
-            } else {
+                } else {
+                    Swal.close();
+                    Swal.fire('Error', response.message || 'Error al guardar', 'error');
+                }
+            },
+            error: function() {
                 Swal.close();
-                Swal.fire('Error', response.message || 'Error al guardar', 'error');
+                Swal.fire('Error', 'Error de conexión con el servidor', 'error');
             }
-        },
-        error: function() {
-            Swal.close();
-            Swal.fire('Error', 'Error de conexión con el servidor', 'error');
-        }
-    });
-}
+        });
+    }
 
-// Guardar notificaciones
-function guardarNotificaciones() {
-    return new Promise((resolve) => {
-        const notifData = {
-            numeros_notificacion: $('input[name="numeros_notificacion"]').val(),
-            notificar_escalamiento: $('#notificar_escalamiento').is(':checked') ? 1 : 0,
-            mensaje_escalamiento: $('textarea[name="mensaje_escalamiento"]').val(),
-            notificar_ventas: $('#notificar_ventas').is(':checked') ? 1 : 0,
-            mensaje_ventas: $('textarea[name="mensaje_ventas"]').val(),
-            notificar_citas: $('#notificar_citas').is(':checked') ? 1 : 0,
-            mensaje_citas: $('textarea[name="mensaje_citas"]').val()
-        };
-        
-        $.post(API_URL + '/bot/guardar-notificaciones', notifData, function() {
-            resolve();
+    // Guardar notificaciones
+    function guardarNotificaciones() {
+        return new Promise((resolve) => {
+            const notifData = {
+                numeros_notificacion: $('input[name="numeros_notificacion"]').val(),
+                notificar_escalamiento: $('#notificar_escalamiento').is(':checked') ? 1 : 0,
+                mensaje_escalamiento: $('textarea[name="mensaje_escalamiento"]').val(),
+                notificar_ventas: $('#notificar_ventas').is(':checked') ? 1 : 0,
+                mensaje_ventas: $('textarea[name="mensaje_ventas"]').val(),
+                notificar_citas: $('#notificar_citas').is(':checked') ? 1 : 0,
+                mensaje_citas: $('textarea[name="mensaje_citas"]').val()
+            };
+
+            $.post(API_URL + '/bot/guardar-notificaciones', notifData, function() {
+                resolve();
+            });
+        });
+    }
+
+    // Guardar solo notificaciones
+    $('#formNotificaciones').on('submit', function(e) {
+        e.preventDefault();
+
+        guardarNotificaciones().then(() => {
+            Swal.fire('Éxito', 'Notificaciones guardadas correctamente', 'success');
         });
     });
-}
 
-// Guardar solo notificaciones
-$('#formNotificaciones').on('submit', function(e) {
-    e.preventDefault();
-    
-    guardarNotificaciones().then(() => {
-        Swal.fire('Éxito', 'Notificaciones guardadas correctamente', 'success');
-    });
-});
+    function enviarMensajePrueba() {
+        const mensaje = $('#mensajePrueba').val().trim();
+        if (!mensaje) return;
 
-function enviarMensajePrueba() {
-    const mensaje = $('#mensajePrueba').val().trim();
-    if (!mensaje) return;
-
-    $('#chatTest').append(`
+        $('#chatTest').append(`
         <div class="direct-chat-msg right">
             <div class="direct-chat-text bg-primary">
                 ${mensaje}
@@ -1136,9 +1239,9 @@ function enviarMensajePrueba() {
         </div>
     `);
 
-    $('#mensajePrueba').val('');
+        $('#mensajePrueba').val('');
 
-    $('#chatTest').append(`
+        $('#chatTest').append(`
         <div class="direct-chat-msg" id="typing">
             <div class="direct-chat-text">
                 <i class="fas fa-ellipsis-h"></i> Bot escribiendo...
@@ -1146,13 +1249,15 @@ function enviarMensajePrueba() {
         </div>
     `);
 
-    $('#chatTest').scrollTop($('#chatTest')[0].scrollHeight);
+        $('#chatTest').scrollTop($('#chatTest')[0].scrollHeight);
 
-    $.post(API_URL + "/bot/test", {mensaje: mensaje}, function(response) {
-        $('#typing').remove();
+        $.post(API_URL + "/bot/test", {
+            mensaje: mensaje
+        }, function(response) {
+            $('#typing').remove();
 
-        if (response.success) {
-            $('#chatTest').append(`
+            if (response.success) {
+                $('#chatTest').append(`
                 <div class="direct-chat-msg">
                     <div class="direct-chat-text">
                         ${response.data.respuesta}
@@ -1163,35 +1268,35 @@ function enviarMensajePrueba() {
                     </small>
                 </div>
             `);
-        } else {
-            $('#chatTest').append(`
+            } else {
+                $('#chatTest').append(`
                 <div class="direct-chat-msg">
                     <div class="direct-chat-text bg-danger">
                         Error: ${response.message}
                     </div>
                 </div>
             `);
-        }
+            }
 
-        $('#chatTest').scrollTop($('#chatTest')[0].scrollHeight);
-    }).fail(function() {
-        $('#typing').remove();
-        $('#chatTest').append(`
+            $('#chatTest').scrollTop($('#chatTest')[0].scrollHeight);
+        }).fail(function() {
+            $('#typing').remove();
+            $('#chatTest').append(`
             <div class="direct-chat-msg">
                 <div class="direct-chat-text bg-danger">
                     Error de conexión
                 </div>
             </div>
         `);
-    });
-}
+        });
+    }
 
-function verificarConfiguracion() {
-    $.get(API_URL + "/bot/verificar-config", function(response) {
-        if (response.success) {
-            Swal.fire({
-                title: 'Configuración Actual',
-                html: `
+    function verificarConfiguracion() {
+        $.get(API_URL + "/bot/verificar-config", function(response) {
+            if (response.success) {
+                Swal.fire({
+                    title: 'Configuración Actual',
+                    html: `
                     <div style="text-align: left;">
                         <p><strong>Sistema:</strong></p>
                         <ul>
@@ -1209,12 +1314,12 @@ function verificarConfiguracion() {
                         </ul>
                     </div>
                 `,
-                icon: 'info',
-                width: '600px'
-            });
-        }
-    });
-}
+                    icon: 'info',
+                    width: '600px'
+                });
+            }
+        });
+    }
 </script>
 
 <style>

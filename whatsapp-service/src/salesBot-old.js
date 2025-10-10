@@ -1,4 +1,4 @@
-// whatsapp-service/src/salesBot.js - VERSIÓN COMPLETA CORREGIDA
+// whatsapp-service/src/salesBot.js -
 const db = require("./database");
 const path = require("path");
 

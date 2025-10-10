@@ -287,6 +287,85 @@ class WhatsAppClient {
     this.isReady = false;
   }
 
+  async detectarIntervencionOperador(message) {
+    try {
+      const empresaId = global.EMPRESA_ID || 1;
+
+      // Obtener config de escalamiento
+      const [configRows] = await db
+        .getPool()
+        .execute(
+          "SELECT escalamiento_config FROM configuracion_bot WHERE empresa_id = ?",
+          [empresaId]
+        );
+
+      if (!configRows[0] || !configRows[0].escalamiento_config) {
+        return; // No hay config
+      }
+
+      const config = JSON.parse(configRows[0].escalamiento_config);
+
+      if (!config.detectar_intervencion_humana) {
+        return; // Función desactivada
+      }
+
+      const numerosOperadores = config.numeros_operadores || [];
+      if (numerosOperadores.length === 0) {
+        return; // No hay operadores configurados
+      }
+
+      // Obtener el autor real del mensaje (quién lo envió)
+      const author = message.author || message.from;
+      const numeroCliente = message.from;
+
+      // Si el autor ES el cliente, no es intervención
+      if (author === numeroCliente) {
+        return; // Es el cliente escribiendo
+      }
+
+      // Verificar si el autor es un operador
+      const esOperador = numerosOperadores.some((op) => {
+        const opLimpio = op.replace(/\D/g, "");
+        const authorLimpio = author.replace(/\D/g, "");
+        return (
+          authorLimpio.includes(opLimpio) || opLimpio.includes(authorLimpio)
+        );
+      });
+
+      if (!esOperador) {
+        return; // No es un operador conocido
+      }
+
+      console.log(
+        `👤 [INTERVENCIÓN] Operador ${author} intervino con ${numeroCliente}`
+      );
+
+      // Calcular timestamp de timeout
+      const timeoutSegundos = config.timeout_intervencion_humana || 120;
+      const timestampTimeout = new Date(Date.now() + timeoutSegundos * 1000);
+
+      // Registrar o actualizar intervención
+      await db.getPool().execute(
+        `INSERT INTO intervencion_humana 
+      (empresa_id, numero_cliente, numero_operador, estado, timestamp_ultima_intervencion, timestamp_timeout)
+      VALUES (?, ?, ?, 'humano_interviniendo', NOW(), ?)
+      ON DUPLICATE KEY UPDATE
+        numero_operador = VALUES(numero_operador),
+        estado = 'humano_interviniendo',
+        timestamp_ultima_intervencion = NOW(),
+        timestamp_timeout = VALUES(timestamp_timeout),
+        contador_timeout = 0`,
+        [empresaId, numeroCliente, author, timestampTimeout]
+      );
+
+      console.log(
+        `✅ Bot pausado para ${numeroCliente}. Reactivación en ${timeoutSegundos}s`
+      );
+    } catch (error) {
+      console.error("❌ Error detectando intervención:", error);
+    }
+  }
+
   setupEventHandlers() {
     // Mensajes entrantes
     this.client.onMessage(async (message) => {
@@ -308,6 +387,9 @@ class WhatsAppClient {
       );
 
       try {
+        // ✅ NUEVO: Detectar intervención humana PRIMERO
+        await this.detectarIntervencionOperador(message);
+
         // Crear BotHandler si no existe
         if (this.messageHandler && this.messageHandler.botHandler) {
           // MANEJO DE IMÁGENES
@@ -320,7 +402,7 @@ class WhatsAppClient {
                 message.body || "",
                 false,
                 "image",
-                message // Pasar el objeto completo del mensaje
+                message
               );
 
             if (botResponse) {

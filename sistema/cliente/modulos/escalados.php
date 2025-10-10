@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 $current_page = 'escalados';
 require_once __DIR__ . '/../layouts/header.php';
 require_once __DIR__ . '/../layouts/sidebar.php';
@@ -26,6 +29,23 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$empresa_id, $empresa_id, $empresa_id]);
 $escalados = $stmt->fetchAll();
+
+// Obtener intervenciones humanas activas
+$stmt = $pdo->prepare("
+    SELECT 
+        ih.*,
+        c.nombre as nombre_contacto,
+        REPLACE(ih.numero_cliente, '@c.us', '') as numero_limpio,
+        TIMESTAMPDIFF(SECOND, ih.timestamp_ultima_intervencion, NOW()) as segundos_desde_intervencion,
+        TIMESTAMPDIFF(SECOND, NOW(), ih.timestamp_timeout) as segundos_hasta_reactivacion
+    FROM intervencion_humana ih
+    LEFT JOIN contactos c ON c.numero = REPLACE(ih.numero_cliente, '@c.us', '') AND c.empresa_id = ?
+    WHERE ih.empresa_id = ?
+    AND ih.estado IN ('humano_interviniendo', 'esperando_timeout')
+    ORDER BY ih.timestamp_ultima_intervencion DESC
+");
+$stmt->execute([$empresa_id, $empresa_id]);
+$intervenciones = $stmt->fetchAll();
 
 // Estadísticas
 $stmt = $pdo->prepare("
@@ -62,7 +82,7 @@ $stats = $stmt->fetch();
     <!-- Main content -->
     <section class="content">
         <div class="container-fluid">
-            
+
             <!-- Estadísticas -->
             <div class="row">
                 <div class="col-md-4">
@@ -74,7 +94,7 @@ $stats = $stmt->fetch();
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="col-md-4">
                     <div class="info-box">
                         <span class="info-box-icon bg-danger"><i class="fas fa-clock"></i></span>
@@ -84,7 +104,7 @@ $stats = $stmt->fetch();
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="col-md-4">
                     <div class="info-box">
                         <span class="info-box-icon bg-success"><i class="fas fa-check"></i></span>
@@ -95,6 +115,73 @@ $stats = $stmt->fetch();
                     </div>
                 </div>
             </div>
+
+            <!-- Intervenciones Activas -->
+            <?php if (count($intervenciones) > 0): ?>
+                <div class="card card-warning mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-user-shield"></i> Intervenciones Humanas Activas
+                        </h3>
+                        <div class="card-tools">
+                            <span class="badge badge-warning"><?= count($intervenciones) ?></span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Bot pausado:</strong> Estas conversaciones tienen intervención humana activa.
+                            El bot no responderá hasta que se reactive automáticamente o manualmente.
+                        </div>
+
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Operador</th>
+                                    <th>Estado</th>
+                                    <th>Tiempo</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($intervenciones as $interv): ?>
+                                    <tr>
+                                        <td>
+                                            <strong><?= htmlspecialchars($interv['nombre_contacto'] ?? 'Sin nombre') ?></strong><br>
+                                            <small><?= htmlspecialchars($interv['numero_limpio']) ?></small>
+                                        </td>
+                                        <td>
+                                            <small><?= htmlspecialchars($interv['numero_operador']) ?></small>
+                                        </td>
+                                        <td>
+                                            <?php if ($interv['estado'] === 'humano_interviniendo'): ?>
+                                                <span class="badge badge-warning">Operador activo</span>
+                                            <?php else: ?>
+                                                <span class="badge badge-info">Esperando timeout</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($interv['segundos_hasta_reactivacion'] > 0): ?>
+                                                <i class="fas fa-clock"></i>
+                                                <?= gmdate("i:s", $interv['segundos_hasta_reactivacion']) ?> min
+                                            <?php else: ?>
+                                                <span class="text-success">Reactivando...</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <button onclick="reactivarBot('<?= $interv['numero_cliente'] ?>')"
+                                                class="btn btn-success btn-xs">
+                                                <i class="fas fa-robot"></i> Reactivar Bot
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <?php endif; ?>
 
             <!-- Tabla de escalados -->
             <div class="card">
@@ -146,17 +233,17 @@ $stats = $stmt->fetch();
                                             <span class="badge badge-info"><?= $escalado['mensajes_desde_escalado'] ?> nuevos</span>
                                         </td>
                                         <td>
-                                            <a href="https://wa.me/<?= $escalado['numero_limpio'] ?>" 
-                                               target="_blank" 
-                                               class="btn btn-success btn-sm">
+                                            <a href="https://wa.me/<?= $escalado['numero_limpio'] ?>"
+                                                target="_blank"
+                                                class="btn btn-success btn-sm">
                                                 <i class="fab fa-whatsapp"></i> Atender
                                             </a>
-                                            <button onclick="verHistorial('<?= $escalado['numero_cliente'] ?>')" 
-                                                    class="btn btn-info btn-sm">
+                                            <button onclick="verHistorial('<?= $escalado['numero_cliente'] ?>')"
+                                                class="btn btn-info btn-sm">
                                                 <i class="fas fa-history"></i> Historial
                                             </button>
-                                            <button onclick="marcarResuelto(<?= $escalado['id'] ?>)" 
-                                                    class="btn btn-primary btn-sm">
+                                            <button onclick="marcarResuelto(<?= $escalado['id'] ?>)"
+                                                class="btn btn-primary btn-sm">
                                                 <i class="fas fa-check"></i> Resuelto
                                             </button>
                                         </td>
@@ -194,51 +281,51 @@ $stats = $stmt->fetch();
 <?php require_once __DIR__ . '/../layouts/footer.php'; ?>
 
 <script>
-// Auto-refresh cada 30 segundos
-setInterval(function() {
-    location.reload();
-}, 30000);
+    // Auto-refresh cada 30 segundos
+    setInterval(function() {
+        location.reload();
+    }, 30000);
 
-function marcarResuelto(id) {
-    Swal.fire({
-        title: '¿Marcar como resuelto?',
-        input: 'textarea',
-        inputLabel: 'Notas (opcional)',
-        inputPlaceholder: 'Agregar notas sobre la resolución...',
-        showCancelButton: true,
-        confirmButtonText: 'Marcar resuelto',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.post(API_URL + '/bot/marcar-resuelto', {
-                id: id,
-                notas: result.value || ''
-            }, function(response) {
-                if (response.success) {
-                    Swal.fire('¡Listo!', 'Conversación marcada como resuelta', 'success').then(() => {
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire('Error', response.message, 'error');
-                }
-            });
-        }
-    });
-}
+    function marcarResuelto(id) {
+        Swal.fire({
+            title: '¿Marcar como resuelto?',
+            input: 'textarea',
+            inputLabel: 'Notas (opcional)',
+            inputPlaceholder: 'Agregar notas sobre la resolución...',
+            showCancelButton: true,
+            confirmButtonText: 'Marcar resuelto',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post(API_URL + '/bot/marcar-resuelto', {
+                    id: id,
+                    notas: result.value || ''
+                }, function(response) {
+                    if (response.success) {
+                        Swal.fire('¡Listo!', 'Conversación marcada como resuelta', 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error', response.message, 'error');
+                    }
+                });
+            }
+        });
+    }
 
-function verHistorial(numeroCliente) {
-    $('#modalHistorial').modal('show');
-    $('#contenidoHistorial').html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>');
+    function verHistorial(numeroCliente) {
+        $('#modalHistorial').modal('show');
+        $('#contenidoHistorial').html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>');
 
-    $.get(API_URL + '/bot/historial-conversacion', {
-        numero: numeroCliente
-    }, function(response) {
-        if (response.success) {
-            let html = '<div class="direct-chat-messages" style="height: 400px; overflow-y: auto;">';
-            
-            response.data.forEach(function(msg) {
-                if (msg.mensaje_cliente) {
-                    html += `
+        $.get(API_URL + '/bot/historial-conversacion', {
+            numero: numeroCliente
+        }, function(response) {
+            if (response.success) {
+                let html = '<div class="direct-chat-messages" style="height: 400px; overflow-y: auto;">';
+
+                response.data.forEach(function(msg) {
+                    if (msg.mensaje_cliente) {
+                        html += `
                         <div class="direct-chat-msg right">
                             <div class="direct-chat-text bg-primary">
                                 ${msg.mensaje_cliente}
@@ -248,10 +335,10 @@ function verHistorial(numeroCliente) {
                             </div>
                         </div>
                     `;
-                }
-                
-                if (msg.respuesta_bot) {
-                    html += `
+                    }
+
+                    if (msg.respuesta_bot) {
+                        html += `
                         <div class="direct-chat-msg">
                             <div class="direct-chat-text">
                                 ${msg.respuesta_bot}
@@ -261,14 +348,39 @@ function verHistorial(numeroCliente) {
                             </div>
                         </div>
                     `;
-                }
-            });
-            
-            html += '</div>';
-            $('#contenidoHistorial').html(html);
-        } else {
-            $('#contenidoHistorial').html('<div class="alert alert-danger">Error cargando historial</div>');
-        }
-    });
-}
+                    }
+                });
+
+                html += '</div>';
+                $('#contenidoHistorial').html(html);
+            } else {
+                $('#contenidoHistorial').html('<div class="alert alert-danger">Error cargando historial</div>');
+            }
+        });
+    }
+
+    function reactivarBot(numero) {
+        Swal.fire({
+            title: '¿Reactivar Bot?',
+            text: 'El bot volverá a responder automáticamente',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, reactivar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post(API_URL + '/bot/reactivar-bot', {
+                    numero: numero
+                }, function(response) {
+                    if (response.success) {
+                        Swal.fire('Éxito', 'Bot reactivado', 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error', response.message, 'error');
+                    }
+                });
+            }
+        });
+    }
 </script>

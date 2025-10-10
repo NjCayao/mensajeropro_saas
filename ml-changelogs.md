@@ -30,3 +30,73 @@ OpenAI key desde BD
 API corriendo ✅
 Modelo v7 entrenado ✅
 Sistema listo para GPT maestro ✅
+
+# 📋 CHANGELOG - FASE 2: Sistema ML + GPT Teacher
+🎯 Resumen
+Integración completa de Machine Learning con GPT como maestro para aprendizaje continuo del bot de ventas.
+
+✨ Nuevas Funcionalidades
+1. Arquitectura Híbrida ML + GPT
+
+Sistema de clasificación de intenciones con Machine Learning
+GPT como fallback inteligente cuando ML tiene baja confianza
+Aprendizaje automático continuo
+
+2. Componentes Nuevos
+whatsapp-service/src/
+├── shared/contextManager.js          (Manejo de historial)
+├── bots/ventas/
+│   ├── orchestrator.js               (Cerebro principal)
+│   ├── intentRouter.js               (Ejecutor de acciones)
+│   ├── gptTeacher.js                 (GPT maestro)
+│   └── salesBot.js                   (Movido y actualizado)
+3. Panel SuperAdmin - ML Engine
+
+Nuevo módulo para configurar ML Engine
+Monitoreo de accuracy y métricas en tiempo real
+Control de umbral de confianza (default 80%)
+Botón para forzar reentrenamiento manual
+Historial de entrenamientos
+
+4. Configuración Dinámica (BD)
+sql- ml_engine_port           (puerto del ML)
+- ml_umbral_confianza      (80% default)
+- ml_auto_retrain_examples (50 ejemplos)
+5. Reentrenamiento Automático
+
+GPT guarda cada conversación como ejemplo
+Al llegar a 50 ejemplos → retrain automático
+El modelo mejora sin intervención manual
+
+
+🔧 Cambios Técnicos
+Base de Datos
+
+Agregadas 3 configs en configuracion_plataforma
+Uso de training_samples para aprendizaje continuo
+
+WhatsApp Service
+
+Integración completa con ML Engine (puerto 5000)
+Reorganización de archivos (carpeta bots/ventas/)
+Flujo: Mensaje → ML clasifica → Router ejecuta o GPT responde
+
+ML Engine (Python)
+
+Endpoint /classify funcionando
+Endpoint /train para reentrenamiento
+Endpoint /health para monitoreo
+
+
+📊 Flujo Actual
+
+Usuario envía mensaje
+ML Engine clasifica intención + confianza
+¿Confianza ≥ 80%?
+
+✅ Sí → IntentRouter ejecuta acción directa (rápido)
+❌ No → GPT Teacher analiza y responde (inteligente)
+
+
+GPT guarda ejemplo para reentrenamiento
+Sistema aprende automáticamente

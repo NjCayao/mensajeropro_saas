@@ -47,7 +47,11 @@ try {
     $escalamiento_config = [
         'max_mensajes_sin_resolver' => (int)($_POST['max_mensajes_sin_resolver'] ?? 5),
         'palabras_clave' => array_filter(array_map('trim', explode(',', $_POST['palabras_escalamiento'] ?? ''))),
-        'mensaje_escalamiento' => $_POST['mensaje_escalamiento'] ?? 'Te estoy transfiriendo con un asesor humano que te ayudará mejor.'
+        'mensaje_escalamiento' => $_POST['mensaje_escalamiento'] ?? 'Te estoy transfiriendo con un asesor humano que te ayudará mejor.',
+
+        'detectar_intervencion_humana' => isset($_POST['detectar_intervencion_humana']) ? 1 : 0,
+        'timeout_intervencion_humana' => intval($_POST['timeout_intervencion_humana'] ?? 120),
+        'numeros_operadores' => array_filter(array_map('trim', explode(',', $_POST['numeros_operadores'] ?? '')))
     ];
 
     // Convertir palabras de activación a JSON
@@ -94,16 +98,16 @@ try {
             $horario_fin,
             $mensaje_fuera_horario,
             $responder_no_registrados,
-            json_encode($palabras_array),            
+            json_encode($palabras_array),
             $system_prompt,
             $business_info,
             $tipo_bot,
             $prompt_ventas,
             $prompt_citas,
-            $templates_activo,            
+            $templates_activo,
             json_encode($escalamiento_config),
             $modo_prueba,
-            $numero_prueba,            
+            $numero_prueba,
             $empresa_id
         ]);
     } else {
@@ -125,16 +129,16 @@ try {
             $horario_fin,
             $mensaje_fuera_horario,
             $responder_no_registrados,
-            json_encode($palabras_array),            
+            json_encode($palabras_array),
             $system_prompt,
             $business_info,
             $tipo_bot,
             $prompt_ventas,
             $prompt_citas,
-            $templates_activo,            
+            $templates_activo,
             json_encode($escalamiento_config),
             $modo_prueba,
-            $numero_prueba            
+            $numero_prueba
         ]);
     }
 

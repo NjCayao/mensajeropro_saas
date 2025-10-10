@@ -206,3 +206,62 @@ Por favor comparte:
 ✅ Confirma si el PLAN DE TRABAJO te parece bien o quieres ajustarlo
 
 Cuando tenga esa información, empezaré con la FASE 1: Motor ML y te iré entregando código funcional fase por fase. 🚀
+
+# 📋 CHANGELOG - FASE 5: Escalamiento y Notificaciones
+🎯 Resumen
+Sistema completo de escalamiento a humanos con detección automática de intervención para diferentes tamaños de negocio.
+
+✨ Nuevas Funcionalidades
+1. Sistema de Escalamiento Manual
+
+Palabras clave configurables (ej: "hablar con humano", "queja")
+Bot se pausa automáticamente al detectar palabra clave
+Panel para ver conversaciones escaladas pendientes
+Botón "Marcar como resuelto" para reactivar bot
+
+2. Sistema de Intervención Humana (Opcional)
+
+Detección automática cuando operador responde desde otro número
+Bot se pausa sin intervención manual
+Timeout configurable (default: 2 minutos)
+Reactivación automática o manual
+Ideal para negocios con múltiples operadores
+
+3. Panel de Gestión
+
+Vista unificada de escalamientos + intervenciones activas
+Estadísticas en tiempo real (pendientes, resueltos hoy)
+Historial de conversación por cliente
+Auto-refresh cada 30 segundos
+Botón directo para abrir WhatsApp con el cliente
+
+
+🔧 Componentes Nuevos
+Base de Datos
+- Tabla: intervencion_humana (control de pausas automáticas)
+- Mejoras: estados_conversacion (ya existía)
+APIs
+- reactivar-bot.php (reactivar bot manualmente)
+- marcar-resuelto.php (resolver escalamiento)
+- historial-conversacion.php (ya existía, mejorado)
+WhatsApp Service
+- whatsapp-wppconnect.js: detectarIntervencionOperador()
+- botHandler.js: verificarIntervencionHumana()
+Panel Cliente
+- escalados.php: mejorado con tab de intervenciones
+- bot-config.php: config de intervención humana
+
+🎛️ Configuración
+Opciones añadidas:
+
+✅ Activar/desactivar detección automática
+✅ Timeout de reactivación (30-600 segundos)
+✅ Números de operadores (para detección)
+✅ Palabras clave de escalamiento
+
+
+🔨 Correcciones
+
+✅ Moneda dinámica desde BD (eliminado hardcoding)
+✅ Collation UTF8 corregido (intervencion_humana)
+✅ Mejoras en notificaciones de escalamiento

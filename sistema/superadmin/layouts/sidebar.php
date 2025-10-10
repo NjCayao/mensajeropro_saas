@@ -22,10 +22,10 @@
         <!-- Sidebar Menu -->
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-                
+
                 <li class="nav-item">
-                    <a href="<?php echo url('superadmin/dashboard'); ?>" 
-                       class="nav-link <?php echo ($current_page == 'dashboard') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('superadmin/dashboard'); ?>"
+                        class="nav-link <?php echo ($current_page == 'dashboard') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-tachometer-alt"></i>
                         <p>Dashboard</p>
                     </a>
@@ -34,24 +34,24 @@
                 <li class="nav-header">GESTIÓN</li>
 
                 <li class="nav-item">
-                    <a href="<?php echo url('superadmin/empresas'); ?>" 
-                       class="nav-link <?php echo ($current_page == 'empresas') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('superadmin/empresas'); ?>"
+                        class="nav-link <?php echo ($current_page == 'empresas') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-building"></i>
                         <p>Empresas</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="<?php echo url('superadmin/planes'); ?>" 
-                       class="nav-link <?php echo ($current_page == 'planes') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('superadmin/planes'); ?>"
+                        class="nav-link <?php echo ($current_page == 'planes') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-box"></i>
                         <p>Planes</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="<?php echo url('superadmin/pagos'); ?>" 
-                       class="nav-link <?php echo ($current_page == 'pagos') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('superadmin/pagos'); ?>"
+                        class="nav-link <?php echo ($current_page == 'pagos') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-credit-card"></i>
                         <p>Pagos</p>
                     </a>
@@ -60,34 +60,42 @@
                 <li class="nav-header">CONFIGURACIÓN</li>
 
                 <li class="nav-item">
-                    <a href="<?php echo url('superadmin/configuracion'); ?>" 
-                       class="nav-link <?php echo ($current_page == 'configuracion') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('superadmin/configuracion'); ?>"
+                        class="nav-link <?php echo ($current_page == 'configuracion') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-cogs"></i>
                         <p>Configuración Global</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="<?php echo url('superadmin/emails'); ?>" 
-                       class="nav-link <?php echo ($current_page == 'emails') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('superadmin/emails'); ?>"
+                        class="nav-link <?php echo ($current_page == 'emails') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-envelope"></i>
                         <p>Plantillas Email</p>
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="<?php echo url('superadmin/bot-templates'); ?>" 
-                       class="nav-link <?php echo ($current_page == 'bot-templates') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('superadmin/bot-templates'); ?>"
+                        class="nav-link <?php echo ($current_page == 'bot-templates') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-robot"></i>
                         <p>Plantillas Bot</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="<?php echo url('superadmin/ml-config'); ?>"
+                        class="nav-link <?php echo ($current_page == 'ml-config') ? 'active' : ''; ?>">
+                        <i class="nav-icon fas fa-brain"></i>
+                        <p>ML Engine</p>
                     </a>
                 </li>
 
                 <li class="nav-header">SISTEMA</li>
 
                 <li class="nav-item">
-                    <a href="<?php echo url('superadmin/logs'); ?>" 
-                       class="nav-link <?php echo ($current_page == 'logs') ? 'active' : ''; ?>">
+                    <a href="<?php echo url('superadmin/logs'); ?>"
+                        class="nav-link <?php echo ($current_page == 'logs') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-list"></i>
                         <p>Logs del Sistema</p>
                     </a>

@@ -1,8 +1,10 @@
+// whatsapp-service/src/botHandler.js
 const db = require("./database");
 const axios = require("axios");
-const SalesBot = require("./salesBot");
+const SalesBot = require("./bots/ventas/salesBot");
 const AppointmentBot = require("./appointmentBot");
 const ReminderService = require("./reminderService");
+const VentasOrchestrator = require("./bots/ventas/orchestrator");
 
 class BotHandler {
   constructor(whatsappClient = null) {
@@ -11,20 +13,22 @@ class BotHandler {
     this.conversaciones = new Map();
     this.whatsappClient = whatsappClient;
     this.loadConfig();
+
     this.salesBot = null;
     this.appointmentBot = null;
+    this.supportBot = null;
+    this.ventasOrchestrator = null;
 
     if (whatsappClient) {
-      const ReminderService = require("./reminderService");
       this.reminderService = new ReminderService(whatsappClient);
 
       // Verificar recordatorios cada hora
       setInterval(() => {
         this.reminderService.verificarRecordatorios();
-      }, 60 * 60 * 1000); // 1 hora
+      }, 60 * 60 * 1000);
     }
 
-    // Recargar configuración cada 5 minutos
+    // Recargar configuración cada 30 segundos
     setInterval(() => this.loadConfig(), 30 * 1000);
   }
 
@@ -40,8 +44,7 @@ class BotHandler {
           this.config.palabras_activacion || "[]"
         );
 
-        // console.log("✅ Configuración del bot cargada desde BD");
-        // console.log("   - Bot activo:", this.config.activo ? "SÍ" : "NO");
+        // Cargar config global de OpenAI
         const [globalConfig] = await db
           .getPool()
           .execute(
@@ -52,69 +55,65 @@ class BotHandler {
         globalConfig.forEach((row) => {
           this.globalConfig[row.clave] = row.valor;
         });
-        // console.log(
-        //   "   - API Key Global:",
-        //   this.globalConfig.openai_api_key ? "Configurada" : "NO CONFIGURADA"
-        // );
-        // console.log(
-        //   "   - System prompt:",
-        //   this.config.system_prompt ? "Configurado" : "NO configurado"
-        // );
-        // console.log(
-        //   "   - Business info:",
-        //   this.config.business_info ? "Configurada" : "NO configurada"
-        // );
-        // console.log(
-        //   "   - Palabras activación:",
-        //   this.config.palabras_activacion.length
-        // );
+
+        // ===== INICIALIZAR BOT SEGÚN TIPO =====
+
+        // Bot de VENTAS
+        if (this.config && this.config.tipo_bot === "ventas") {
+          if (!this.salesBot) {
+            this.salesBot = new SalesBot(this.config.empresa_id || 1, this);
+            await this.salesBot.loadCatalog();
+          } else {
+            await this.salesBot.loadCatalog();
+          }
+
+          // Inicializar VentasOrchestrator (ML + GPT)
+          if (!this.ventasOrchestrator) {
+            this.ventasOrchestrator = new VentasOrchestrator(
+              this.salesBot,
+              this.whatsappClient
+            );
+            console.log("✅ VentasOrchestrator inicializado (ML + GPT)");
+          }
+        } else {
+          this.salesBot = null;
+          this.ventasOrchestrator = null;
+        }
+
+        // Bot de CITAS
+        if (this.config && this.config.tipo_bot === "citas") {
+          if (!this.appointmentBot) {
+            this.appointmentBot = new AppointmentBot(
+              this.config.empresa_id || 1,
+              this
+            );
+            await this.appointmentBot.loadConfig();
+          } else {
+            await this.appointmentBot.loadConfig();
+          }
+        } else {
+          this.appointmentBot = null;
+        }
+
+        // Bot de SOPORTE
+        if (this.config && this.config.tipo_bot === "soporte") {
+          if (!this.supportBot) {
+            const SupportBot = require("./supportBot");
+            this.supportBot = new SupportBot(this.config.empresa_id || 1, this);
+            await this.supportBot.loadConfig();
+          } else {
+            await this.supportBot.loadConfig();
+          }
+        } else {
+          this.supportBot = null;
+        }
+
+        this.conocimientos = [];
       } else {
         console.log("❌ No se encontró configuración del bot en la BD");
       }
-
-      if (this.config && this.config.tipo_bot === "ventas") {
-        if (!this.salesBot) {
-          this.salesBot = new SalesBot(this.config.empresa_id || 1, this);
-          await this.salesBot.loadCatalog(); // Cargar catálogo aquí
-        } else {
-          // Actualizar solo la configuración sin recrear
-          await this.salesBot.loadCatalog(); // Recargar catálogo
-        }
-      } else {
-        this.salesBot = null;
-      }
-
-      if (this.config && this.config.tipo_bot === "citas") {
-        if (!this.appointmentBot) {
-          this.appointmentBot = new AppointmentBot(
-            this.config.empresa_id || 1,
-            this
-          );
-          await this.appointmentBot.loadConfig(); // Cargar config aquí
-        } else {
-          // Actualizar solo la configuración sin recrear
-          await this.appointmentBot.loadConfig(); // Recargar config
-        }
-      } else {
-        this.appointmentBot = null;
-      }
-
-      if (this.config && this.config.tipo_bot === "soporte") {
-        if (!this.supportBot) {
-          const SupportBot = require("./supportBot");
-          this.supportBot = new SupportBot(this.config.empresa_id || 1, this);
-          await this.supportBot.loadConfig();
-        } else {
-          await this.supportBot.loadConfig();
-        }
-      } else {
-        this.supportBot = null;
-      }
-
-      this.conocimientos = [];
-      // console.log("✅ Bot configurado sin base de conocimiento adicional");
     } catch (error) {
-      // console.error("Error cargando configuración del bot:", error);
+      console.error("❌ Error cargando configuración del bot:", error);
     }
   }
 
@@ -212,6 +211,27 @@ class BotHandler {
   async processMessage(mensaje, numero) {
     try {
       console.log("📝 [processMessage] Iniciando procesamiento");
+
+      // ===== SI ES BOT DE VENTAS: Usar VentasOrchestrator (ML + GPT) =====
+      if (this.config.tipo_bot === "ventas" && this.ventasOrchestrator) {
+        console.log("🎯 Delegando a VentasOrchestrator (ML + GPT)");
+
+        const empresaId = global.EMPRESA_ID || 1;
+        const resultado = await this.ventasOrchestrator.procesarMensaje(
+          mensaje,
+          numero,
+          empresaId
+        );
+
+        return {
+          respuesta: resultado.respuesta,
+          tipo: resultado.tipo || "bot",
+          tokens: resultado.tokens,
+          tiempo: resultado.tiempo,
+        };
+      }
+
+      // ===== RESTO DE LÓGICA (Citas, Soporte) =====
       const shouldRespond = await this.shouldRespond(mensaje, numero);
 
       if (!shouldRespond) {
@@ -229,9 +249,8 @@ class BotHandler {
 
       // Verificar modo prueba
       if (this.config.modo_prueba && this.config.numero_prueba) {
-        // Limpiar números para comparar
         const numeroPrueba = this.config.numero_prueba.replace(/\D/g, "");
-        const numeroActual = numero.replace(/\D/g, "").replace(/^51/, ""); // Quitar código país
+        const numeroActual = numero.replace(/\D/g, "").replace(/^51/, "");
 
         if (
           !numeroActual.includes(numeroPrueba) &&
@@ -242,7 +261,7 @@ class BotHandler {
         }
       }
 
-      // Verificar respuestas rápidas primero
+      // Verificar respuestas rápidas
       const respuestaRapida = await this.checkRespuestaRapida(mensaje);
       if (respuestaRapida) {
         console.log("⚡ Respuesta rápida encontrada");
@@ -252,29 +271,7 @@ class BotHandler {
         };
       }
 
-      // Si es bot de ventas, delegar al salesBot
-      if (this.config.tipo_bot === "ventas" && this.salesBot) {
-        const ventaResponse = await this.salesBot.procesarMensajeVenta(
-          mensaje,
-          numero
-        );
-
-        // Si necesita enviar archivo PDF
-        if (ventaResponse.archivo) {
-          // El WhatsApp client manejará el envío del PDF
-          return {
-            respuesta: ventaResponse.respuesta,
-            tipo: ventaResponse.tipo,
-            archivo: ventaResponse.archivo,
-          };
-        }
-
-        return {
-          respuesta: ventaResponse.respuesta,
-          tipo: ventaResponse.tipo,
-        };
-      }
-
+      // Bot de CITAS
       if (this.config.tipo_bot === "citas" && this.appointmentBot) {
         const citaResponse = await this.appointmentBot.procesarMensajeCita(
           mensaje,
@@ -287,6 +284,7 @@ class BotHandler {
         };
       }
 
+      // Bot de SOPORTE
       if (this.config.tipo_bot === "soporte" && this.supportBot) {
         const soporteResponse = await this.supportBot.procesarMensajeSoporte(
           mensaje,
@@ -299,11 +297,10 @@ class BotHandler {
         };
       }
 
-      // Detectar si necesita escalamiento
+      // Detectar escalamiento
       const necesitaEscalamiento = await this.checkEscalamiento(mensaje);
 
       if (necesitaEscalamiento) {
-        // Usar configuración de escalamiento
         const escalamientoConfig = JSON.parse(
           this.config.escalamiento_config || "{}"
         );
@@ -312,7 +309,6 @@ class BotHandler {
           this.config.mensaje_escalamiento ||
           "Tu consulta requiere atención personalizada. Un asesor te atenderá en breve.";
 
-        // Marcar conversación como escalada
         await db.getPool().execute(
           `INSERT INTO estados_conversacion (numero_cliente, estado, fecha_escalado, motivo_escalado, empresa_id) 
                  VALUES (?, 'escalado_humano', NOW(), ?, ?)
@@ -320,13 +316,12 @@ class BotHandler {
                     estado = 'escalado_humano', 
                     fecha_escalado = NOW(),
                     motivo_escalado = ?`,
-          [numero, mensaje, getEmpresaActual(), mensaje]
+          [numero, mensaje, global.EMPRESA_ID || 1, mensaje]
         );
 
-        // Registrar métrica de escalamiento
         await this.registrarMetrica("escalamiento");
 
-        // Notificar escalamiento si está configurado
+        // Notificar escalamiento
         if (
           this.config.notificar_escalamiento &&
           this.config.numeros_notificacion &&
@@ -335,12 +330,10 @@ class BotHandler {
           try {
             const numeros = JSON.parse(this.config.numeros_notificacion);
             if (numeros.length > 0) {
-              // Preparar mensaje de notificación
               let mensajeNotificacion =
                 this.config.mensaje_notificacion ||
                 '🚨 *ESCALAMIENTO URGENTE*\n\nCliente: {numero}\nMensaje: "{ultimo_mensaje}"\nHora: {hora}';
 
-              // Reemplazar variables
               mensajeNotificacion = mensajeNotificacion
                 .replace("{numero}", numero.replace("@c.us", ""))
                 .replace("{ultimo_mensaje}", mensaje)
@@ -353,7 +346,6 @@ class BotHandler {
                   })
                 );
 
-              // Enviar notificación a cada número configurado
               for (const numeroNotificar of numeros) {
                 console.log(
                   `📢 Enviando notificación de escalamiento a ${numeroNotificar}`
@@ -378,7 +370,7 @@ class BotHandler {
         };
       }
 
-      // Generar respuesta con IA
+      // Generar respuesta con IA (GPT antiguo, sin ML)
       console.log(
         "📝 [processMessage] Aplicando delay de",
         this.config.delay_respuesta,
@@ -392,8 +384,6 @@ class BotHandler {
       const respuestaIA = await this.generateResponse(mensaje, contexto);
 
       await this.saveConversation(numero, mensaje, respuestaIA);
-
-      // Registrar métrica
       await this.registrarMetrica("conversacion_completada");
 
       return {
@@ -436,7 +426,6 @@ class BotHandler {
     const palabrasClave = escalamientoConfig.palabras_clave || [];
 
     if (palabrasClave.length === 0) {
-      // Si no hay configuración, usar las del campo anterior
       let frasesEscalamiento = [];
       try {
         if (this.config.frases_escalamiento) {
@@ -468,18 +457,14 @@ class BotHandler {
       return contieneFrase;
     });
 
-    // Verificar también si excedió mensajes sin resolver
     if (!necesitaEscalar && escalamientoConfig.max_mensajes_sin_resolver) {
-      // Contar mensajes recientes sin respuesta satisfactoria
       const [rows] = await db.getPool().execute(
-        `
-            SELECT COUNT(*) as count 
+        `SELECT COUNT(*) as count 
             FROM conversaciones_bot 
             WHERE numero_cliente = ? 
             AND fecha_hora >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)
-            AND empresa_id = ?
-        `,
-        [numero, getEmpresaActual()]
+            AND empresa_id = ?`,
+        [numero, global.EMPRESA_ID || 1]
       );
 
       if (rows[0].count >= escalamientoConfig.max_mensajes_sin_resolver) {
@@ -491,13 +476,11 @@ class BotHandler {
     return necesitaEscalar;
   }
 
-  // Registrar métricas
   async registrarMetrica(tipo) {
     try {
-      const empresaId = getEmpresaActual();
+      const empresaId = global.EMPRESA_ID || 1;
       const fecha = new Date().toISOString().split("T")[0];
 
-      // Verificar si existe registro de hoy
       const [existing] = await db
         .getPool()
         .execute(
@@ -506,7 +489,6 @@ class BotHandler {
         );
 
       if (existing.length === 0) {
-        // Crear registro
         await db
           .getPool()
           .execute(
@@ -515,7 +497,6 @@ class BotHandler {
           );
       }
 
-      // Actualizar métrica específica
       let updateQuery = "";
       switch (tipo) {
         case "conversacion_iniciada":
@@ -563,14 +544,12 @@ class BotHandler {
   async generateResponse(mensaje, contexto) {
     const inicio = Date.now();
 
-    // VERIFICAR configuración mínima
     if (!this.config.system_prompt || !this.globalConfig.openai_api_key) {
       throw new Error(
         "Bot no configurado correctamente - falta API Key global"
       );
     }
 
-    // Usar prompt específico según tipo de bot
     let systemPrompt = this.config.system_prompt;
 
     if (this.config.tipo_bot === "ventas" && this.config.prompt_ventas) {
@@ -579,12 +558,10 @@ class BotHandler {
       systemPrompt += "\n\n" + this.config.prompt_citas;
     }
 
-    // Agregar información del negocio si existe
     if (this.config.business_info) {
       systemPrompt += `\n\nINFORMACIÓN DEL NEGOCIO:\n${this.config.business_info}`;
     }
 
-    // Agregar respuestas rápidas como referencia
     if (this.config.respuestas_rapidas) {
       const respuestasRapidas = JSON.parse(
         this.config.respuestas_rapidas || "{}"
@@ -597,10 +574,8 @@ class BotHandler {
       }
     }
 
-    // Construir mensajes con contexto
     const messages = [{ role: "system", content: systemPrompt }];
 
-    // Agregar contexto de conversación
     contexto.forEach((conv) => {
       messages.push({ role: "user", content: conv.mensaje_cliente });
       if (conv.respuesta_bot) {
@@ -608,7 +583,6 @@ class BotHandler {
       }
     });
 
-    // Agregar mensaje actual
     messages.push({ role: "user", content: mensaje });
 
     try {
@@ -663,7 +637,7 @@ class BotHandler {
   async saveConversation(numero, mensajeCliente, respuestaIA) {
     try {
       const contactoId = await this.getContactoId(numero);
-      const empresaId = global.EMPRESA_ID || 1; // IMPORTANTE
+      const empresaId = global.EMPRESA_ID || 1;
 
       await db.getPool().execute(
         `INSERT INTO conversaciones_bot 
@@ -671,7 +645,7 @@ class BotHandler {
         es_cliente_registrado, tokens_usados, tiempo_respuesta)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          empresaId, // AGREGAR ESTE PARÁMETRO
+          empresaId,
           numero,
           mensajeCliente,
           respuestaIA.content,
@@ -706,7 +680,6 @@ class BotHandler {
     }
   }
 
-  // Método para manejar mensajes entrantes
   async handleIncomingMessage(
     from,
     body,
@@ -722,7 +695,16 @@ class BotHandler {
     );
     console.log(`   Tipo: ${messageType}`);
 
-    // MANEJO DE IMÁGENES (COMPROBANTES DE PAGO)
+    // ✅ NUEVO: Verificar si hay intervención humana activa
+    const intervencionActiva = await this.verificarIntervencionHumana(numero);
+    if (intervencionActiva) {
+      console.log(
+        `👤 Intervención humana activa - Bot en pausa para ${numero}`
+      );
+      return null; // Bot no responde
+    }
+
+    // MANEJO DE IMÁGENES
     if (
       messageType === "image" &&
       this.config.tipo_bot === "soporte" &&
@@ -737,20 +719,17 @@ class BotHandler {
           const path = require("path");
           const fs = require("fs").promises;
 
-          // Crear directorio si no existe
           const directorioComprobantes = path.join(
             __dirname,
             "../uploads/comprobantes"
           );
           await fs.mkdir(directorioComprobantes, { recursive: true });
 
-          // Nombre del archivo
           const timestamp = Date.now();
           const numeroLimpio = numero.replace("@c.us", "");
           const nombreArchivo = `comprobante_${numeroLimpio}_${timestamp}.jpg`;
           const rutaArchivo = path.join(directorioComprobantes, nombreArchivo);
 
-          // Descargar imagen usando WPPConnect
           if (messageObj) {
             const buffer = await this.whatsappClient.client.client.decryptFile(
               messageObj
@@ -760,13 +739,11 @@ class BotHandler {
             console.log(`✅ Comprobante guardado: ${rutaArchivo}`);
           }
 
-          // Procesar comprobante
           const respuesta = await this.supportBot.manejarComprobanteRecibido(
             numero,
             rutaArchivo
           );
 
-          // PROGRAMAR ELIMINACIÓN AUTOMÁTICA EN 48 HORAS
           setTimeout(async () => {
             try {
               await fs.unlink(rutaArchivo);
@@ -776,7 +753,7 @@ class BotHandler {
             } catch (error) {
               console.error(`Error eliminando comprobante: ${error.message}`);
             }
-          }, 48 * 60 * 60 * 1000); // 48 horas
+          }, 48 * 60 * 60 * 1000);
 
           if (respuesta) {
             console.log(
@@ -815,9 +792,106 @@ class BotHandler {
 
     return null;
   }
+
+  async verificarIntervencionHumana(numero) {
+    try {
+      const empresaId = global.EMPRESA_ID || 1;
+
+      const [rows] = await db.getPool().execute(
+        `SELECT * FROM intervencion_humana 
+      WHERE empresa_id = ? AND numero_cliente = ? 
+      AND estado IN ('humano_interviniendo', 'esperando_timeout')`,
+        [empresaId, numero]
+      );
+
+      if (rows.length === 0) {
+        return false; // No hay intervención
+      }
+
+      const intervencion = rows[0];
+      const ahora = Date.now();
+      const timestampTimeout = new Date(
+        intervencion.timestamp_timeout
+      ).getTime();
+
+      // Si expiró el timeout, reactivar bot
+      if (
+        intervencion.estado === "esperando_timeout" &&
+        ahora > timestampTimeout
+      ) {
+        console.log(`⏰ Timeout expirado - Reactivando bot para ${numero}`);
+        await db.getPool().execute(
+          `UPDATE intervencion_humana 
+        SET estado = 'bot_activo' 
+        WHERE id = ?`,
+          [intervencion.id]
+        );
+        return false; // Bot se reactiva
+      }
+
+      // Si aún está interviniendo
+      if (intervencion.estado === "humano_interviniendo") {
+        // Cambiar a esperando_timeout
+        await db.getPool().execute(
+          `UPDATE intervencion_humana 
+        SET estado = 'esperando_timeout' 
+        WHERE id = ?`,
+          [intervencion.id]
+        );
+      }
+
+      return true; // Intervención activa, bot no responde
+    } catch (error) {
+      console.error("❌ Error verificando intervención humana:", error);
+      return false; // En caso de error, dejar que el bot responda
+    }
+  }
+
+  // Verificar intervención humana
+  async verificarIntervencionHumana(numero) {
+    try {
+      const empresaId = global.EMPRESA_ID || 1;
+
+      const [rows] = await db.getPool().execute(
+        `SELECT * FROM intervencion_humana 
+            WHERE empresa_id = ? AND numero_cliente = ? 
+            AND estado IN ('humano_interviniendo', 'esperando_timeout')`,
+        [empresaId, numero]
+      );
+
+      if (rows.length === 0) {
+        return false; // No hay intervención
+      }
+
+      const intervencion = rows[0];
+      const ahora = Date.now();
+      const timestampTimeout = new Date(
+        intervencion.timestamp_timeout
+      ).getTime();
+
+      // Si expiró el timeout, reactivar bot
+      if (
+        intervencion.estado === "esperando_timeout" &&
+        ahora > timestampTimeout
+      ) {
+        console.log(`⏰ Timeout expirado - Reactivando bot para ${numero}`);
+        await db.getPool().execute(
+          `UPDATE intervencion_humana 
+                SET estado = 'bot_activo' 
+                WHERE id = ?`,
+          [intervencion.id]
+        );
+        return false; // Bot se reactiva
+      }
+
+      return true; // Intervención activa
+    } catch (error) {
+      console.error("Error verificando intervención humana:", error);
+      return false; // En caso de error, dejar que el bot responda
+    }
+  }
 }
 
-// Función helper para obtener empresa actual
 function getEmpresaActual() {
   return global.EMPRESA_ID || 1;
 }
