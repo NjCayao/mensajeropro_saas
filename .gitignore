@@ -1,12 +1,13 @@
+logs/
+sistema/uploads/
+web/uploads/
+node_modules
+ml-engine/venv/
+
+# WhatsApp Service - ignorar solo lo que no debe subirse
 whatsapp-service/.wwebjs_cache/
 whatsapp-service/node_modules/
 whatsapp-service/logs/
 whatsapp-service/tokens/
-logs/
-sistema/uploads/
-web/uploads/
 whatsapp-service/uploads/
 whatsapp-service/.env
-node_modules
-ml-engine/venv/
-
