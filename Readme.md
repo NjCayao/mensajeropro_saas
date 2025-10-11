@@ -18,6 +18,9 @@
 # Editar crontab
 crontab -e
 
+# # Agregar esta línea (ejecuta diario a las 3 AM)
+0 3 * * * php /ruta/completa/sistema/cron/ml-cleanup-auto.php >> /ruta/logs/cleanup.log 2>&1
+
 # Agregar esta línea para ejecutar cada hora los recordatorios
 0 * * * * cd /ruta/a/tu/proyecto/whatsapp-service && node src/cronRecordatorios.js >> logs/cron.log 2>&1
 

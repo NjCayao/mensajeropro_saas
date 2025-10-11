@@ -8,7 +8,8 @@ require_once __DIR__ . '/../layouts/header.php';
 require_once __DIR__ . '/../layouts/sidebar.php';
 
 // Obtener configuración actual
-function getConfig($clave, $default = '') {
+function getConfig($clave, $default = '')
+{
     global $pdo;
     $stmt = $pdo->prepare("SELECT valor FROM configuracion_plataforma WHERE clave = ?");
     $stmt->execute([$clave]);
@@ -45,6 +46,13 @@ try {
 } catch (Exception $e) {
     $ejemplos_pendientes = 0;
 }
+
+$config_limpieza = [
+    'conversaciones' => getConfig('ml_retencion_conversaciones', '3'),
+    'descartados' => getConfig('ml_retencion_ejemplos_descartados', '7'),
+    'usados' => getConfig('ml_retencion_ejemplos_usados', '30'),
+    'logs' => getConfig('ml_retencion_logs_entrenamiento', '90'),
+];
 
 // Últimos entrenamientos
 try {
@@ -131,6 +139,44 @@ try {
                 </div>
             </div>
 
+            <!-- ========== GRÁFICOS ========== -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card card-primary">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-chart-line"></i> Evolución de Accuracy</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartAccuracy" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card card-info">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-chart-bar"></i> ML vs GPT (últimos 7 días)</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartMLvsGPT" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card card-success">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-chart-pie"></i> Top 10 Intenciones (últimos 30 días)</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartIntenciones" height="80"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Configuración -->
             <div class="row">
                 <div class="col-md-6">
@@ -156,7 +202,7 @@ try {
 
                                 <div class="form-group">
                                     <label>
-                                        Umbral de Confianza: 
+                                        Umbral de Confianza:
                                         <span class="badge badge-info" id="umbralValue">
                                             <?= number_format((float)$config['ml_umbral_confianza'] * 100, 0) ?>%
                                         </span>
@@ -166,8 +212,8 @@ try {
                                         value="<?= $config['ml_umbral_confianza'] ?>"
                                         oninput="document.getElementById('umbralValue').textContent = Math.round(this.value * 100) + '%'">
                                     <small class="text-muted">
-                                        <strong>Mayor (≥80%):</strong> ML decide más, GPT menos (más rápido, menos tokens)<br>
-                                        <strong>Menor (&lt;80%):</strong> GPT decide más, ML menos (más inteligente, más tokens)
+                                        <strong>Mayor (≥80%):</strong> ML decide más, GPT menos<br>
+                                        <strong>Menor (&lt;80%):</strong> GPT decide más, ML menos
                                     </small>
                                 </div>
 
@@ -176,17 +222,8 @@ try {
                                     <input type="number" class="form-control" name="ml_auto_retrain_examples"
                                         value="<?= $config['ml_auto_retrain_examples'] ?>" min="10" max="500">
                                     <small class="text-muted">
-                                        El modelo se reentrena automáticamente al alcanzar esta cantidad de ejemplos nuevos
+                                        El modelo se reentrena automáticamente al alcanzar esta cantidad
                                     </small>
-                                </div>
-
-                                <div class="alert alert-warning">
-                                    <h6><i class="fas fa-lightbulb"></i> Recomendaciones:</h6>
-                                    <ul class="mb-0 small">
-                                        <li><strong>Umbral 80-85%:</strong> Balance ideal (recomendado)</li>
-                                        <li><strong>Umbral 90%+:</strong> Solo si el modelo ya tiene >90% accuracy</li>
-                                        <li><strong>Reentrenamiento:</strong> 50 ejemplos es óptimo (no muy seguido, no muy raro)</li>
-                                    </ul>
                                 </div>
                             </div>
                             <div class="card-footer">
@@ -222,10 +259,8 @@ try {
                                                 <span class="badge badge-success">Excelente</span>
                                             <?php elseif ($modelo_actual['accuracy'] >= 0.80): ?>
                                                 <span class="badge badge-info">Bueno</span>
-                                            <?php elseif ($modelo_actual['accuracy'] >= 0.70): ?>
-                                                <span class="badge badge-warning">Regular</span>
                                             <?php else: ?>
-                                                <span class="badge badge-danger">Necesita mejorar</span>
+                                                <span class="badge badge-warning">Regular</span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
@@ -242,16 +277,12 @@ try {
                                         <td><?= number_format($modelo_actual['f1_score'] * 100, 2) ?>%</td>
                                     </tr>
                                     <tr>
-                                        <th>Ejemplos de Entrenamiento:</th>
+                                        <th>Ejemplos:</th>
                                         <td><?= number_format($modelo_actual['ejemplos_entrenamiento']) ?></td>
                                     </tr>
                                     <tr>
-                                        <th>Fecha Entrenamiento:</th>
+                                        <th>Fecha:</th>
                                         <td><?= date('d/m/Y H:i', strtotime($modelo_actual['fecha_entrenamiento'])) ?></td>
-                                    </tr>
-                                    <tr>
-                                        <th>Duración:</th>
-                                        <td><?= $modelo_actual['duracion_segundos'] ?> segundos</td>
                                     </tr>
                                 </table>
 
@@ -261,15 +292,12 @@ try {
                                     <button class="btn btn-warning" onclick="forzarReentrenamiento()">
                                         <i class="fas fa-sync-alt"></i> Forzar Reentrenamiento
                                     </button>
-                                    <p class="text-muted mt-2 small">
-                                        Esto iniciará un reentrenamiento manual con todos los ejemplos disponibles
-                                    </p>
                                 </div>
 
                             <?php else: ?>
                                 <div class="alert alert-warning">
                                     <i class="fas fa-exclamation-triangle"></i>
-                                    No hay modelo entrenado. El ML Engine debe entrenarse por primera vez.
+                                    No hay modelo entrenado.
                                 </div>
                                 <button class="btn btn-primary btn-block" onclick="entrenamientoInicial()">
                                     <i class="fas fa-play"></i> Iniciar Primer Entrenamiento
@@ -287,6 +315,120 @@ try {
                             <p class="text-center">
                                 <i class="fas fa-spinner fa-spin"></i> Verificando...
                             </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ejemplos Pendientes -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card card-warning">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-tasks"></i> Ejemplos Pendientes de Revisión
+                            </h3>
+                            <div class="card-tools">
+                                <button type="button" class="btn btn-sm btn-success" onclick="aprobarTodos()">
+                                    <i class="fas fa-check-double"></i> Aprobar Todos
+                                </button>
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>¿Para qué sirve esto?</strong> Revisa los ejemplos que GPT guardó.
+                            </div>
+                            <div id="tablaEjemplos">
+                                <p class="text-center">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Limpieza Automática -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card card-danger">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-broom"></i> Limpieza Automática de Datos
+                            </h3>
+                            <div class="card-tools">
+                                <button type="button" class="btn btn-sm btn-warning" onclick="previsualizarLimpieza()">
+                                    <i class="fas fa-eye"></i> Vista Previa
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="ejecutarLimpieza()">
+                                    <i class="fas fa-trash-alt"></i> Ejecutar Limpieza
+                                </button>
+                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>¡Importante!</strong> Usa "Vista Previa" primero.
+                            </div>
+
+                            <form id="formLimpieza">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label>Conversaciones (días):</label>
+                                            <input type="number" class="form-control"
+                                                name="dias_conversaciones"
+                                                value="<?= $config_limpieza['conversaciones'] ?>"
+                                                min="1" max="365">
+                                            <small class="text-muted">Mayores a X días</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label>Ejemplos Descartados:</label>
+                                            <input type="number" class="form-control"
+                                                name="dias_descartados"
+                                                value="<?= $config_limpieza['descartados'] ?>"
+                                                min="1" max="365">
+                                            <small class="text-muted">Rechazados</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label>Ejemplos Usados:</label>
+                                            <input type="number" class="form-control"
+                                                name="dias_usados"
+                                                value="<?= $config_limpieza['usados'] ?>"
+                                                min="1" max="365">
+                                            <small class="text-muted">Ya entrenaron</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label>Logs:</label>
+                                            <input type="number" class="form-control"
+                                                name="dias_logs"
+                                                value="<?= $config_limpieza['logs'] ?>"
+                                                min="1" max="365">
+                                            <small class="text-muted">Histórico</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Guardar Configuración
+                                </button>
+                            </form>
+
+                            <hr>
+                            <div id="resultadoLimpieza"></div>
                         </div>
                     </div>
                 </div>
@@ -367,138 +509,540 @@ try {
 
 <?php require_once __DIR__ . '/../layouts/footer.php'; ?>
 
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
 <script>
-// Guardar configuración
-$('#formMLConfig').on('submit', function(e) {
-    e.preventDefault();
-    
-    $.ajax({
-        url: '<?= url("api/v1/superadmin/guardar-configuracion") ?>',
-        method: 'POST',
-        data: $(this).serialize() + '&seccion=ml',
-        dataType: 'json',
-        success: function(response) {
+    // ========== VARIABLES GLOBALES ==========
+    let chartAccuracy, chartMLvsGPT, chartIntenciones;
+    let ejemplosPendientes = [];
+    let intencionesDisponibles = [];
+
+    // ========== GRÁFICOS ==========
+    function cargarGraficos() {
+        cargarAccuracyHistorico();
+        cargarMLvsGPT();
+        cargarIntencionesTop();
+    }
+
+    function cargarAccuracyHistorico() {
+        $.get('<?= url("api/v1/superadmin/ml-stats") ?>?tipo=accuracy_historico', function(response) {
+            if (!response.success) return;
+            const ctx = document.getElementById('chartAccuracy').getContext('2d');
+            if (chartAccuracy) chartAccuracy.destroy();
+            chartAccuracy = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: response.labels,
+                    datasets: [{
+                        label: 'Accuracy (%)',
+                        data: response.accuracy,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 50,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    function cargarMLvsGPT() {
+        $.get('<?= url("api/v1/superadmin/ml-stats") ?>?tipo=ml_vs_gpt', function(response) {
+            if (!response.success) return;
+            const ctx = document.getElementById('chartMLvsGPT').getContext('2d');
+            if (chartMLvsGPT) chartMLvsGPT.destroy();
+            chartMLvsGPT = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: response.labels,
+                    datasets: [{
+                            label: 'ML Engine (rápido)',
+                            data: response.ml,
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)'
+                        },
+                        {
+                            label: 'GPT Teacher (inteligente)',
+                            data: response.gpt,
+                            backgroundColor: 'rgba(255, 99, 132, 0.7)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        });
+    }
+
+    function cargarIntencionesTop() {
+        $.get('<?= url("api/v1/superadmin/ml-stats") ?>?tipo=intenciones_top', function(response) {
+            if (!response.success) return;
+            const ctx = document.getElementById('chartIntenciones').getContext('2d');
+            if (chartIntenciones) chartIntenciones.destroy();
+            chartIntenciones = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: response.labels,
+                    datasets: [{
+                        label: 'Cantidad',
+                        data: response.totales,
+                        backgroundColor: 'rgba(75, 192, 192, 0.7)'
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        });
+    }
+
+    // ========== EJEMPLOS PENDIENTES ==========
+    function cargarEjemplosPendientes() {
+        $.get('<?= url("api/v1/superadmin/ml-ejemplos") ?>?accion=listar_pendientes&limite=20', function(response) {
+            if (!response.success) {
+                $('#tablaEjemplos').html('<p class="text-danger">Error cargando ejemplos</p>');
+                return;
+            }
+
+            ejemplosPendientes = response.ejemplos;
+
+            if (ejemplosPendientes.length === 0) {
+                $('#tablaEjemplos').html(`
+                <div class="alert alert-success">
+                    <i class="fas fa-check"></i> No hay ejemplos pendientes. ¡Todo revisado!
+                </div>
+            `);
+                return;
+            }
+
+            let html = `
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th width="40%">Mensaje</th>
+                            <th width="20%">Intención</th>
+                            <th width="10%">Confianza</th>
+                            <th width="15%">Fecha</th>
+                            <th width="15%">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+            ejemplosPendientes.forEach(ejemplo => {
+                const confianzaColor = ejemplo.confianza >= 0.8 ? 'success' :
+                    ejemplo.confianza >= 0.5 ? 'warning' : 'danger';
+
+                html += `
+                <tr id="ejemplo-${ejemplo.id}">
+                    <td><small>${escapeHtml(ejemplo.texto_usuario)}</small></td>
+                    <td>
+                        <select class="form-control form-control-sm intencion-select" data-id="${ejemplo.id}">
+                            <option value="${ejemplo.intencion_detectada}">${ejemplo.intencion_detectada}</option>
+                        </select>
+                    </td>
+                    <td><span class="badge badge-${confianzaColor}">${(ejemplo.confianza * 100).toFixed(0)}%</span></td>
+                    <td><small>${ejemplo.fecha_formateada}</small></td>
+                    <td>
+                        <button class="btn btn-success btn-sm" onclick="aprobarEjemplo(${ejemplo.id})" title="Aprobar">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="rechazarEjemplo(${ejemplo.id})" title="Rechazar">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            });
+
+            html += `</tbody></table></div>`;
+            $('#tablaEjemplos').html(html);
+            cargarIntenciones();
+        });
+    }
+
+    function cargarIntenciones() {
+        $.get('<?= url("api/v1/superadmin/ml-ejemplos") ?>?accion=intenciones_disponibles', function(response) {
             if (response.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Éxito',
-                    text: response.message,
-                    timer: 2000
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: response.message
+                intencionesDisponibles = response.intenciones;
+                $('.intencion-select').each(function() {
+                    const valorActual = $(this).val();
+                    $(this).empty();
+                    $(this).append(`<option value="${valorActual}">${valorActual}</option>`);
+                    intencionesDisponibles.forEach(int => {
+                        if (int.clave !== valorActual) {
+                            $(this).append(`<option value="${int.clave}">${int.nombre || int.clave}</option>`);
+                        }
+                    });
                 });
             }
-        },
-        error: function(xhr) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'No se pudo guardar la configuración'
-            });
-        }
-    });
-});
+        });
+    }
 
-// Verificar estado ML Engine
-function verificarEstadoML() {
-    $('#estadoMLEngine').html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Verificando...</p>');
-    
-    const mlPort = $('input[name="ml_engine_port"]').val();
-    const mlUrl = `http://localhost:${mlPort}/health`;
-    
-    $.ajax({
-        url: mlUrl,
-        method: 'GET',
-        dataType: 'json',
-        timeout: 3000,
-        success: function(response) {
-            $('#estadoMLEngine').html(`
+    function aprobarEjemplo(id) {
+        const intencionCorregida = $(`.intencion-select[data-id="${id}"]`).val();
+        $.post('<?= url("api/v1/superadmin/ml-ejemplos") ?>', {
+            accion: 'aprobar',
+            id: id,
+            intencion: intencionCorregida
+        }, function(response) {
+            if (response.success) {
+                $(`#ejemplo-${id}`).fadeOut(300, function() {
+                    $(this).remove();
+                    if ($('tbody tr').length === 0) cargarEjemplosPendientes();
+                });
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Ejemplo aprobado',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            }
+        });
+    }
+
+    function rechazarEjemplo(id) {
+        Swal.fire({
+            title: '¿Descartar ejemplo?',
+            text: 'No se usará para entrenar',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, descartar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('<?= url("api/v1/superadmin/ml-ejemplos") ?>', {
+                    accion: 'rechazar',
+                    id: id
+                }, function(response) {
+                    if (response.success) {
+                        $(`#ejemplo-${id}`).fadeOut(300, function() {
+                            $(this).remove();
+                            if ($('tbody tr').length === 0) cargarEjemplosPendientes();
+                        });
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Ejemplo descartado',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    function aprobarTodos() {
+        const total = $('tbody tr').length;
+        if (total === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'No hay ejemplos',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: `¿Aprobar ${total} ejemplos?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, aprobar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const ids = [];
+                $('tbody tr').each(function() {
+                    ids.push($(this).attr('id').replace('ejemplo-', ''));
+                });
+                $.post('<?= url("api/v1/superadmin/ml-ejemplos") ?>', {
+                    accion: 'aprobar_masivo',
+                    ids: ids
+                }, function(response) {
+                    if (response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: `${response.cantidad} ejemplos aprobados`,
+                            timer: 2000
+                        }).then(() => {
+                            cargarEjemplosPendientes();
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ========== LIMPIEZA ==========
+    $('#formLimpieza').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            url: '<?= url("api/v1/superadmin/ml-cleanup") ?>',
+            method: 'POST',
+            data: $(this).serialize() + '&accion=guardar_config',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Configuración guardada',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al guardar'
+                });
+            }
+        });
+    });
+
+    function previsualizarLimpieza() {
+        $.get('<?= url("api/v1/superadmin/ml-cleanup") ?>?accion=preview', function(response) {
+            if (!response.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error en vista previa'
+                });
+                return;
+            }
+
+            const p = response.preview;
+            const c = response.config;
+
+            let html = `
+            <div class="alert alert-info">
+                <h5><i class="fas fa-info-circle"></i> Vista Previa</h5>
+                <p><strong>Total: ${response.total.toLocaleString()} registros</strong></p>
+                <ul class="mb-0">
+                    <li>Conversaciones (>${c.conversaciones}d): ${p.conversaciones.toLocaleString()}</li>
+                    <li>Ejemplos descartados (>${c.ejemplos_descartados}d): ${p.ejemplos_descartados.toLocaleString()}</li>
+                    <li>Ejemplos usados (>${c.ejemplos_usados}d): ${p.ejemplos_usados.toLocaleString()}</li>
+                    <li>Logs (>${c.logs_entrenamiento}d): ${p.logs_entrenamiento.toLocaleString()}</li>
+                    <li>Métricas antiguas: ${p.metricas_antiguas.toLocaleString()}</li>
+                </ul>
+            </div>
+        `;
+
+            $('#resultadoLimpieza').html(html);
+
+            if (response.total === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'No hay datos para limpiar',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            }
+        });
+    }
+
+    function ejecutarLimpieza() {
+        $.get('<?= url("api/v1/superadmin/ml-cleanup") ?>?accion=preview', function(response) {
+            if (!response.success || response.total === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'No hay datos para limpiar'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Ejecutar Limpieza?',
+                html: `
+                Se eliminarán <strong>${response.total.toLocaleString()}</strong> registros<br>
+                <small>Esta acción no se puede deshacer</small>
+            `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Limpiando...',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    $.post('<?= url("api/v1/superadmin/ml-cleanup") ?>', {
+                        accion: 'ejecutar'
+                    }, function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Limpieza Completada',
+                                text: `${response.total_eliminados.toLocaleString()} registros eliminados`,
+                                timer: 3000
+                            });
+                            $('#resultadoLimpieza').html(`
+                            <div class="alert alert-success">
+                                <i class="fas fa-check"></i> ${response.total_eliminados.toLocaleString()} registros eliminados
+                            </div>
+                        `);
+                        }
+                    });
+                }
+            });
+        });
+    }
+
+    // ========== CONFIGURACIÓN ML ==========
+    $('#formMLConfig').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            url: '<?= url("api/v1/superadmin/guardar-configuracion") ?>',
+            method: 'POST',
+            data: $(this).serialize() + '&seccion=ml',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Configuración guardada',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al guardar'
+                });
+            }
+        });
+    });
+
+    function verificarEstadoML() {
+        $('#estadoMLEngine').html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Verificando...</p>');
+        const mlPort = $('input[name="ml_engine_port"]').val();
+
+        $.ajax({
+            url: `http://localhost:${mlPort}/health`,
+            method: 'GET',
+            dataType: 'json',
+            timeout: 3000,
+            success: function(response) {
+                $('#estadoMLEngine').html(`
                 <div class="alert alert-success mb-0">
                     <h5><i class="fas fa-check-circle"></i> ML Engine Activo</h5>
                     <ul class="mb-0">
                         <li>Estado: <strong>${response.status}</strong></li>
                         <li>Puerto: <strong>${mlPort}</strong></li>
-                        <li>Versión Modelo: <strong>v${response.modelo_version || 'N/A'}</strong></li>
                     </ul>
                 </div>
             `);
-        },
-        error: function() {
-            $('#estadoMLEngine').html(`
+            },
+            error: function() {
+                $('#estadoMLEngine').html(`
                 <div class="alert alert-danger mb-0">
                     <h5><i class="fas fa-times-circle"></i> ML Engine No Disponible</h5>
-                    <p>No se pudo conectar al ML Engine en el puerto ${mlPort}.</p>
-                    <p class="mb-0"><strong>Solución:</strong> Verifica que el servicio Python esté corriendo.</p>
+                    <p>Verifica que Python esté corriendo en puerto ${mlPort}</p>
                 </div>
             `);
-        }
+            }
+        });
+    }
+
+    function forzarReentrenamiento() {
+        Swal.fire({
+            title: '¿Forzar Reentrenamiento?',
+            text: 'Puede tomar varios minutos',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, entrenar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const mlPort = $('input[name="ml_engine_port"]').val();
+                Swal.fire({
+                    title: 'Entrenando...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: `http://localhost:${mlPort}/train`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    timeout: 300000,
+                    success: function(response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Completado',
+                            text: `Accuracy: ${(response.accuracy * 100).toFixed(2)}%`,
+                            timer: 3000
+                        }).then(() => location.reload());
+                    },
+                    error: function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'No se pudo entrenar'
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    function entrenamientoInicial() {
+        forzarReentrenamiento();
+    }
+
+    // ========== INICIALIZACIÓN ==========
+    $(document).ready(function() {
+        cargarGraficos();
+        verificarEstadoML();
+        cargarEjemplosPendientes();
+        setInterval(cargarGraficos, 30000);
     });
-}
-
-// Verificar al cargar
-$(document).ready(function() {
-    verificarEstadoML();
-});
-
-// Forzar reentrenamiento
-function forzarReentrenamiento() {
-    Swal.fire({
-        title: '¿Forzar Reentrenamiento?',
-        text: 'Esto puede tomar varios minutos. El modelo se entrenará con todos los ejemplos disponibles.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, entrenar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const mlPort = $('input[name="ml_engine_port"]').val();
-            
-            Swal.fire({
-                title: 'Entrenando...',
-                html: 'Por favor espera. Esto puede tomar varios minutos.',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-            
-            $.ajax({
-                url: `http://localhost:${mlPort}/train`,
-                method: 'POST',
-                data: JSON.stringify({ trigger: 'manual' }),
-                contentType: 'application/json',
-                timeout: 300000, // 5 minutos
-                success: function(response) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Entrenamiento Completado',
-                        html: `
-                            <strong>Nueva Accuracy:</strong> ${(response.accuracy * 100).toFixed(2)}%<br>
-                            <strong>Ejemplos usados:</strong> ${response.ejemplos_usados}
-                        `,
-                        timer: 3000
-                    }).then(() => {
-                        location.reload();
-                    });
-                },
-                error: function(xhr) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'No se pudo completar el entrenamiento. Verifica los logs.'
-                    });
-                }
-            });
-        }
-    });
-}
-
-// Entrenamiento inicial
-function entrenamientoInicial() {
-    forzarReentrenamiento();
-}
 </script>

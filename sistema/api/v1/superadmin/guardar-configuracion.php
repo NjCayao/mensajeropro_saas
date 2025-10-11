@@ -86,16 +86,14 @@ try {
         case 'ml':
             // ML Engine
             if (isset($_POST['ml_engine_port'])) {
-                guardarConfig('ml_engine_port', $_POST['ml_engine_port']);
+                guardarConfig('ml_engine_port', $_POST['ml_engine_port'], 'numero', 'Puerto ML Engine');
             }
             if (isset($_POST['ml_umbral_confianza'])) {
-                guardarConfig('ml_umbral_confianza', $_POST['ml_umbral_confianza']);
+                guardarConfig('ml_umbral_confianza', $_POST['ml_umbral_confianza'], 'numero', 'Umbral de confianza ML');
             }
             if (isset($_POST['ml_auto_retrain_examples'])) {
-                guardarConfig('ml_auto_retrain_examples', $_POST['ml_auto_retrain_examples']);
+                guardarConfig('ml_auto_retrain_examples', $_POST['ml_auto_retrain_examples'], 'numero', 'Ejemplos para reentrenamiento');
             }
-
-            jsonResponse(true, 'Configuración de ML Engine guardada correctamente');
             break;
 
         default:
@@ -108,6 +106,7 @@ try {
         'success' => true,
         'message' => 'Configuración guardada correctamente'
     ]);
+    
 } catch (Exception $e) {
     $pdo->rollBack();
     error_log("Error guardando configuración: " . $e->getMessage());
@@ -115,6 +114,6 @@ try {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error al guardar la configuración'
+        'message' => 'Error al guardar: ' . $e->getMessage()
     ]);
 }
